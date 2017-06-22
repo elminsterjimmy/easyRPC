@@ -5,115 +5,71 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Set;
 
+import com.elminster.easy.rpc.codec.impl.TypeCategory;
+import com.elminster.easy.rpc.compressor.DataCompressor;
 import com.elminster.easy.rpc.exception.RpcException;
 
 public interface RpcEncodingFactory {
 
-public String getEncoding();
-  
-  public void setEncoding(String paramString);
-  
-  public RpcCodec getEncodingObject(Class<?> paramClass)
-    throws RpcException;
-  
-  public RpcCodec getEncodingObject(String paramString, int paramInt)
-    throws RpcException;
-  
-  public String getClassNameForRemote(String paramString);
-  
-  public String getRemoteForClassName(String paramString);
-  
+  public String getEncoding();
+
+  public void setEncoding(String encoding);
+
+  public RpcCodec getEncodingObject(Class<?> clazz) throws RpcException;
+
+  public RpcCodec getEncodingObject(String typeName, TypeCategory typeCategory) throws RpcException;
+
+  public String getClassNameForRemote(String remoteTypeName);
+
+  public String getRemoteForClassName(String classname);
+
   public Set<String> getRegisteredClassNames();
-  
+
   public Set<String> getRegisteredRemoteNames();
-  
-  public boolean readIsNotNull(InputStream paramInputStream)
-    throws IOException;
-  
-  public void writeIsNotNull(OutputStream paramOutputStream, boolean paramBoolean)
-    throws IOException;
-  
-  public Object readObjectNullable(InputStream paramInputStream)
-    throws IOException, RpcException;
-  
-  public Object readObjectNullable(InputStream paramInputStream, Object paramObject)
-    throws IOException, RpcException;
-  
-  public Object readObjectNotNull(InputStream paramInputStream)
-    throws IOException, RpcException;
-  
-  public void writeObjectNullable(OutputStream paramOutputStream, Object paramObject)
-    throws IOException, RpcException;
-  
-  public Object readObjectHeader(InputStream paramInputStream, Class<?> paramClass, Object paramObject)
-    throws IOException, RpcException;
-  
-  public Object readObjectData(InputStream paramInputStream, Class<?> paramClass, Object paramObject)
-    throws IOException, RpcException;
-  
-  public Object readObjectFooter(InputStream paramInputStream, Class<?> paramClass, Object paramObject)
-    throws IOException, RpcException;
-  
-  public void writeObjectNotNull(OutputStream paramOutputStream, Object paramObject)
-    throws IOException, RpcException;
-  
-  public Long readInt64Nullable(InputStream paramInputStream)
-    throws IOException, RpcException;
-  
-  public void writeInt64Nullable(OutputStream paramOutputStream, Long paramLong)
-    throws IOException, RpcException;
-  
-  public Integer readInt32Nullable(InputStream paramInputStream)
-    throws IOException, RpcException;
-  
-  public void writeInt32Nullable(OutputStream paramOutputStream, Integer paramInteger)
-    throws IOException, RpcException;
-  
-  public Byte readInt8Nullable(InputStream paramInputStream)
-    throws IOException, RpcException;
-  
-  public void writeInt8Nullable(OutputStream paramOutputStream, Byte paramByte)
-    throws IOException, RpcException;
-  
-  public String readStringNullable(InputStream paramInputStream)
-    throws IOException, RpcException;
-  
-  public void writeStringNullable(OutputStream paramOutputStream, String paramString)
-    throws IOException, RpcException;
-  
-  public String readStringNotNull(InputStream paramInputStream)
-    throws IOException, RpcException;
-  
-  public void writeStringNotNull(OutputStream paramOutputStream, String paramString)
-    throws IOException, RpcException;
-  
-  public Double readDoubleNullable(InputStream paramInputStream)
-    throws IOException, RpcException;
-  
-  public void writeDoubleNullable(OutputStream paramOutputStream, Double paramDouble)
-    throws IOException, RpcException;
-  
-  public void writeStreamHeader(OutputStream paramOutputStream, Class<?> paramClass, Object paramObject)
-    throws IOException, RpcException;
-  
-  public void writeStreamData(OutputStream paramOutputStream, Class<?> paramClass, Object paramObject)
-    throws IOException, RpcException;
-  
-  public void writeStreamFooter(OutputStream paramOutputStream, Class<?> paramClass, Object paramObject)
-    throws IOException, RpcException;
-  
-  public void addCompressor(int paramInt, Class<? extends DataCompressor> paramClass);
-  
-  public DataCompressor getCompressor(int paramInt)
-    throws RpcException;
-  
+
+  public boolean readIsNotNull(InputStream in) throws IOException;
+
+  public void writeIsNotNull(OutputStream out, boolean notNull) throws IOException;
+
+  public Object readObjectNullable(InputStream in) throws IOException, RpcException;
+
+  public void writeObjectNullable(OutputStream out, Object value) throws IOException, RpcException;
+
+  public Long readInt64Nullable(InputStream in) throws IOException, RpcException;
+
+  public void writeInt64Nullable(OutputStream out, Long longValue) throws IOException, RpcException;
+
+  public Integer readInt32Nullable(InputStream in) throws IOException, RpcException;
+
+  public void writeInt32Nullable(OutputStream out, Integer int32Value) throws IOException, RpcException;
+
+  public Byte readInt8Nullable(InputStream in) throws IOException, RpcException;
+
+  public void writeInt8Nullable(OutputStream out, Byte byteValue) throws IOException, RpcException;
+
+  public String readStringNullable(InputStream in) throws IOException, RpcException;
+
+  public void writeStringNullable(OutputStream out, String stringValue) throws IOException, RpcException;
+
+  public Double readDoubleNullable(InputStream in) throws IOException, RpcException;
+
+  public void writeDoubleNullable(OutputStream out, Double doubleValue) throws IOException, RpcException;
+
+  public void addCompressor(int type, Class<? extends DataCompressor> dataCompressor);
+
+  public DataCompressor getCompressor(int type) throws RpcException;
+
   public void addCodecRepository(CodecRepository paramCodecRepository);
+
+  public void addEncodingClass(Class<?> paramClass, Class<? extends RpcCodec> encClass, String remoteName);
+
+  public void addEncodingClass(String paramClassName, Class<? extends RpcCodec> encClass, String remoteName);
+
+  public void addEncodingInstance(Class<?> paramClass, RpcCodec encObject, String remoteName);
+
+  public void addEncodingInstance(String paramClassName, RpcCodec encObject, String remoteName);
   
-  public void addEncodingClass(Class<?> paramClass1, Class<?> paramClass2, String paramString);
   
-  public void addEncodingClass(String paramString1, Class<?> paramClass, String paramString2);
   
-  public void addEncodingInstance(Class<?> paramClass, RpcCodec paramRpcCodec, String paramString);
   
-  public void addEncodingInstance(String paramString1, RpcCodec paramRpcCodec, String paramString2);
 }

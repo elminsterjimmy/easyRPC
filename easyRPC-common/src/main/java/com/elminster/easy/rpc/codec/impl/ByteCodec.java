@@ -1,55 +1,52 @@
 package com.elminster.easy.rpc.codec.impl;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.elminster.easy.rpc.codec.RpcCodec;
+import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.util.RpcUtil;
 
+/**
+ * Byte Codec.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class ByteCodec implements RpcCodec {
-  private static Logger log = LoggerFactory.getLogger(ByteCodec.class);
+  
+  /** the logger. */
+  private static Logger logger = LoggerFactory.getLogger(ByteCodec.class);
+  
+  // TODO inject
+  private RpcUtil rpcUtil;
 
-  public Object decode(InputStream iStream, KisRpcEncodingFactory encodingFactory) throws KisRpcException {
+  /**
+   * {@inheritDoc}
+   */
+  public Object decode(InputStream in, RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      byte streamValue = CoreServiceRegistry.INSTANCE.getKisRpcUtil().readByte(iStream);
+      byte streamValue = rpcUtil.readByte(in);
       return Byte.valueOf(streamValue);
     } catch (Exception e) {
-      log.error("Byte decode:", e);
-      throw new KisRpcException("Could not decode Byte - " + e.getMessage());
+      logger.error("Byte decode:", e);
+      throw new RpcException("Could not decode Byte - " + e.getMessage());
     }
   }
 
-  public void encode(OutputStream oStream, Object value, KisRpcEncodingFactory encodingFactory) throws KisRpcException {
+  /**
+   * {@inheritDoc}
+   */
+  public void encode(OutputStream out, Object value, RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      oStream.write(((Byte) value).byteValue());
+      out.write(((Byte) value).byteValue());
     } catch (Exception e) {
-      log.error("Byte encode:", e);
-      throw new KisRpcException("Could not encode Byte - " + e.getMessage());
+      logger.error("Byte encode:", e);
+      throw new RpcException("Could not encode Byte - " + e.getMessage());
     }
-  }
-
-  public Object decode(InputStream iStream, Object codecData, KisRpcEncodingFactory encodingFactory) throws KisRpcException {
-    return decode(iStream, encodingFactory);
-  }
-
-  public Object convertArray(Object value) {
-    if (value == null) {
-      return null;
-    }
-    Class<?> clazz = value.getClass();
-    if (!clazz.isArray()) {
-      return value;
-    }
-    Object result = null;
-    if (clazz.getComponentType().isPrimitive()) {
-      byte[] input = (byte[]) value;
-      result = new Byte[input.length];
-      for (int i = 0; i < input.length; i++) {
-        ((Byte[]) result)[i] = Byte.valueOf(input[i]);
-      }
-    } else {
-      Byte[] input = (Byte[]) value;
-      result = new byte[input.length];
-      for (int i = 0; i < input.length; i++) {
-        ((byte[]) result)[i] = input[i].byteValue();
-      }
-    }
-    return result;
   }
 }

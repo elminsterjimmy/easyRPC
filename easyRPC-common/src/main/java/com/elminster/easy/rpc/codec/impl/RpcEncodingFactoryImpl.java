@@ -7,20 +7,35 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.elminster.common.constants.Constants.StringConstants;
 import com.elminster.common.util.StringUtil;
+import com.elminster.easy.rpc.codec.CodecController;
+import com.elminster.easy.rpc.codec.CodecRepository;
+import com.elminster.easy.rpc.codec.CodecRepositoryElement;
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.compressor.DataCompressor;
+import com.elminster.easy.rpc.compressor.DataCompressorFactory;
 import com.elminster.easy.rpc.exception.RpcException;
-import com.elminster.easy.rpc.idl.IDLTypes;
+import com.elminster.easy.rpc.idl.IDLType;
 import com.elminster.easy.rpc.idl.impl.IDLBasicTypes;
+import com.elminster.easy.rpc.util.RpcUtil;
 
+/**
+ * The RPC encoding factory implementation.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
 
-  private static Logger log = LoggerFactory.getLogger(KisRpcEncodingFactoryImpl.class);
+  /** the logger. */
+  private static Logger logger = LoggerFactory.getLogger(RpcEncodingFactoryImpl.class);
 
   private static final Pattern REMOTE_ARRAY_PATTERN = Pattern.compile(".*\\[\\]$");
   private static final Pattern LOCAL_ARRAY_PATTERN = Pattern.compile("^\\[.*");
@@ -29,25 +44,31 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   private static final Pattern REPLACE_CLASS_SUFFIX_PATTERN = Pattern.compile(";");
 
   protected String encoding = null;
-  protected HashMap<String, Class<?>> encodingClassMap = new HashMap<>();
+  protected HashMap<String, Class<? extends RpcCodec>> encodingClassMap = new HashMap<>();
   protected HashMap<String, RpcCodec> encodingInstanceMap = new HashMap<>();
+  
+  /** class name -> remote type name. */
   protected HashMap<String, String> classToRemoteMap = new HashMap<>();
   protected HashMap<String, String> remoteToClassMap = new HashMap<>();
+  
+  // TODO inject.
+  private RpcUtil rpcUtil;
+  private DataCompressorFactory compressorFactory;
+  private CodecController codecController;
 
   public String getEncoding() {
     return this.encoding;
   }
 
-  public void setEncoding(String theEncoding) {
-    this.encoding = theEncoding;
+  public void setEncoding(String encoding) {
+    this.encoding = encoding;
   }
 
-  public void addEncodingClass(Class<?> paramClass, Class<?> encClass, String remoteName) {
-    this.encodingClassMap.put(paramClass.getName(), encClass);
-    setRemoteForClassName(paramClass.getName(), remoteName);
+  public void addEncodingClass(Class<?> paramClass, Class<? extends RpcCodec> encClass, String remoteName) {
+    addEncodingClass(paramClass.getName(), encClass, remoteName);
   }
 
-  public void addEncodingClass(String paramClassName, Class<?> encClass, String remoteName) {
+  public void addEncodingClass(String paramClassName, Class<? extends RpcCodec> encClass, String remoteName) {
     this.encodingClassMap.put(paramClassName, encClass);
     setRemoteForClassName(paramClassName, remoteName);
   }
@@ -61,21 +82,21 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     setRemoteForClassName(paramClassName, remoteName);
   }
 
-  public RpcCodec getEncodingObject(Class<?> paramClass) throws RpcException {
-    if (null == paramClass) {
+  public RpcCodec getEncodingObject(Class<?> clazz) throws RpcException {
+    if (null == clazz) {
       return null;
     }
-    RpcCodec retValue = getEncodingObject(paramClass.getName(), 1);
+    RpcCodec retValue = getEncodingObject(clazz.getName(), TypeCategory.IDL);
     if (retValue == null) {
-      Class<?> encParent = getParentClassForEncode(paramClass);
+      Class<?> encParent = getParentClassForEncode(clazz);
       if (encParent != null) {
         retValue = getEncodingObject(encParent);
 
-        addEncodingInstance(paramClass, retValue, getRemoteForClassName(encParent.getName()));
+        addEncodingInstance(clazz, retValue, getRemoteForClassName(encParent.getName()));
       }
     }
     if (retValue == null) {
-      throw new RpcException("No codec registered for class" + paramClass.getName());
+      throw new RpcException("No codec registered for class" + clazz.getName());
     }
     return retValue;
   }
@@ -85,14 +106,13 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     if (null == codec) {
       String idlName = null;
       String className = null;
-      if (typeCategory == 0) {
+      if (TypeCategory.JAVA == typeCategory) {
         idlName = typeName;
       } else {
         className = typeName;
       }
-      CodecController ctrl = CoreServiceRegistry.INSTANCE.getCodecController();
-      if (ctrl != null) {
-        CodecRepositoryElement codecRepoElem = ctrl.getCodecRepositoryElement(idlName, className, null);
+      if (codecController != null) {
+        CodecRepositoryElement codecRepoElem = codecController.getCodecRepositoryElement(idlName, className, null);
         if (codecRepoElem != null) {
           addEncodingInstance(codecRepoElem.getClassName(), codecRepoElem.getCodec(), codecRepoElem.getIdlName());
           codec = codecRepoElem.getCodec();
@@ -123,24 +143,24 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
         curEncObj = getDefaultArrayCodec();
         if (TypeCategory.IDL == typeCategory) {
           String cName = getCanonicalName(typeName);
-          String remoteTypeName = (String) this.classToRemoteMap.get(cName);
+          String remoteTypeName = this.classToRemoteMap.get(cName);
           this.classToRemoteMap.put(typeName, remoteTypeName + "[]");
         }
       }
       if (curEncObj == null) {
         if (TypeCategory.JAVA == typeCategory) {
-          paramClassName = (String) this.remoteToClassMap.get(typeName);
+          paramClassName = this.remoteToClassMap.get(typeName);
           if (paramClassName == null) {
             return null;
           }
         } else {
           paramClassName = typeName;
         }
-        curEncObj = (RpcCodec) this.encodingInstanceMap.get(paramClassName);
+        curEncObj = this.encodingInstanceMap.get(paramClassName);
         if (curEncObj == null) {
-          Class<?> encInstanceClass = (Class<?>) this.encodingClassMap.get(paramClassName);
+          Class<? extends RpcCodec> encInstanceClass = this.encodingClassMap.get(paramClassName);
           if (encInstanceClass != null) {
-            curEncObj = (RpcCodec) encInstanceClass.newInstance();
+            curEncObj = encInstanceClass.newInstance();
           }
         }
       }
@@ -148,7 +168,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
       }
       return getDefaultEncodingObject(paramClassName);
     } catch (Exception e) {
-      log.error(e.toString(), e);
+      logger.error(e.toString(), e);
       throw new RpcException("Could not instantiate Encoder for " + paramClassName);
     }
   }
@@ -163,7 +183,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     cn = REPLACE_CLASS_PREFIX_PATTERN.matcher(cn).replaceFirst(StringConstants.EMPTY_STRING);
     cn = REPLACE_CLASS_SUFFIX_PATTERN.matcher(cn).replaceAll(StringConstants.EMPTY_STRING);
 
-    IDLTypes bt = IDLBasicTypes.getByName(cn);
+    IDLType bt = IDLBasicTypes.getByName(cn);
     if (bt != null) {
       result = bt.getLocalName();
     } else {
@@ -219,52 +239,44 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     return Collections.unmodifiableSet(remoteToClassMap.keySet());
   }
 
-  public boolean readIsNotNull(InputStream iStream) throws IOException {
-    return CoreServiceRegistry.INSTANCE.getKisRpcUtil().readByte(iStream) == 1;
+  public boolean readIsNotNull(InputStream in) throws IOException {
+    return rpcUtil.readByte(in) == 1;
   }
 
-  public void writeIsNotNull(OutputStream oStream, boolean valid) throws IOException {
+  public void writeIsNotNull(OutputStream out, boolean valid) throws IOException {
     if (valid) {
-      oStream.write(1);
+      out.write(1);
     } else {
-      oStream.write(0);
+      out.write(0);
     }
   }
 
-  public Object readObjectNullable(InputStream iStream) throws IOException, RpcException {
-    return readObjectNullable(iStream, null);
-  }
-
-  public Object readObjectNullable(InputStream iStream, Object codecData) throws IOException, RpcException {
+  public Object readObjectNullable(InputStream in) throws IOException, RpcException {
     Object result = null;
-    if (readIsNotNull(iStream)) {
-      String aliasName = CoreServiceRegistry.INSTANCE.getKisRpcUtil().readStringAsciiNullable(iStream);
+    if (readIsNotNull(in)) {
+      String aliasName = rpcUtil.readStringAsciiNullable(in);
 
-      RpcCodec codec = getEncodingObject(aliasName, 0);
+      RpcCodec codec = getEncodingObject(aliasName, TypeCategory.JAVA);
       if (codec == null) {
         throw new RpcException("No codec registered for remote type " + aliasName);
       }
-      if (codecData != null) {
-        result = codec.decode(iStream, codecData, this);
-      } else {
-        result = codec.decode(iStream, this);
-      }
+      result = codec.decode(in, this);
     }
     return result;
   }
 
-  public Object readObjectNotNull(InputStream iStream) throws IOException, RpcException {
-    String aliasName = CoreServiceRegistry.INSTANCE.getKisRpcUtil().readStringAsciiNullable(iStream);
+  public Object readObjectNotNull(InputStream in) throws IOException, RpcException {
+    String aliasName = rpcUtil.readStringAsciiNullable(in);
 
-    RpcCodec codec = getEncodingObject(aliasName, 0);
+    RpcCodec codec = getEncodingObject(aliasName, TypeCategory.JAVA);
     if (codec == null) {
       throw new RpcException("No codec registered for remote type " + aliasName);
     }
-    return codec.decode(iStream, this);
+    return codec.decode(in, this);
   }
 
-  public void writeObjectNullable(OutputStream oStream, Object data) throws IOException, RpcException {
-    writeIsNotNull(oStream, data != null);
+  public void writeObjectNullable(OutputStream out, Object data) throws IOException, RpcException {
+    writeIsNotNull(out, data != null);
     if (data == null) {
       return;
     }
@@ -273,185 +285,120 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
       codec = getEncodingObject(data.getClass());
     } catch (RpcException e) {
       if ((data instanceof Throwable)) {
-        log.error("No codec registered: " + data.getClass() + " call stack ", (Throwable) data);
+        logger.error("No codec registered: " + data.getClass() + " call stack ", (Throwable) data);
       }
       throw e;
     }
-    encodeClassName(oStream, data.getClass());
+    encodeClassName(out, data.getClass());
 
-    codec.encode(oStream, data, this);
+    codec.encode(out, data, this);
   }
 
-  public Object readObjectHeader(InputStream iStream, Class<?> streamClass, Object codecData) throws IOException, RpcException {
-    Object result = null;
-    if (readIsNotNull(iStream)) {
-      String aliasName = CoreServiceRegistry.INSTANCE.getKisRpcUtil().readStringAsciiNullable(iStream);
-
-      RpcCodec c = getEncodingObject(aliasName, 0);
-      if (c == null) {
-        throw new RpcException("No codec registered for remote type " + aliasName);
-      }
-      KisRpcStreamCodec codec = getStreamCodec(streamClass);
-      if (codec != c) {
-        throw new RpcException("Expected class " + codec.toString() + ", received remote type " + aliasName);
-      }
-      result = codec.decodeStreamHeader(iStream, codecData, this);
-    }
-    return result;
-  }
-
-  public Object readObjectData(InputStream iStream, Class<?> streamClass, Object codecData) throws IOException, RpcException {
-    KisRpcStreamCodec codec = getStreamCodec(streamClass);
-    Object result = codec.decodeStreamData(iStream, codecData, this);
-    return result;
-  }
-
-  public Object readObjectFooter(InputStream iStream, Class<?> streamClass, Object codecData) throws IOException, RpcException {
-    KisRpcStreamCodec codec = getStreamCodec(streamClass);
-    Object result = codec.decodeStreamFooter(iStream, codecData, this);
-    return result;
-  }
-
-  public void writeObjectNotNull(OutputStream oStream, Object data) throws IOException, RpcException {
+  public void writeObjectNotNull(OutputStream out, Object data) throws IOException, RpcException {
     RpcCodec codec = getEncodingObject(data.getClass());
 
-    encodeClassName(oStream, data.getClass());
+    encodeClassName(out, data.getClass());
 
-    codec.encode(oStream, data, this);
+    codec.encode(out, data, this);
   }
 
-  public void writeStreamHeader(OutputStream oStream, Class<?> streamClass, Object header) throws IOException, RpcException {
-    if (header != null) {
-      writeIsNotNull(oStream, true);
-      KisRpcStreamCodec codec = getStreamCodec(streamClass);
-      encodeClassName(oStream, streamClass);
-      codec.encodeStreamHeader(oStream, header, this);
-    } else {
-      writeIsNotNull(oStream, false);
-    }
-  }
-
-  public void writeStreamData(OutputStream oStream, Class<?> streamClass, Object data) throws IOException, RpcException {
-    KisRpcStreamCodec codec = getStreamCodec(streamClass);
-    codec.encodeStreamData(oStream, data, this);
-  }
-
-  public void writeStreamFooter(OutputStream oStream, Class<?> streamClass, Object footer) throws IOException, RpcException {
-    KisRpcStreamCodec codec = getStreamCodec(streamClass);
-    codec.encodeStreamFooter(oStream, footer, this);
-  }
-
-  private void encodeClassName(OutputStream oStream, Class<?> theClass) throws IOException {
+  private void encodeClassName(OutputStream out, Class<?> theClass) throws IOException {
     String className = theClass.getName();
     String remoteTypeName = getRemoteForClassName(className);
-    CoreServiceRegistry.INSTANCE.getKisRpcUtil().writeStringAsciiNullable(oStream, remoteTypeName);
+    rpcUtil.writeStringAsciiNullable(out, remoteTypeName);
   }
 
-  private KisRpcStreamCodec getStreamCodec(Class<?> streamClass) throws RpcException {
-    RpcCodec codec = getEncodingObject(streamClass);
-    if (codec == null) {
-      throw new RpcException("No codec registered for class" + streamClass.getName());
-    }
-    if ((codec instanceof KisRpcStreamCodec)) {
-      return (KisRpcStreamCodec) codec;
-    }
-    if ((codec instanceof RpcCodecAdapter)) {
-      return (KisRpcStreamCodec) ((RpcCodecAdapter) codec).getWrappedCodec();
-    }
-    throw new RpcException("No stream codec registered for class" + streamClass.getName());
-  }
-
-  public Long readInt64Nullable(InputStream iStream) throws IOException, RpcException {
-    if (!readIsNotNull(iStream)) {
+  public Long readInt64Nullable(InputStream in) throws IOException, RpcException {
+    if (!readIsNotNull(in)) {
       return null;
     }
-    return Long.valueOf(CoreServiceRegistry.INSTANCE.getKisRpcUtil().readLongBigEndian(iStream));
+    return Long.valueOf(rpcUtil.readLongBigEndian(in));
   }
 
-  public void writeInt64Nullable(OutputStream oStream, Long data) throws IOException, RpcException {
+  public void writeInt64Nullable(OutputStream out, Long data) throws IOException, RpcException {
     if (data != null) {
-      writeIsNotNull(oStream, true);
-      CoreServiceRegistry.INSTANCE.getKisRpcUtil().writeLongBigEndian(oStream, data.longValue());
+      writeIsNotNull(out, true);
+      rpcUtil.writeLongBigEndian(out, data.longValue());
     } else {
-      writeIsNotNull(oStream, false);
+      writeIsNotNull(out, false);
     }
   }
 
-  public Byte readInt8Nullable(InputStream iStream) throws IOException, RpcException {
-    if (!readIsNotNull(iStream)) {
+  public Byte readInt8Nullable(InputStream in) throws IOException, RpcException {
+    if (!readIsNotNull(in)) {
       return null;
     }
-    return Byte.valueOf(CoreServiceRegistry.INSTANCE.getKisRpcUtil().readByte(iStream));
+    return Byte.valueOf(rpcUtil.readByte(in));
   }
 
-  public void writeInt8Nullable(OutputStream oStream, Byte data) throws IOException, RpcException {
+  public void writeInt8Nullable(OutputStream out, Byte data) throws IOException, RpcException {
     if (data != null) {
-      writeIsNotNull(oStream, true);
-      CoreServiceRegistry.INSTANCE.getKisRpcUtil().writeByte(oStream, data.byteValue());
+      writeIsNotNull(out, true);
+      rpcUtil.writeByte(out, data.byteValue());
     } else {
-      writeIsNotNull(oStream, false);
+      writeIsNotNull(out, false);
     }
   }
 
-  public Integer readInt32Nullable(InputStream iStream) throws IOException, RpcException {
-    if (!readIsNotNull(iStream)) {
+  public Integer readInt32Nullable(InputStream in) throws IOException, RpcException {
+    if (!readIsNotNull(in)) {
       return null;
     }
-    return Integer.valueOf(CoreServiceRegistry.INSTANCE.getKisRpcUtil().readIntBigEndian(iStream));
+    return Integer.valueOf(rpcUtil.readIntBigEndian(in));
   }
 
-  public void writeInt32Nullable(OutputStream oStream, Integer data) throws IOException, RpcException {
+  public void writeInt32Nullable(OutputStream out, Integer data) throws IOException, RpcException {
     if (data != null) {
-      writeIsNotNull(oStream, true);
-      CoreServiceRegistry.INSTANCE.getKisRpcUtil().writeIntBigEndian(oStream, data.intValue());
+      writeIsNotNull(out, true);
+      rpcUtil.writeIntBigEndian(out, data.intValue());
     } else {
-      writeIsNotNull(oStream, false);
+      writeIsNotNull(out, false);
     }
   }
 
-  public String readStringNullable(InputStream iStream) throws IOException, RpcException {
-    return CoreServiceRegistry.INSTANCE.getKisRpcUtil().readStringUTF8Nullable(iStream);
+  public String readStringNullable(InputStream in) throws IOException, RpcException {
+    return rpcUtil.readStringUTF8Nullable(in);
   }
 
-  public void writeStringNullable(OutputStream oStream, String data) throws IOException, RpcException {
-    CoreServiceRegistry.INSTANCE.getKisRpcUtil().writeStringUTF8Nullable(oStream, data);
+  public void writeStringNullable(OutputStream out, String data) throws IOException, RpcException {
+    rpcUtil.writeStringUTF8Nullable(out, data);
   }
 
-  public String readStringNotNull(InputStream iStream) throws IOException, RpcException {
-    return CoreServiceRegistry.INSTANCE.getKisRpcUtil().readStringUTF8(iStream);
+  public String readStringNotNull(InputStream in) throws IOException, RpcException {
+    return rpcUtil.readStringUTF8(in);
   }
 
-  public void writeStringNotNull(OutputStream oStream, String data) throws IOException, RpcException {
-    CoreServiceRegistry.INSTANCE.getKisRpcUtil().writeStringUTF8(oStream, data);
+  public void writeStringNotNull(OutputStream out, String data) throws IOException, RpcException {
+    rpcUtil.writeStringUTF8(out, data);
   }
 
-  public Double readDoubleNullable(InputStream iStream) throws IOException, RpcException {
-    if (!readIsNotNull(iStream)) {
+  public Double readDoubleNullable(InputStream in) throws IOException, RpcException {
+    if (!readIsNotNull(in)) {
       return null;
     }
-    long bits = CoreServiceRegistry.INSTANCE.getKisRpcUtil().readLongBigEndian(iStream);
+    long bits = rpcUtil.readLongBigEndian(in);
     double curDouble = Double.longBitsToDouble(bits);
     return new Double(curDouble);
   }
 
-  public void writeDoubleNullable(OutputStream oStream, Double data) throws IOException, RpcException {
+  public void writeDoubleNullable(OutputStream out, Double data) throws IOException, RpcException {
     if (data != null) {
-      writeIsNotNull(oStream, true);
+      writeIsNotNull(out, true);
 
       long bits = Double.doubleToLongBits(data.doubleValue());
 
-      CoreServiceRegistry.INSTANCE.getKisRpcUtil().writeLongBigEndian(oStream, bits);
+      rpcUtil.writeLongBigEndian(out, bits);
     } else {
-      writeIsNotNull(oStream, false);
+      writeIsNotNull(out, false);
     }
   }
 
   public void addCompressor(int type, Class<? extends DataCompressor> compressor) {
-    CoreServiceRegistry.INSTANCE.getStreamingFactory().addCompressor(type, compressor);
+    compressorFactory.addCompressor(type, compressor);
   }
 
   public DataCompressor getCompressor(int type) throws RpcException {
-    return CoreServiceRegistry.INSTANCE.getStreamingFactory().getCompressor(type);
+    return compressorFactory.getCompressor(type);
   }
 
   public abstract void addCodecRepository(CodecRepository paramCodecRepository);

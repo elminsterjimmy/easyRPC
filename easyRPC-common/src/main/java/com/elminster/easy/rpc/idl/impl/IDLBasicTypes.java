@@ -9,17 +9,17 @@ import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.impl.BooleanCodec;
 import com.elminster.easy.rpc.codec.impl.ByteCodec;
 import com.elminster.easy.rpc.codec.impl.DoubleCodec;
-import com.elminster.easy.rpc.codec.impl.HashMapCodec;
 import com.elminster.easy.rpc.codec.impl.HashSetCodec;
 import com.elminster.easy.rpc.codec.impl.IntegerCodec;
-import com.elminster.easy.rpc.codec.impl.LinkedListCodec;
+import com.elminster.easy.rpc.codec.impl.ListCodec;
 import com.elminster.easy.rpc.codec.impl.LongCodec;
+import com.elminster.easy.rpc.codec.impl.MapCodec;
 import com.elminster.easy.rpc.codec.impl.ObjectCodec;
 import com.elminster.easy.rpc.codec.impl.StringCodec;
 import com.elminster.easy.rpc.codec.impl.TimestampCodec;
-import com.elminster.easy.rpc.idl.IDLTypes;
+import com.elminster.easy.rpc.idl.IDLType;
 
-public enum IDLBasicTypes implements IDLTypes {
+public enum IDLBasicTypes implements IDLType {
 
   // @formatter:off
   B(Byte.TYPE.getCanonicalName(), "b", Byte.TYPE, ByteCodec.class),
@@ -35,8 +35,8 @@ public enum IDLBasicTypes implements IDLTypes {
   STRING(String.class.getCanonicalName(), "S", String.class, StringCodec.class),
   OBJECT(Object.class.getCanonicalName(), "O", Object.class, ObjectCodec.class),
   TIMESTAMP(Timestamp.class.getCanonicalName(), "T", Timestamp.class, TimestampCodec.class),
-  LINKEDLIST(LinkedList.class.getCanonicalName(), "L", LinkedList.class, LinkedListCodec.class),
-  HASHMAP(HashMap.class.getCanonicalName(), "M", HashMap.class, HashMapCodec.class),
+  LINKEDLIST(LinkedList.class.getCanonicalName(), "L", LinkedList.class, ListCodec.class),
+  HASHMAP(HashMap.class.getCanonicalName(), "M", HashMap.class, MapCodec.class),
   HASHSET(HashSet.class.getCanonicalName(), "E", HashSet.class, HashSetCodec.class);
   // @formatter:on
 
@@ -53,7 +53,7 @@ public enum IDLBasicTypes implements IDLTypes {
     this.codec = codecClass;
   }
 
-  public static IDLTypes getByRemoteName(String name) {
+  public static IDLType getByRemoteName(String name) {
     for (IDLBasicTypes e : IDLBasicTypes.values()) {
       if (e.getRemoteName().equals(name)) {
         return e;
@@ -62,7 +62,7 @@ public enum IDLBasicTypes implements IDLTypes {
     return null;
   }
 
-  public static IDLTypes getByName(String name) {
+  public static IDLType getByName(String name) {
     for (IDLBasicTypes e : IDLBasicTypes.values()) {
       if (e.name().equals(name)) {
         return e;
@@ -83,7 +83,7 @@ public enum IDLBasicTypes implements IDLTypes {
     return this.clazz;
   }
 
-  public Class<?> getCodecClass() {
+  public Class<? extends RpcCodec> getCodecClass() {
     return this.codec;
   }
 
