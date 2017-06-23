@@ -58,5 +58,6 @@
     <module>easyRPC-Server-ifs</module>
     <module>easyRPC-client-ifs</module>
     <module>easyRPC-common</module>
+    <module>easyRPC-Server</module>
   </modules>
 </project>
