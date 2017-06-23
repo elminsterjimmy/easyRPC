@@ -10,11 +10,21 @@ import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 
+/**
+ * The Object Codec.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class ObjectCodec implements RpcCodec {
 
+  /** the logger. */
   private static Logger logger = LoggerFactory.getLogger(ObjectCodec.class);
 
-  public Object decode(InputStream iStream, RpcEncodingFactory encodingFactory) throws RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  public Object decode(final InputStream iStream, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       return encodingFactory.readObjectNullable(iStream);
     } catch (RpcException k) {
@@ -26,7 +36,10 @@ public class ObjectCodec implements RpcCodec {
     }
   }
 
-  public void encode(OutputStream oStream, Object value, RpcEncodingFactory encodingFactory) throws RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       encodingFactory.writeObjectNullable(oStream, value);
     } catch (RpcException k) {

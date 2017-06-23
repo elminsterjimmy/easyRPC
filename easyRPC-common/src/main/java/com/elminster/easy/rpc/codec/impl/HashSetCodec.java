@@ -26,7 +26,7 @@ public class HashSetCodec implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public void encode(OutputStream oStream, Object value, RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       if (null != value) {
         HashSet<?> set = (HashSet<?>) value;

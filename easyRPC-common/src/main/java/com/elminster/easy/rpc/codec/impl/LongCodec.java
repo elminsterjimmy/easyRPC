@@ -9,32 +9,33 @@ import org.slf4j.LoggerFactory;
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.registery.CoreServiceRegistry;
 import com.elminster.easy.rpc.util.RpcUtil;
 
 public class LongCodec implements RpcCodec {
 
-  private static Logger log = LoggerFactory.getLogger(LongCodec.class);
+  private static Logger logger = LoggerFactory.getLogger(LongCodec.class);
   
-  // TODO inject
-  private RpcUtil rpcUtil;
+  /** the RPC util. */
+  private static final RpcUtil rpcUtil = CoreServiceRegistry.INSTANCE.getRpcUtil();
 
-  public void encode(OutputStream oStream, Object value, RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       if (null != value) {
       rpcUtil.writeLongBigEndian(oStream, ((Long) value).longValue());
       }
     } catch (Exception e) {
-      log.error("Long encode:", e);
+      logger.error("Long encode:", e);
       throw new RpcException("Could not encode Long - " + e.getMessage());
     }
   }
 
-  public Object decode(InputStream iStream, RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final InputStream iStream, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       long value = rpcUtil.readLongBigEndian(iStream);
       return Long.valueOf(value);
     } catch (Exception e) {
-      log.error("Long decode:", e);
+      logger.error("Long decode:", e);
       throw new RpcException("Could not decode Long - " + e.getMessage());
     }
   }

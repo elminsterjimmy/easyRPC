@@ -10,16 +10,27 @@ import org.slf4j.LoggerFactory;
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.registery.CoreServiceRegistry;
 import com.elminster.easy.rpc.util.RpcUtil;
 
+/**
+ * The Timestamp Codec.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class TimestampCodec implements RpcCodec {
 
+  /** the logger. */
   private static Logger logger = LoggerFactory.getLogger(TimestampCodec.class);
   
-  // TODO inject
-  private RpcUtil rpcUtil;
+  /** the RPC util. */
+  private static final RpcUtil rpcUtil = CoreServiceRegistry.INSTANCE.getRpcUtil();
 
-  public void encode(OutputStream oStream, Object value, RpcEncodingFactory encodingFactory) throws RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       if (value != null) {
         rpcUtil.writeLongBigEndian(oStream, ((Timestamp) value).getTime());
@@ -30,7 +41,10 @@ public class TimestampCodec implements RpcCodec {
     }
   }
 
-  public Object decode(InputStream iStream, RpcEncodingFactory encodingFactory) throws RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  public Object decode(final InputStream iStream, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       return new Timestamp(rpcUtil.readLongBigEndian(iStream));
     } catch (Exception e) {

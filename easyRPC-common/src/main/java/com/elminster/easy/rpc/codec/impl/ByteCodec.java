@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.registery.CoreServiceRegistry;
 import com.elminster.easy.rpc.util.RpcUtil;
 
 /**
@@ -22,15 +23,15 @@ public class ByteCodec implements RpcCodec {
   /** the logger. */
   private static Logger logger = LoggerFactory.getLogger(ByteCodec.class);
   
-  // TODO inject
-  private RpcUtil rpcUtil;
+  /** the RPC util. */
+  private static final RpcUtil rpcUtil = CoreServiceRegistry.INSTANCE.getRpcUtil();
 
   /**
    * {@inheritDoc}
    */
-  public Object decode(InputStream in, RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final InputStream iStream, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      byte streamValue = rpcUtil.readByte(in);
+      byte streamValue = rpcUtil.readByte(iStream);
       return Byte.valueOf(streamValue);
     } catch (Exception e) {
       logger.error("Byte decode:", e);
@@ -41,9 +42,9 @@ public class ByteCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public void encode(OutputStream out, Object value, RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      out.write(((Byte) value).byteValue());
+      oStream.write(((Byte) value).byteValue());
     } catch (Exception e) {
       logger.error("Byte encode:", e);
       throw new RpcException("Could not encode Byte - " + e.getMessage());

@@ -14,16 +14,17 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.common.constants.Constants.StringConstants;
 import com.elminster.common.util.StringUtil;
-import com.elminster.easy.rpc.codec.CodecController;
+import static com.elminster.easy.rpc.codec.CodecConst.IS_NULL;
+import static com.elminster.easy.rpc.codec.CodecConst.NOT_NULL;
 import com.elminster.easy.rpc.codec.CodecRepository;
-import com.elminster.easy.rpc.codec.CodecRepositoryElement;
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.compressor.DataCompressor;
 import com.elminster.easy.rpc.compressor.DataCompressorFactory;
 import com.elminster.easy.rpc.exception.RpcException;
-import com.elminster.easy.rpc.idl.IDLType;
+import com.elminster.easy.rpc.idl.IDL;
 import com.elminster.easy.rpc.idl.impl.IDLBasicTypes;
+import com.elminster.easy.rpc.registery.CoreServiceRegistry;
 import com.elminster.easy.rpc.util.RpcUtil;
 
 /**
@@ -37,142 +38,173 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   /** the logger. */
   private static Logger logger = LoggerFactory.getLogger(RpcEncodingFactoryImpl.class);
 
-  private static final Pattern REMOTE_ARRAY_PATTERN = Pattern.compile(".*\\[\\]$");
-  private static final Pattern LOCAL_ARRAY_PATTERN = Pattern.compile("^\\[.*");
+  /** {@literal ^\\[*} */
   private static final Pattern REPLACE_ARRAY_PREFIX_PATTERN = Pattern.compile("^\\[*");
+  /** {@literal ^L } */
   private static final Pattern REPLACE_CLASS_PREFIX_PATTERN = Pattern.compile("^L");
+  /** {@literal ; } */
   private static final Pattern REPLACE_CLASS_SUFFIX_PATTERN = Pattern.compile(";");
 
-  protected String encoding = null;
-  protected HashMap<String, Class<? extends RpcCodec>> encodingClassMap = new HashMap<>();
-  protected HashMap<String, RpcCodec> encodingInstanceMap = new HashMap<>();
-  
+  private final String encodingName;
   /** class name -> remote type name. */
-  protected HashMap<String, String> classToRemoteMap = new HashMap<>();
-  protected HashMap<String, String> remoteToClassMap = new HashMap<>();
-  
-  // TODO inject.
-  private RpcUtil rpcUtil;
+  protected HashMap<String, String> classNameToRemoteTypeNameMap = new HashMap<>();
+  /** remote type name -> class name. */
+  protected HashMap<String, String> remoteTypeNameToClassNameMap = new HashMap<>();
+  /** class name -> codec class. */
+  protected HashMap<String, Class<? extends RpcCodec>> encodingClassMap = new HashMap<>();
+  /** class name -> codec instance. */
+  protected HashMap<String, RpcCodec> encodingInstanceMap = new HashMap<>();
+
+  private RpcUtil rpcUtil = CoreServiceRegistry.INSTANCE.getRpcUtil();
   private DataCompressorFactory compressorFactory;
-  private CodecController codecController;
 
-  public String getEncoding() {
-    return this.encoding;
+  public RpcEncodingFactoryImpl(String encodingName) {
+    this.encodingName = encodingName;
   }
 
-  public void setEncoding(String encoding) {
-    this.encoding = encoding;
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public String getEncodingName() {
+    return this.encodingName;
   }
 
-  public void addEncodingClass(Class<?> paramClass, Class<? extends RpcCodec> encClass, String remoteName) {
-    addEncodingClass(paramClass.getName(), encClass, remoteName);
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void addEncodingClass(final Class<?> clazz, final Class<? extends RpcCodec> encClass, final String remoteName) {
+    addEncodingClass(clazz.getName(), encClass, remoteName);
   }
 
-  public void addEncodingClass(String paramClassName, Class<? extends RpcCodec> encClass, String remoteName) {
-    this.encodingClassMap.put(paramClassName, encClass);
-    setRemoteForClassName(paramClassName, remoteName);
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+
+  public void addEncodingClass(final String className, final Class<? extends RpcCodec> encClass, final String remoteName) {
+    this.encodingClassMap.put(className, encClass);
+    setRemoteForClassName(className, remoteName);
   }
 
-  public void addEncodingInstance(Class<?> paramClass, RpcCodec encObject, String remoteName) {
-    addEncodingInstance(paramClass.getName(), encObject, remoteName);
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+
+  public void addEncodingInstance(final Class<?> clazz, final RpcCodec encObject, final String remoteName) {
+    addEncodingInstance(clazz.getName(), encObject, remoteName);
   }
 
-  public void addEncodingInstance(String paramClassName, RpcCodec encObject, String remoteName) {
-    this.encodingInstanceMap.put(paramClassName, encObject);
-    setRemoteForClassName(paramClassName, remoteName);
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+
+  public void addEncodingInstance(final String className, final RpcCodec encObject, final String remoteName) {
+    this.encodingInstanceMap.put(className, encObject);
+    setRemoteForClassName(className, remoteName);
   }
 
-  public RpcCodec getEncodingObject(Class<?> clazz) throws RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public RpcCodec getEncodingObject(final Class<?> clazz) throws RpcException {
     if (null == clazz) {
       return null;
     }
-    RpcCodec retValue = getEncodingObject(clazz.getName(), TypeCategory.IDL);
-    if (retValue == null) {
-      Class<?> encParent = getParentClassForEncode(clazz);
-      if (encParent != null) {
-        retValue = getEncodingObject(encParent);
-
-        addEncodingInstance(clazz, retValue, getRemoteForClassName(encParent.getName()));
-      }
-    }
-    if (retValue == null) {
-      throw new RpcException("No codec registered for class" + clazz.getName());
-    }
-    return retValue;
-  }
-
-  public RpcCodec getEncodingObject(String typeName, TypeCategory typeCategory) throws RpcException {
-    RpcCodec codec = getEncodingObjectInternal(typeName, typeCategory);
+    RpcCodec codec = getEncodingObject(clazz.getName(), TypeCategory.JAVA);
     if (null == codec) {
-      String idlName = null;
-      String className = null;
-      if (TypeCategory.JAVA == typeCategory) {
-        idlName = typeName;
-      } else {
-        className = typeName;
+      Class<?> parentClazz = getParentClassForEncoding(clazz);
+      if (null != parentClazz) {
+        codec = getEncodingObject(parentClazz);
+        addEncodingInstance(clazz, codec, getRemoteNameForClassName(parentClazz.getName()));
       }
-      if (codecController != null) {
-        CodecRepositoryElement codecRepoElem = codecController.getCodecRepositoryElement(idlName, className, null);
-        if (codecRepoElem != null) {
-          addEncodingInstance(codecRepoElem.getClassName(), codecRepoElem.getCodec(), codecRepoElem.getIdlName());
-          codec = codecRepoElem.getCodec();
-        }
-      }
+    }
+    if (null == codec) {
+      throw new RpcException("No codec registered for class" + clazz.getName());
     }
     return codec;
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public RpcCodec getEncodingObject(final String typeName, final TypeCategory typeCategory) throws RpcException {
+    RpcCodec codec = getEncodingObjectInternal(typeName, typeCategory);
+    return codec;
+  }
+
+  /**
+   * Get the Codec for specified type.
+   * 
+   * @param typeName
+   *          the type name
+   * @param typeCategory
+   *          the type category
+   * @return the codec corresponded to the class
+   * @throws RpcException
+   *           on error
+   */
   private RpcCodec getEncodingObjectInternal(String typeName, TypeCategory typeCategory) throws RpcException {
+    if (null == typeName) {
+      return null;
+    }
     String paramClassName = null;
     try {
-      if (typeName == null) {
-        return null;
-      }
-      RpcCodec curEncObj = null;
+      RpcCodec codec = null;
 
       boolean isArray = false;
       switch (typeCategory) {
-      case JAVA:
-        isArray = typeName.charAt(typeName.length() - 1) == ']';
-        break;
       case IDL:
-        isArray = typeName.charAt(0) == '[';
+        isArray = typeName.charAt(typeName.length() - 1) == ']'; // xxx[]
+        break;
+      case JAVA:
+        isArray = typeName.charAt(0) == '['; // [I
         break;
       }
       if (isArray) {
-        curEncObj = getDefaultArrayCodec();
-        if (TypeCategory.IDL == typeCategory) {
+        codec = getDefaultArrayCodec();
+        if (TypeCategory.JAVA == typeCategory) {
           String cName = getCanonicalName(typeName);
-          String remoteTypeName = this.classToRemoteMap.get(cName);
-          this.classToRemoteMap.put(typeName, remoteTypeName + "[]");
+          String remoteTypeName = this.classNameToRemoteTypeNameMap.get(cName);
+          this.classNameToRemoteTypeNameMap.put(typeName, remoteTypeName + "[]"); // FIXME only 1 dimension array?
         }
       }
-      if (curEncObj == null) {
-        if (TypeCategory.JAVA == typeCategory) {
-          paramClassName = this.remoteToClassMap.get(typeName);
-          if (paramClassName == null) {
+      if (null == codec) {
+        if (TypeCategory.IDL == typeCategory) {
+          paramClassName = this.remoteTypeNameToClassNameMap.get(typeName);
+          if (null == paramClassName) {
             return null;
           }
         } else {
           paramClassName = typeName;
         }
-        curEncObj = this.encodingInstanceMap.get(paramClassName);
-        if (curEncObj == null) {
+        codec = this.encodingInstanceMap.get(paramClassName);
+        if (null == codec) {
           Class<? extends RpcCodec> encInstanceClass = this.encodingClassMap.get(paramClassName);
-          if (encInstanceClass != null) {
-            curEncObj = encInstanceClass.newInstance();
+          if (null != encInstanceClass) {
+            codec = encInstanceClass.newInstance();
           }
         }
       }
-      if (curEncObj == null) {
-      }
-      return getDefaultEncodingObject(paramClassName);
+      return codec;
     } catch (Exception e) {
       logger.error(e.toString(), e);
       throw new RpcException("Could not instantiate Encoder for " + paramClassName);
     }
   }
 
+  /**
+   * Get the canonical name of the type name.
+   * 
+   * @param typeName
+   *          the type name
+   * @return the canonical name
+   */
   private String getCanonicalName(String typeName) {
     if (StringUtil.isEmpty(typeName)) {
       return null;
@@ -183,7 +215,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     cn = REPLACE_CLASS_PREFIX_PATTERN.matcher(cn).replaceFirst(StringConstants.EMPTY_STRING);
     cn = REPLACE_CLASS_SUFFIX_PATTERN.matcher(cn).replaceAll(StringConstants.EMPTY_STRING);
 
-    IDLType bt = IDLBasicTypes.getByName(cn);
+    IDL bt = IDLBasicTypes.getByName(cn);
     if (bt != null) {
       result = bt.getLocalName();
     } else {
@@ -192,14 +224,21 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     return result;
   }
 
-  protected Class<?> getParentClassForEncode(Class<?> paramClass) {
+  /**
+   * Get parent class for encoding.
+   * 
+   * @param clazz
+   *          the class
+   * @return the parent class that encoding object is available otherwise {@literal null}
+   */
+  protected Class<?> getParentClassForEncoding(Class<?> clazz) {
     try {
-      Class<?> curParentClass = paramClass.getSuperclass();
-      while (curParentClass != null) {
-        if ((getEncodingObject(curParentClass) != null) && (!curParentClass.equals(Object.class))) {
-          return curParentClass;
+      Class<?> parentClazz = clazz.getSuperclass();
+      while (null != parentClazz) {
+        if ((getEncodingObject(parentClazz) != null) && (!parentClazz.equals(Object.class))) {
+          return parentClazz;
         }
-        curParentClass = curParentClass.getSuperclass();
+        parentClazz = parentClazz.getSuperclass();
       }
     } catch (Exception e) {
       return null;
@@ -207,57 +246,88 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     return null;
   }
 
-  protected RpcCodec getDefaultEncodingObject(String paramClassName) throws RpcException {
-    return null;
-  }
-
+  /**
+   * Get the default array codec.
+   * 
+   * @return the default array codec
+   */
   protected RpcCodec getDefaultArrayCodec() {
     return null;
   }
 
-  public String getClassNameForRemote(String remoteName) {
-    return (String) this.remoteToClassMap.get(remoteName);
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public String getClassNameForRemoteName(String remoteTypeName) {
+    return this.remoteTypeNameToClassNameMap.get(remoteTypeName);
   }
 
-  public String getRemoteForClassName(String className) {
-    return (String) this.classToRemoteMap.get(className);
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public String getRemoteNameForClassName(final String className) {
+    return this.classNameToRemoteTypeNameMap.get(className);
   }
 
-  public void setRemoteForClassName(String className, String remoteName) {
-    this.classToRemoteMap.put(className, remoteName);
-    this.remoteToClassMap.put(remoteName, className);
+  public void setRemoteForClassName(final String className, final String remoteName) {
+    this.classNameToRemoteTypeNameMap.put(className, remoteName);
+    this.remoteTypeNameToClassNameMap.put(remoteName, className);
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public Set<String> getRegisteredClassNames() {
-    Set<String> retValue = new HashSet<>();
-    retValue.addAll(this.encodingClassMap.keySet());
-    retValue.addAll(this.encodingInstanceMap.keySet());
-    return retValue;
+    Set<String> encodingClassNames = encodingClassMap.keySet();
+    Set<String> encodingInstanceClassNames = encodingInstanceMap.keySet();
+    Set<String> set = new HashSet<>(encodingClassNames.size() + encodingInstanceClassNames.size());
+    set.addAll(encodingClassNames);
+    set.addAll(encodingClassNames);
+    return Collections.unmodifiableSet(set);
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public Set<String> getRegisteredRemoteNames() {
-    return Collections.unmodifiableSet(remoteToClassMap.keySet());
+    return Collections.unmodifiableSet(remoteTypeNameToClassNameMap.keySet());
   }
 
-  public boolean readIsNotNull(InputStream in) throws IOException {
-    return rpcUtil.readByte(in) == 1;
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean readIsNotNull(final InputStream in) throws IOException {
+    return NOT_NULL == rpcUtil.readByte(in);
   }
 
-  public void writeIsNotNull(OutputStream out, boolean valid) throws IOException {
-    if (valid) {
-      out.write(1);
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writeIsNotNull(final OutputStream out, final boolean isNotNull) throws IOException {
+    if (isNotNull) {
+      out.write(NOT_NULL);
     } else {
-      out.write(0);
+      out.write(IS_NULL);
     }
   }
 
-  public Object readObjectNullable(InputStream in) throws IOException, RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Object readObjectNullable(final InputStream in) throws IOException, RpcException {
     Object result = null;
     if (readIsNotNull(in)) {
       String aliasName = rpcUtil.readStringAsciiNullable(in);
 
-      RpcCodec codec = getEncodingObject(aliasName, TypeCategory.JAVA);
-      if (codec == null) {
+      RpcCodec codec = getEncodingObject(aliasName, TypeCategory.IDL);
+      if (null == codec) {
         throw new RpcException("No codec registered for remote type " + aliasName);
       }
       result = codec.decode(in, this);
@@ -265,89 +335,108 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     return result;
   }
 
-  public Object readObjectNotNull(InputStream in) throws IOException, RpcException {
-    String aliasName = rpcUtil.readStringAsciiNullable(in);
-
-    RpcCodec codec = getEncodingObject(aliasName, TypeCategory.JAVA);
-    if (codec == null) {
-      throw new RpcException("No codec registered for remote type " + aliasName);
-    }
-    return codec.decode(in, this);
-  }
-
-  public void writeObjectNullable(OutputStream out, Object data) throws IOException, RpcException {
-    writeIsNotNull(out, data != null);
-    if (data == null) {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writeObjectNullable(final OutputStream out, final Object value) throws IOException, RpcException {
+    writeIsNotNull(out, null != value);
+    if (null == value) {
       return;
     }
     RpcCodec codec = null;
     try {
-      codec = getEncodingObject(data.getClass());
+      codec = getEncodingObject(value.getClass());
     } catch (RpcException e) {
-      if ((data instanceof Throwable)) {
-        logger.error("No codec registered: " + data.getClass() + " call stack ", (Throwable) data);
+      if ((value instanceof Throwable)) {
+        logger.error("No codec registered: " + value.getClass() + " call stack ", (Throwable) value);
       }
       throw e;
     }
-    encodeClassName(out, data.getClass());
-
-    codec.encode(out, data, this);
+    encodeClassName(out, value.getClass());
+    codec.encode(out, value, this);
   }
 
-  public void writeObjectNotNull(OutputStream out, Object data) throws IOException, RpcException {
-    RpcCodec codec = getEncodingObject(data.getClass());
-
-    encodeClassName(out, data.getClass());
-
-    codec.encode(out, data, this);
-  }
-
-  private void encodeClassName(OutputStream out, Class<?> theClass) throws IOException {
-    String className = theClass.getName();
-    String remoteTypeName = getRemoteForClassName(className);
+  /**
+   * Encode the class name.
+   * 
+   * @param out
+   *          the output stream
+   * @param clazz
+   *          the class
+   * @throws IOException
+   *           on error
+   */
+  private void encodeClassName(final OutputStream out, final Class<?> clazz) throws IOException {
+    String className = clazz.getName();
+    String remoteTypeName = getRemoteNameForClassName(className);
     rpcUtil.writeStringAsciiNullable(out, remoteTypeName);
   }
 
-  public Long readInt64Nullable(InputStream in) throws IOException, RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Long readInt64Nullable(final InputStream in) throws IOException, RpcException {
     if (!readIsNotNull(in)) {
       return null;
     }
     return Long.valueOf(rpcUtil.readLongBigEndian(in));
   }
 
-  public void writeInt64Nullable(OutputStream out, Long data) throws IOException, RpcException {
-    if (data != null) {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writeInt64Nullable(final OutputStream out, final Long value) throws IOException, RpcException {
+    if (null != value) {
       writeIsNotNull(out, true);
-      rpcUtil.writeLongBigEndian(out, data.longValue());
+      rpcUtil.writeLongBigEndian(out, value.longValue());
     } else {
       writeIsNotNull(out, false);
     }
   }
 
-  public Byte readInt8Nullable(InputStream in) throws IOException, RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Byte readInt8Nullable(final InputStream in) throws IOException, RpcException {
     if (!readIsNotNull(in)) {
       return null;
     }
     return Byte.valueOf(rpcUtil.readByte(in));
   }
 
-  public void writeInt8Nullable(OutputStream out, Byte data) throws IOException, RpcException {
-    if (data != null) {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writeInt8Nullable(final OutputStream out, final Byte value) throws IOException, RpcException {
+    if (null != value) {
       writeIsNotNull(out, true);
-      rpcUtil.writeByte(out, data.byteValue());
+      rpcUtil.writeByte(out, value.byteValue());
     } else {
       writeIsNotNull(out, false);
     }
   }
 
-  public Integer readInt32Nullable(InputStream in) throws IOException, RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Integer readInt32Nullable(final InputStream in) throws IOException, RpcException {
     if (!readIsNotNull(in)) {
       return null;
     }
     return Integer.valueOf(rpcUtil.readIntBigEndian(in));
   }
 
-  public void writeInt32Nullable(OutputStream out, Integer data) throws IOException, RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writeInt32Nullable(final OutputStream out, final Integer data) throws IOException, RpcException {
     if (data != null) {
       writeIsNotNull(out, true);
       rpcUtil.writeIntBigEndian(out, data.intValue());
@@ -356,23 +445,27 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     }
   }
 
-  public String readStringNullable(InputStream in) throws IOException, RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public String readStringNullable(final InputStream in) throws IOException, RpcException {
     return rpcUtil.readStringUTF8Nullable(in);
   }
 
-  public void writeStringNullable(OutputStream out, String data) throws IOException, RpcException {
-    rpcUtil.writeStringUTF8Nullable(out, data);
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writeStringNullable(final OutputStream out, final String value) throws IOException, RpcException {
+    rpcUtil.writeStringUTF8Nullable(out, value);
   }
 
-  public String readStringNotNull(InputStream in) throws IOException, RpcException {
-    return rpcUtil.readStringUTF8(in);
-  }
-
-  public void writeStringNotNull(OutputStream out, String data) throws IOException, RpcException {
-    rpcUtil.writeStringUTF8(out, data);
-  }
-
-  public Double readDoubleNullable(InputStream in) throws IOException, RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Double readDoubleNullable(final InputStream in) throws IOException, RpcException {
     if (!readIsNotNull(in)) {
       return null;
     }
@@ -381,25 +474,39 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     return new Double(curDouble);
   }
 
-  public void writeDoubleNullable(OutputStream out, Double data) throws IOException, RpcException {
-    if (data != null) {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writeDoubleNullable(OutputStream out, Double value) throws IOException, RpcException {
+    if (value != null) {
       writeIsNotNull(out, true);
-
-      long bits = Double.doubleToLongBits(data.doubleValue());
-
+      long bits = Double.doubleToLongBits(value.doubleValue());
       rpcUtil.writeLongBigEndian(out, bits);
     } else {
       writeIsNotNull(out, false);
     }
   }
 
-  public void addCompressor(int type, Class<? extends DataCompressor> compressor) {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void addCompressor(final int type, final Class<? extends DataCompressor> compressor) {
     compressorFactory.addCompressor(type, compressor);
   }
 
-  public DataCompressor getCompressor(int type) throws RpcException {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public DataCompressor getCompressor(final int type) throws RpcException {
     return compressorFactory.getCompressor(type);
   }
 
-  public abstract void addCodecRepository(CodecRepository paramCodecRepository);
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public abstract void addCodecRepository(final CodecRepository paramCodecRepository);
 }

@@ -28,7 +28,7 @@ public class MapCodec implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public void encode(OutputStream oStream, Object value, RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       if (null != value) {
         Map<?, ?> map = (Map<?, ?>) value;
@@ -51,7 +51,7 @@ public class MapCodec implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public Object decode(InputStream iStream, RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final InputStream iStream, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       int size = ((Integer) encodingFactory.readObjectNullable(iStream)).intValue();
       Map<Object, Object> map = new HashMap<>(size);

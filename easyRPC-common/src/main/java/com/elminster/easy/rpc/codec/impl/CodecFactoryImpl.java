@@ -1,6 +1,7 @@
 package com.elminster.easy.rpc.codec.impl;
 
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.elminster.common.util.Assert;
 import com.elminster.easy.rpc.codec.CodecFactory;
@@ -8,10 +9,22 @@ import com.elminster.easy.rpc.codec.CodecRepository;
 import com.elminster.easy.rpc.codec.CodecRepositoryElement;
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
-import com.elminster.easy.rpc.idl.IDLType;
+import com.elminster.easy.rpc.idl.IDL;
 
+/**
+ * The Codec Factory.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class CodecFactoryImpl implements CodecFactory {
+  
+  private static AtomicInteger INC_SER_GEN = new AtomicInteger();
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public CodecRepositoryElement createCodecRepositoryElement(String idlName, String className, RpcCodec codec) {
     Assert.notEmpty(idlName);
     Assert.notEmpty(className);
@@ -19,7 +32,11 @@ public class CodecFactoryImpl implements CodecFactory {
     return new CodecRepositoryElementImpl(idlName, className, codec);
   }
 
-  public RpcCodec createDefaultCodec(IDLType idlType) {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public RpcCodec createCodecForIDL(IDL idlType) {
     Assert.notNull(idlType);
     try {
       return idlType.getCodecClass().newInstance();
@@ -28,26 +45,42 @@ public class CodecFactoryImpl implements CodecFactory {
     }
   }
 
+  /**
+   * Create a default encoding factory.
+   * @return a default encoding factory
+   */
   public RpcEncodingFactory createEncodingFactory() {
-    return new RpcEncodingFactoryBase();
+    return new RpcEncodingFactoryBase(this.toString() + "-" + INC_SER_GEN.incrementAndGet());
   }
 
-  public RpcEncodingFactory createEncodingFactory(CodecRepository repository, String encodingName) {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public RpcEncodingFactory createEncodingFactory(CodecRepository repository, String encodingFactoryName) {
     Assert.notNull(repository);
-    Assert.notEmpty(encodingName);
-    return new RpcEncodingFactoryBase(repository, encodingName);
+    Assert.notEmpty(encodingFactoryName);
+    return new RpcEncodingFactoryBase(repository, encodingFactoryName);
   }
 
-  public RpcEncodingFactory createEncodingFactory(Collection<CodecRepository> repositories, String encodingName) {
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public RpcEncodingFactory createEncodingFactory(Collection<CodecRepository> repositories, String encodingFactoryName) {
     Assert.notNull(repositories);
-    Assert.notEmpty(encodingName);
-    return new RpcEncodingFactoryBase(repositories, encodingName);
+    Assert.notEmpty(encodingFactoryName);
+    return new RpcEncodingFactoryBase(repositories, encodingFactoryName);
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public RpcCodec createServerExceptionCodec() {
-    // TODO
-    return null;
+    return new RpcServerExceptionCodec();
   }
+  
 //  public <ResultType, ProgressType> RpcFunctionCall<ResultType, ProgressType> createFunctionCall(Long uniqueFunctionId) {
 //    if (null == uniqueFunctionId) {
 //      throw new IllegalArgumentException("Parameter 'uniqueFunctionId' must not be null!");

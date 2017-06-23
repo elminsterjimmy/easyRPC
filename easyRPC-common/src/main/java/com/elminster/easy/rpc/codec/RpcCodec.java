@@ -25,7 +25,7 @@ public interface RpcCodec {
    * @throws RpcException
    *           on error
    */
-  public void encode(OutputStream oStream, Object value, RpcEncodingFactory encodingFactory) throws RpcException;
+  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException;
 
   /**
    * Decode to the value.
@@ -38,5 +38,5 @@ public interface RpcCodec {
    * @throws RpcException
    *           on error
    */
-  public Object decode(InputStream iStream, RpcEncodingFactory encodingFactory) throws RpcException;
+  public Object decode(final InputStream iStream, final RpcEncodingFactory encodingFactory) throws RpcException;
 }

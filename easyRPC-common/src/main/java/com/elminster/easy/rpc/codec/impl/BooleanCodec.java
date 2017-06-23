@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.registery.CoreServiceRegistry;
 import com.elminster.easy.rpc.util.RpcUtil;
 
 /**
@@ -19,23 +20,23 @@ import com.elminster.easy.rpc.util.RpcUtil;
  */
 public class BooleanCodec implements RpcCodec {
   
-  private static Logger log = LoggerFactory.getLogger(BooleanCodec.class);
+  private static Logger logger = LoggerFactory.getLogger(BooleanCodec.class);
 
-  // TODO inject
-  private RpcUtil rpcUtil;
+  /** the RPC util. */
+  private static final RpcUtil rpcUtil = CoreServiceRegistry.INSTANCE.getRpcUtil();
   
   /**
    * {@inheritDoc}
    */
-  public Object decode(InputStream in, RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final InputStream iStream, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      byte streamValue = rpcUtil.readByte(in);
+      byte streamValue = rpcUtil.readByte(iStream);
       if (1 == streamValue) {
         return Boolean.TRUE;
       }
       return Boolean.FALSE;
     } catch (Exception e) {
-      log.error("Boolean decode:", e);
+      logger.error("Boolean decode:", e);
       throw new RpcException("Could not decode Boolean - " + e.getMessage());
     }
   }
@@ -43,17 +44,17 @@ public class BooleanCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public void encode(OutputStream out, Object value, RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       if (null != value) {
         if (((Boolean) value).booleanValue()) {
-          out.write(1);
+          oStream.write(1);
         } else {
-          out.write(0);
+          oStream.write(0);
         }
       }
     } catch (Exception e) {
-      log.error("Boolean encode:", e);
+      logger.error("Boolean encode:", e);
       throw new RpcException("Could not encode Boolean - " + e.getMessage());
     }
   }
