@@ -17,9 +17,9 @@ import com.elminster.easy.rpc.codec.impl.MapCodec;
 import com.elminster.easy.rpc.codec.impl.ObjectCodec;
 import com.elminster.easy.rpc.codec.impl.StringCodec;
 import com.elminster.easy.rpc.codec.impl.TimestampCodec;
-import com.elminster.easy.rpc.idl.IDLType;
+import com.elminster.easy.rpc.idl.IDL;
 
-public enum IDLBasicTypes implements IDLType {
+public enum IDLBasicTypes implements IDL {
 
   // @formatter:off
   B(Byte.TYPE.getCanonicalName(), "b", Byte.TYPE, ByteCodec.class),
@@ -53,7 +53,7 @@ public enum IDLBasicTypes implements IDLType {
     this.codec = codecClass;
   }
 
-  public static IDLType getByRemoteName(String name) {
+  public static IDL getByRemoteName(String name) {
     for (IDLBasicTypes e : IDLBasicTypes.values()) {
       if (e.getRemoteName().equals(name)) {
         return e;
@@ -62,7 +62,7 @@ public enum IDLBasicTypes implements IDLType {
     return null;
   }
 
-  public static IDLType getByName(String name) {
+  public static IDL getByName(String name) {
     for (IDLBasicTypes e : IDLBasicTypes.values()) {
       if (e.name().equals(name)) {
         return e;
