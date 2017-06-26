@@ -1,7 +1,5 @@
 package com.elminster.easy.rpc.codec.impl;
 
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Array;
 
 import org.slf4j.Logger;
@@ -28,12 +26,12 @@ public class ArrayCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public Object decode(final InputStream iStream, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException {
     String remoteTypeName = null;
     String arrayTypeName = null;
     try {
-      int arraySize = ((Integer) encodingFactory.readObjectNullable(iStream)).intValue();
-      remoteTypeName = (String) encodingFactory.readObjectNullable(iStream);
+      int arraySize = ((Integer) encodingFactory.readObjectNullable()).intValue();
+      remoteTypeName = (String) encodingFactory.readObjectNullable();
       arrayTypeName = encodingFactory.getClassNameForRemoteName(remoteTypeName);
       if (arrayTypeName == null) {
         throw new Exception("No class defined for " + remoteTypeName);
@@ -48,10 +46,10 @@ public class ArrayCodec implements RpcCodec {
       Object array = Array.newInstance(typeClass, arraySize);
       Object[] decoded = new Object[arraySize];
       for (int i = 0; i < arraySize; i++) {
-        boolean notNull = encodingFactory.readIsNotNull(iStream);
+        boolean notNull = encodingFactory.readIsNotNull();
         Object entry = null;
         if (notNull) {
-          entry = typeEncoder.decode(iStream, encodingFactory);
+          entry = typeEncoder.decode(encodingFactory);
         }
         decoded[i] = entry;
       }
@@ -70,7 +68,7 @@ public class ArrayCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     String arrayTypeName = null;
     try {
       Class<?> arrayClass = value.getClass();
@@ -85,17 +83,17 @@ public class ArrayCodec implements RpcCodec {
         throw new Exception("No remote name defined for class " + componentClass);
       }
       int arraySize = Array.getLength(value);
-      encodingFactory.writeObjectNullable(oStream, Integer.valueOf(arraySize));
+      encodingFactory.writeObjectNullable(Integer.valueOf(arraySize));
 
-      encodingFactory.writeObjectNullable(oStream, remoteTypeName);
+      encodingFactory.writeObjectNullable(remoteTypeName);
 
       RpcCodec componentEncoder = encodingFactory.getEncodingObject(componentClass);
 
       for (Object obj : (Object[]) value) {
-        encodingFactory.writeIsNotNull(oStream, null != obj);
+        encodingFactory.writeIsNotNull(null != obj);
         if (null != obj) {
           // auto boxing and auto unboxing
-          componentEncoder.encode(oStream, obj, encodingFactory);
+          componentEncoder.encode(obj, encodingFactory);
         }
       }
     } catch (RpcException e) {

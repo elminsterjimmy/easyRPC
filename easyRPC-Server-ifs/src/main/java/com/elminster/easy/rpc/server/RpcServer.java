@@ -5,6 +5,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.server.exception.ServerException;
 import com.elminster.easy.rpc.service.RpcService;
 
 /**
@@ -32,12 +33,15 @@ public interface RpcServer {
    *           on error
    */
   public void addService(final RpcService rpcService) throws RpcException;
-  
+
   /**
    * Get a RPC service by name.
-   * @param serviceName the service name
+   * 
+   * @param serviceName
+   *          the service name
    * @return the RPC service
-   * @throws RpcException on error
+   * @throws RpcException
+   *           on error
    */
   public RpcService getService(final String serviceName) throws RpcException;
 
@@ -46,18 +50,20 @@ public interface RpcServer {
    * 
    * @param port
    *          the port
-   * @throws RpcException
+   * @throws ServerException
    *           on error
    */
-  public void listen(int port) throws RpcException;
+  public void listen(int port) throws ServerException;
 
   /**
    * Shutdown the server.
    * 
    * @param force
    *          if true force close all connections
+   * @throws ServerException
+   *           on error
    */
-  public void shutdown(boolean force);
+  public void shutdown(boolean force) throws ServerException;
 
   /**
    * Get number of open connections.
@@ -113,7 +119,7 @@ public interface RpcServer {
    * 
    * @return if the server uses secure connection
    */
-  public boolean isSecureConnection();
+  public boolean useSecureConnection();
 
   /**
    * Set the server uses secure connection or not.

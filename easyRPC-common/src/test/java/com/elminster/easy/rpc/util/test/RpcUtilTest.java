@@ -8,27 +8,28 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.elminster.easy.rpc.util.RpcUtil;
-import com.elminster.easy.rpc.util.RpcUtilImpl;
+import com.elminster.easy.rpc.util.RpcUtilFactory;
 
 public class RpcUtilTest {
   
-  RpcUtil util = new RpcUtilImpl();
 
   @Test
   public void testWriteAndReadByte() throws IOException {
     try (PipedOutputStream out = new PipedOutputStream();
         PipedInputStream in = new PipedInputStream(out)) {
+      
+      RpcUtil util = RpcUtilFactory.INSTANCE.getRpcUtil(in, out);
       byte zero = 0;
-      util.writeByte(out, zero);
-      Assert.assertEquals(zero, util.readByte(in));
+      util.writeByte(zero);
+      Assert.assertEquals(zero, util.readByte());
       
       byte max = Byte.MAX_VALUE;
-      util.writeByte(out, max);
-      Assert.assertEquals(max, util.readByte(in));
+      util.writeByte(max);
+      Assert.assertEquals(max, util.readByte());
       
       byte min = Byte.MIN_VALUE;
-      util.writeByte(out, min);
-      Assert.assertEquals(min, util.readByte(in));
+      util.writeByte(min);
+      Assert.assertEquals(min, util.readByte());
     }
   }
   
@@ -36,17 +37,19 @@ public class RpcUtilTest {
   public void testWriteAndReadInt() throws IOException {
     try (PipedOutputStream out = new PipedOutputStream();
         PipedInputStream in = new PipedInputStream(out)) {
+      RpcUtil util = RpcUtilFactory.INSTANCE.getRpcUtil(in, out);
+      
       int zero = 0;
-      util.writeIntBigEndian(out, zero);
-      Assert.assertEquals(zero, util.readIntBigEndian(in));
+      util.writeIntBigEndian(zero);
+      Assert.assertEquals(zero, util.readIntBigEndian());
       
       int max = Integer.MAX_VALUE;
-      util.writeIntBigEndian(out, max);
-      Assert.assertEquals(max, util.readIntBigEndian(in));
+      util.writeIntBigEndian(max);
+      Assert.assertEquals(max, util.readIntBigEndian());
       
       int min = Integer.MIN_VALUE;
-      util.writeIntBigEndian(out, min);
-      Assert.assertEquals(min, util.readIntBigEndian(in));
+      util.writeIntBigEndian(min);
+      Assert.assertEquals(min, util.readIntBigEndian());
     }
   }
   
@@ -54,17 +57,19 @@ public class RpcUtilTest {
   public void testWriteAndReadLong() throws IOException {
     try (PipedOutputStream out = new PipedOutputStream();
         PipedInputStream in = new PipedInputStream(out)) {
+      
+      RpcUtil util = RpcUtilFactory.INSTANCE.getRpcUtil(in, out);
       long zero = 0L;
-      util.writeLongBigEndian(out, zero);
-      Assert.assertEquals(zero, util.readLongBigEndian(in));
+      util.writeLongBigEndian(zero);
+      Assert.assertEquals(zero, util.readLongBigEndian());
       
       long max = Long.MAX_VALUE;
-      util.writeLongBigEndian(out, max);
-      Assert.assertEquals(max, util.readLongBigEndian(in));
+      util.writeLongBigEndian(max);
+      Assert.assertEquals(max, util.readLongBigEndian());
       
       long min = Long.MIN_VALUE;
-      util.writeLongBigEndian(out, min);
-      Assert.assertEquals(min, util.readLongBigEndian(in));
+      util.writeLongBigEndian(min);
+      Assert.assertEquals(min, util.readLongBigEndian());
     }
   }
 
@@ -72,30 +77,32 @@ public class RpcUtilTest {
   public void testWriteAndReadString() throws IOException {
     try (PipedOutputStream out = new PipedOutputStream();
         PipedInputStream in = new PipedInputStream(out)) {
+      
+      RpcUtil util = RpcUtilFactory.INSTANCE.getRpcUtil(in, out);
       String nullStr = null;
-      util.writeStringAsciiNullable(out, nullStr);
-      Assert.assertEquals(nullStr, util.readStringAsciiNullable(in));
-      util.writeStringUTF8Nullable(out, nullStr);
-      Assert.assertEquals(nullStr, util.readStringUTF8Nullable(in));
+      util.writeStringAsciiNullable(nullStr);
+      Assert.assertEquals(nullStr, util.readStringAsciiNullable());
+      util.writeStringUTF8Nullable(nullStr);
+      Assert.assertEquals(nullStr, util.readStringUTF8Nullable());
       
       String emptyString = "";
-      util.writeStringAsciiNullable(out, emptyString);
-      Assert.assertEquals(emptyString, util.readStringAsciiNullable(in));
-      util.writeStringUTF8Nullable(out, emptyString);
-      Assert.assertEquals(emptyString, util.readStringUTF8Nullable(in));
+      util.writeStringAsciiNullable(emptyString);
+      Assert.assertEquals(emptyString, util.readStringAsciiNullable());
+      util.writeStringUTF8Nullable(emptyString);
+      Assert.assertEquals(emptyString, util.readStringUTF8Nullable());
       
       String asciiString = "abcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()";
-      util.writeStringAsciiNullable(out, asciiString);
-      Assert.assertEquals(asciiString, util.readStringAsciiNullable(in));
-      util.writeStringUTF8Nullable(out, asciiString);
-      Assert.assertEquals(asciiString, util.readStringUTF8Nullable(in));
+      util.writeStringAsciiNullable(asciiString);
+      Assert.assertEquals(asciiString, util.readStringAsciiNullable());
+      util.writeStringUTF8Nullable(asciiString);
+      Assert.assertEquals(asciiString, util.readStringUTF8Nullable());
       
       String utf8String = "中文 日本語";
-      util.writeStringAsciiNullable(out, utf8String);
+      util.writeStringAsciiNullable(utf8String);
       // NOT EQUALS
-      Assert.assertNotEquals(utf8String, util.readStringAsciiNullable(in));
-      util.writeStringUTF8Nullable(out, utf8String);
-      Assert.assertEquals(utf8String, util.readStringUTF8Nullable(in));
+      Assert.assertNotEquals(utf8String, util.readStringAsciiNullable());
+      util.writeStringUTF8Nullable(utf8String);
+      Assert.assertEquals(utf8String, util.readStringUTF8Nullable());
     }
   }
 }

@@ -1,7 +1,5 @@
 package com.elminster.easy.rpc.codec.impl;
 
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.HashSet;
 
 import org.slf4j.Logger;
@@ -26,13 +24,13 @@ public class HashSetCodec implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       if (null != value) {
         HashSet<?> set = (HashSet<?>) value;
-        encodingFactory.writeObjectNullable(oStream, Integer.valueOf(set.size()));
+        encodingFactory.writeObjectNullable(Integer.valueOf(set.size()));
         for (Object o : set) {
-          encodingFactory.writeObjectNullable(oStream, o);
+          encodingFactory.writeObjectNullable(o);
         }
       }
     } catch (RpcException k) {
@@ -47,14 +45,14 @@ public class HashSetCodec implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public Object decode(InputStream iStream, RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      int size = ((Integer) encodingFactory.readObjectNullable(iStream)).intValue();
+      int size = ((Integer) encodingFactory.readObjectNullable()).intValue();
 
       HashSet<Object> hashSet = new HashSet<>(size);
 
       for (int i = 0; i < size; i++) {
-        hashSet.add(encodingFactory.readObjectNullable(iStream));
+        hashSet.add(encodingFactory.readObjectNullable());
       }
       return hashSet;
     } catch (RpcException k) {

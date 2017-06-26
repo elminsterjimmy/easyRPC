@@ -15,8 +15,10 @@ public interface Container {
    * 
    * @param port
    *          the port
+   * @param useSecure
+   *          use secure connection?
    */
-  public void start(int port) throws ServerException;
+  public void start(int port, boolean useSecure) throws ServerException;
   
   /**
    * Use secure or not?

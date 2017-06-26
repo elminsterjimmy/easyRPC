@@ -1,8 +1,9 @@
 package com.elminster.easy.rpc.codec.impl;
 
+import static com.elminster.easy.rpc.codec.CodecConst.IS_NULL;
+import static com.elminster.easy.rpc.codec.CodecConst.NOT_NULL;
+
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,11 +14,6 @@ import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.exception.RpcServerException;
-import com.elminster.easy.rpc.registery.CoreServiceRegistry;
-import com.elminster.easy.rpc.util.RpcUtil;
-
-import static com.elminster.easy.rpc.codec.CodecConst.IS_NULL;
-import static com.elminster.easy.rpc.codec.CodecConst.NOT_NULL;
 
 /**
  * The RPC Server Exception Codec.
@@ -30,9 +26,6 @@ public class RpcServerExceptionCodec implements RpcCodec {
   /** the logger. */
   private static Logger logger = LoggerFactory.getLogger(RpcServerExceptionCodec.class);
 
-  /** the RPC util. */
-  private static final RpcUtil rpcUtil = CoreServiceRegistry.INSTANCE.getRpcUtil();
-
   private static final byte HAS_CAUSE = 1;
   private static final byte NO_CAUSE = 0;
   private static final byte HAS_CODEC = 1;
@@ -43,34 +36,34 @@ public class RpcServerExceptionCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public Object decode(InputStream iStream, RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      if (rpcUtil.readByte(iStream) == IS_NULL) {
+      if (encodingFactory.readInt8() == IS_NULL) {
         return null;
       }
-      String errorMessage = rpcUtil.readStringAsciiNullable(iStream);
-      int errorCode = rpcUtil.readIntBigEndian(iStream);
+      String errorMessage = encodingFactory.readStringNullable();
+      int errorCode = encodingFactory.readInt32();
 
       RpcServerException serverException = new RpcServerException(errorMessage, errorCode);
-      serverException.setCausedByClassName(rpcUtil.readStringAsciiNullable(iStream));
-      serverException.setCausedByStackTrace(rpcUtil.readStringAsciiNullable(iStream));
+      serverException.setCausedByClassName(encodingFactory.readStringNullable());
+      serverException.setCausedByStackTrace(encodingFactory.readStringNullable());
 
-      if (rpcUtil.readByte(iStream) == HAS_CAUSE) {
-        if (rpcUtil.readByte(iStream) == HAS_CODEC) {
-          Throwable cause = (Throwable) encodingFactory.readObjectNullable(iStream);
+      if (encodingFactory.readInt8() == HAS_CAUSE) {
+        if (encodingFactory.readInt8() == HAS_CODEC) {
+          Throwable cause = (Throwable) encodingFactory.readObjectNullable();
           if (cause != null) {
             serverException.initCause(cause);
           }
         } else {
           List<StackTraceElement> stl = new ArrayList<>();
-          int size = rpcUtil.readIntBigEndian(iStream);
+          int size = encodingFactory.readInt32();
           for (int i = 0; i < size; i++) {
-            stl.add(new StackTraceElement(rpcUtil.readStringAsciiNullable(iStream), rpcUtil.readStringAsciiNullable(iStream), rpcUtil.readStringAsciiNullable(iStream),
-                rpcUtil.readIntBigEndian(iStream)));
+            stl.add(new StackTraceElement(encodingFactory.readStringNullable(), encodingFactory.readStringNullable(), encodingFactory.readStringNullable(),
+                encodingFactory.readInt32()));
           }
           serverException.setStackTrace((StackTraceElement[]) stl.toArray(new StackTraceElement[stl.size()]));
-          if (rpcUtil.readByte(iStream) == HAS_MORE) {
-            RpcServerException next = (RpcServerException) decode(iStream, encodingFactory);
+          if (encodingFactory.readInt8() == HAS_MORE) {
+            RpcServerException next = (RpcServerException) decode(encodingFactory);
             serverException.initCause(next);
           }
         }
@@ -86,55 +79,55 @@ public class RpcServerExceptionCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       if (value == null) {
-        rpcUtil.writeByte(oStream, IS_NULL);
+        encodingFactory.writeInt8(IS_NULL);
         return;
       }
-      rpcUtil.writeByte(oStream, NOT_NULL);
+      encodingFactory.writeInt8(NOT_NULL);
 
       RpcServerException serverException = (RpcServerException) value;
 
-      rpcUtil.writeStringAsciiNullable(oStream, serverException.getMessage());
+      encodingFactory.writeStringNullable(serverException.getMessage());
 
-      rpcUtil.writeIntBigEndian(oStream, serverException.getErrorCode());
+      encodingFactory.writeInt32(serverException.getErrorCode());
 
-      rpcUtil.writeStringAsciiNullable(oStream, serverException.getCausedByClassName());
+      encodingFactory.writeStringNullable(serverException.getCausedByClassName());
 
-      rpcUtil.writeStringAsciiNullable(oStream, serverException.getCausedByStackTrace());
+      encodingFactory.writeStringNullable(serverException.getCausedByStackTrace());
 
       Throwable cause = serverException.getCause();
       if (cause != null) {
-        rpcUtil.writeByte(oStream, HAS_CAUSE);
+        encodingFactory.writeInt8(HAS_CAUSE);
 
         String causeName = cause.getClass().getName();
         RpcCodec codec = encodingFactory != null ? encodingFactory.getEncodingObject(causeName, TypeCategory.JAVA) : null;
         if (codec != null) {
-          rpcUtil.writeByte(oStream, HAS_CODEC);
-          encodingFactory.writeObjectNullable(oStream, cause);
+          encodingFactory.writeInt8(HAS_CODEC);
+          encodingFactory.writeObjectNullable(cause);
         } else {
-          rpcUtil.writeByte(oStream, NO_CODEC);
+          encodingFactory.writeInt8(NO_CODEC);
           StackTraceElement[] st = cause.getStackTrace();
 
-          rpcUtil.writeIntBigEndian(oStream, st.length);
+          encodingFactory.writeInt32(st.length);
           for (StackTraceElement ste : st) {
-            rpcUtil.writeStringAsciiNullable(oStream, ste.getClassName());
-            rpcUtil.writeStringAsciiNullable(oStream, ste.getMethodName());
-            rpcUtil.writeStringAsciiNullable(oStream, ste.getFileName());
-            rpcUtil.writeIntBigEndian(oStream, ste.getLineNumber());
+            encodingFactory.writeStringNullable(ste.getClassName());
+            encodingFactory.writeStringNullable(ste.getMethodName());
+            encodingFactory.writeStringNullable(ste.getFileName());
+            encodingFactory.writeInt32(ste.getLineNumber());
           }
           cause = cause.getCause();
           if (cause != null) {
-            rpcUtil.writeByte(oStream, HAS_MORE);
+            encodingFactory.writeInt8(HAS_MORE);
             RpcServerException next = new RpcServerException(cause.getClass().getCanonicalName() + ":" + cause.getMessage(), cause, serverException.getErrorCode());
-            encode(oStream, next, encodingFactory);
+            encode(next, encodingFactory);
           } else {
-            rpcUtil.writeByte(oStream, NO_MORE);
+            encodingFactory.writeInt8(NO_MORE);
           }
         }
       } else {
-        rpcUtil.writeByte(oStream, NO_CAUSE);
+        encodingFactory.writeInt8(NO_CAUSE);
       }
     } catch (IOException e) {
       String message = "Could not encode KisRpcServerException - " + e;

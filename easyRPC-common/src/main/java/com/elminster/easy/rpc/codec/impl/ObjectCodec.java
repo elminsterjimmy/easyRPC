@@ -1,8 +1,5 @@
 package com.elminster.easy.rpc.codec.impl;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,9 +21,9 @@ public class ObjectCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public Object decode(final InputStream iStream, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      return encodingFactory.readObjectNullable(iStream);
+      return encodingFactory.readObjectNullable();
     } catch (RpcException k) {
       throw k;
     } catch (Exception e) {
@@ -39,9 +36,9 @@ public class ObjectCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      encodingFactory.writeObjectNullable(oStream, value);
+      encodingFactory.writeObjectNullable(value);
     } catch (RpcException k) {
       throw k;
     } catch (Exception e) {

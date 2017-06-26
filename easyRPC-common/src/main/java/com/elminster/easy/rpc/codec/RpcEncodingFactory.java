@@ -1,8 +1,6 @@
 package com.elminster.easy.rpc.codec;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Set;
 
 import com.elminster.easy.rpc.codec.impl.TypeCategory;
@@ -89,7 +87,7 @@ public interface RpcEncodingFactory {
    * @throws IOException
    *           on error
    */
-  public boolean readIsNotNull(final InputStream in) throws IOException;
+  public boolean readIsNotNull() throws IOException;
 
   /**
    * Write next object is not null or not.
@@ -101,26 +99,22 @@ public interface RpcEncodingFactory {
    * @throws IOException
    *           on error
    */
-  public void writeIsNotNull(final OutputStream out, final boolean isNotNull) throws IOException;
+  public void writeIsNotNull(final boolean isNotNull) throws IOException;
 
   /**
    * Read a nullable object.
    * 
-   * @param in
-   *          the input stream
    * @return a nullable object
    * @throws IOException
    *           on error
    * @throws RpcException
    *           on error
    */
-  public Object readObjectNullable(final InputStream in) throws IOException, RpcException;
+  public Object readObjectNullable() throws IOException, RpcException;
 
   /**
    * Write a nullable object.
    * 
-   * @param out
-   *          the output stream
    * @param value
    *          the value
    * @throws IOException
@@ -128,26 +122,33 @@ public interface RpcEncodingFactory {
    * @throws RpcException
    *           on error
    */
-  public void writeObjectNullable(final OutputStream out, final Object value) throws IOException, RpcException;
+  public void writeObjectNullable(final Object value) throws IOException, RpcException;
 
   /**
    * Read a nullable int64.
    * 
-   * @param in
-   *          the input stream
    * @return a nullable int64
    * @throws IOException
    *           on error
    * @throws RpcException
    *           on error
    */
-  public Long readInt64Nullable(final InputStream in) throws IOException, RpcException;
+  public Long readInt64Nullable() throws IOException, RpcException;
+
+  /**
+   * Read an int64.
+   * 
+   * @return an int64
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  public long readInt64() throws IOException, RpcException;
 
   /**
    * Write a nullable int64.
    * 
-   * @param out
-   *          the output stream
    * @param value
    *          the value
    * @throws IOException
@@ -155,26 +156,45 @@ public interface RpcEncodingFactory {
    * @throws RpcException
    *           on error
    */
-  public void writeInt64Nullable(final OutputStream out, final Long vaue) throws IOException, RpcException;
+  public void writeInt64Nullable(final Long vaue) throws IOException, RpcException;
+
+  /**
+   * Write an int64.
+   * 
+   * @param value
+   *          the value
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  public void writeInt64(final long vaue) throws IOException, RpcException;
 
   /**
    * Read a nullable int32.
    * 
-   * @param in
-   *          the input stream
    * @return a nullable int32
    * @throws IOException
    *           on error
    * @throws RpcException
    *           on error
    */
-  public Integer readInt32Nullable(final InputStream in) throws IOException, RpcException;
+  public Integer readInt32Nullable() throws IOException, RpcException;
+  
+  /**
+   * Read an int32.
+   * 
+   * @return an int32
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  public int readInt32() throws IOException, RpcException;
 
   /**
    * Write a nullable int32.
    * 
-   * @param out
-   *          the output stream
    * @param value
    *          the value
    * @throws IOException
@@ -182,26 +202,45 @@ public interface RpcEncodingFactory {
    * @throws RpcException
    *           on error
    */
-  public void writeInt32Nullable(final OutputStream out, final Integer value) throws IOException, RpcException;
-
+  public void writeInt32Nullable(final Integer value) throws IOException, RpcException;
+  
   /**
-   * Read a nullable int64.
+   * Write an int32.
    * 
-   * @param in
-   *          the input stream
-   * @return a nullable int64
+   * @param value
+   *          the value
    * @throws IOException
    *           on error
    * @throws RpcException
    *           on error
    */
-  public Byte readInt8Nullable(final InputStream in) throws IOException, RpcException;
+  public void writeInt32(final int value) throws IOException, RpcException;
+
+  /**
+   * Read a nullable int8.
+   * 
+   * @return a nullable int8
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  public Byte readInt8Nullable() throws IOException, RpcException;
+  
+  /**
+   * Read an int8.
+   * 
+   * @return an int8
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  public byte readInt8() throws IOException, RpcException;
 
   /**
    * Write a nullable int8.
    * 
-   * @param out
-   *          the output stream
    * @param value
    *          the value
    * @throws IOException
@@ -209,26 +248,34 @@ public interface RpcEncodingFactory {
    * @throws RpcException
    *           on error
    */
-  public void writeInt8Nullable(final OutputStream out, final Byte value) throws IOException, RpcException;
+  public void writeInt8Nullable(final Byte value) throws IOException, RpcException;
 
+  /**
+   * Write an int8.
+   * 
+   * @param value
+   *          the value
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  public void writeInt8(final byte value) throws IOException, RpcException;
+  
   /**
    * Read a nullable int64.
    * 
-   * @param in
-   *          the input stream
    * @return a nullable int64
    * @throws IOException
    *           on error
    * @throws RpcException
    *           on error
    */
-  public String readStringNullable(final InputStream in) throws IOException, RpcException;
+  public String readStringNullable() throws IOException, RpcException;
 
   /**
    * Write a nullable String.
    * 
-   * @param out
-   *          the output stream
    * @param value
    *          the value
    * @throws IOException
@@ -236,26 +283,33 @@ public interface RpcEncodingFactory {
    * @throws RpcException
    *           on error
    */
-  public void writeStringNullable(final OutputStream out, final String value) throws IOException, RpcException;
+  public void writeStringNullable(final String value) throws IOException, RpcException;
 
   /**
    * Read a nullable double.
    * 
-   * @param in
-   *          the input stream
    * @return a nullable double
    * @throws IOException
    *           on error
    * @throws RpcException
    *           on error
    */
-  public Double readDoubleNullable(final InputStream in) throws IOException, RpcException;
+  public Double readDoubleNullable() throws IOException, RpcException;
+  
+  /**
+   * Read a double.
+   * 
+   * @return a double
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  public double readDouble() throws IOException, RpcException;
 
   /**
    * Write a nullable double.
    * 
-   * @param out
-   *          the output stream
    * @param value
    *          the value
    * @throws IOException
@@ -263,7 +317,19 @@ public interface RpcEncodingFactory {
    * @throws RpcException
    *           on error
    */
-  public void writeDoubleNullable(final OutputStream out, final Double value) throws IOException, RpcException;
+  public void writeDoubleNullable(final Double value) throws IOException, RpcException;
+
+  /**
+   * Write a double.
+   * 
+   * @param value
+   *          the value
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  public void writeDouble(final double value) throws IOException, RpcException;
 
   /**
    * Add a data compressor.

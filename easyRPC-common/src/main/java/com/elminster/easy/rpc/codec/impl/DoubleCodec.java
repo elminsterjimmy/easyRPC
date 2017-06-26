@@ -1,16 +1,11 @@
 package com.elminster.easy.rpc.codec.impl;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
-import com.elminster.easy.rpc.registery.CoreServiceRegistry;
-import com.elminster.easy.rpc.util.RpcUtil;
 
 /**
  * Double Codec.
@@ -23,17 +18,12 @@ public final class DoubleCodec implements RpcCodec {
   /** the logger. */
   private static Logger logger = LoggerFactory.getLogger(DoubleCodec.class);
   
-  /** the RPC util. */
-  private static final RpcUtil rpcUtil = CoreServiceRegistry.INSTANCE.getRpcUtil();
-
   /**
    * {@inheritDoc}
    */
-  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      long bits = Double.doubleToLongBits(((Double) value).doubleValue());
-
-      rpcUtil.writeLongBigEndian(oStream, bits);
+      encodingFactory.writeDouble(((Double) value).doubleValue());
     } catch (Exception e) {
       logger.error("Double encode:", e);
       throw new RpcException("Could not encode Double - " + e.getMessage());
@@ -43,10 +33,9 @@ public final class DoubleCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public Object decode(InputStream iStream, RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      long bits = rpcUtil.readLongBigEndian(iStream);
-      return new Double(Double.longBitsToDouble(bits));
+      return new Double(encodingFactory.readDouble());
     } catch (Exception e) {
       logger.error("Double decode:", e);
       throw new RpcException("Could not decode Double - " + e.getMessage());

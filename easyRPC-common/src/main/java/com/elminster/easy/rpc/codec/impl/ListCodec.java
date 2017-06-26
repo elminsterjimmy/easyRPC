@@ -1,7 +1,5 @@
 package com.elminster.easy.rpc.codec.impl;
 
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -27,12 +25,12 @@ public class ListCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public Object decode(final InputStream iStream, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      int size = ((Integer) encodingFactory.readObjectNullable(iStream)).intValue();
+      int size = ((Integer) encodingFactory.readObjectNullable()).intValue();
       List<Object> list = new LinkedList<>();
       for (int i = 0; i < size; i++) {
-        list.add(encodingFactory.readObjectNullable(iStream));
+        list.add(encodingFactory.readObjectNullable());
       }
       return list;
     } catch (RpcException k) {
@@ -47,14 +45,14 @@ public class ListCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       if (null != value) {
         List<?> list = (List<?>) value;
         
-        encodingFactory.writeObjectNullable(oStream, Integer.valueOf(list.size()));
+        encodingFactory.writeObjectNullable(Integer.valueOf(list.size()));
         for (Object o : list) {
-          encodingFactory.writeObjectNullable(oStream, o);
+          encodingFactory.writeObjectNullable(o);
         }
       }
     } catch (RpcException k) {

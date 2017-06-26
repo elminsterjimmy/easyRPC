@@ -1,4 +1,4 @@
-package com.elminster.easy.rpc.server.connection.impl;
+package com.elminster.easy.rpc.connection.impl;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -14,7 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elminster.common.util.Assert;
+import com.elminster.easy.rpc.connection.NetSocketFactory;
+import com.elminster.easy.rpc.context.Configurable;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
+import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.exception.ConnectionException;
 
 /**
@@ -23,10 +26,10 @@ import com.elminster.easy.rpc.exception.ConnectionException;
  * @author jinggu
  * @version 1.0
  */
-public class SocketFactoryImpl implements SocketFactory {
+public class StreamSocketFactoryImpl implements NetSocketFactory, Configurable {
 
   /** the logger. */
-  private static final Logger logger = LoggerFactory.getLogger(SocketFactoryImpl.class);
+  private static final Logger logger = LoggerFactory.getLogger(StreamSocketFactoryImpl.class);
   private static final String DEFAULT_SOCKET_TYPE = "TLSv1.2";
   private static final String KEY_STROE = "rpcSecure.keystore";
   private static final char[] SECURE_PASSWORD = "3|m1n573r.j1mmy46m41|.c0m".toCharArray();
@@ -37,25 +40,29 @@ public class SocketFactoryImpl implements SocketFactory {
   private static javax.net.SocketFactory clientSocketFactory;
   /** the SSL init throwable. */
   private static Throwable sslInitThrowable;
+  /** the RPC context. */
+  private RpcContext context;
 
   /**
    * init the SSL socket factories.
    */
   static {
     try {
-      ClassLoader classLoader = SocketFactoryImpl.class.getClassLoader();
+      ClassLoader classLoader = StreamSocketFactoryImpl.class.getClassLoader();
       SSLContext srvContext = SSLContext.getInstance(DEFAULT_SOCKET_TYPE);
-      KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
       KeyStore sks = KeyStore.getInstance("JKS");
       sks.load(classLoader.getResourceAsStream(KEY_STROE), SECURE_PASSWORD);
+      
+      KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
       kmf.init(sks, SECURE_PASSWORD);
       srvContext.init(kmf.getKeyManagers(), null, null);
       serverSocketFactory = srvContext.getServerSocketFactory();
 
       SSLContext clnContext = SSLContext.getInstance(DEFAULT_SOCKET_TYPE);
-      TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
       KeyStore cks = KeyStore.getInstance("JKS");
       cks.load(classLoader.getResourceAsStream(KEY_STROE), SECURE_PASSWORD);
+      
+      TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
       tmf.init(cks);
       clnContext.init(null, tmf.getTrustManagers(), null);
       clientSocketFactory = clnContext.getSocketFactory();
@@ -111,6 +118,22 @@ public class SocketFactoryImpl implements SocketFactory {
     Assert.notNull(connectionEndpoint.getHost());
     Assert.notNull(connectionEndpoint.getPort());
     Assert.notNull(connectionEndpoint.useSecureSocket());
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void setContext(RpcContext context) {
+    this.context = context;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public RpcContext getContext() {
+    return this.context;
   }
 
 }

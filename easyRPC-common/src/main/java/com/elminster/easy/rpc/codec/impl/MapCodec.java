@@ -1,7 +1,5 @@
 package com.elminster.easy.rpc.codec.impl;
 
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,15 +26,15 @@ public class MapCodec implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       if (null != value) {
         Map<?, ?> map = (Map<?, ?>) value;
         
-        encodingFactory.writeObjectNullable(oStream, Integer.valueOf(map.size()));
+        encodingFactory.writeObjectNullable(Integer.valueOf(map.size()));
         for (Map.Entry<?, ?> e : map.entrySet()) {
-          encodingFactory.writeObjectNullable(oStream, e.getKey());
-          encodingFactory.writeObjectNullable(oStream, e.getValue());
+          encodingFactory.writeObjectNullable(e.getKey());
+          encodingFactory.writeObjectNullable(e.getValue());
         }
       }
     } catch (RpcException k) {
@@ -51,14 +49,14 @@ public class MapCodec implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public Object decode(final InputStream iStream, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
-      int size = ((Integer) encodingFactory.readObjectNullable(iStream)).intValue();
+      int size = ((Integer) encodingFactory.readObjectNullable()).intValue();
       Map<Object, Object> map = new HashMap<>(size);
       while (size > 0) {
         size--;
-        Object curKey = encodingFactory.readObjectNullable(iStream);
-        Object curValue = encodingFactory.readObjectNullable(iStream);
+        Object curKey = encodingFactory.readObjectNullable();
+        Object curValue = encodingFactory.readObjectNullable();
         map.put(curKey, curValue);
       }
       return map;

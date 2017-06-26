@@ -1,8 +1,5 @@
 package com.elminster.easy.rpc.codec;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import com.elminster.easy.rpc.exception.RpcException;
 
 /**
@@ -16,8 +13,6 @@ public interface RpcCodec {
   /**
    * Encode the value.
    * 
-   * @param oStream
-   *          the output stream
    * @param value
    *          the value
    * @param encodingFactory
@@ -25,18 +20,16 @@ public interface RpcCodec {
    * @throws RpcException
    *           on error
    */
-  public void encode(final OutputStream oStream, final Object value, final RpcEncodingFactory encodingFactory) throws RpcException;
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException;
 
   /**
    * Decode to the value.
    * 
-   * @param iStream
-   *          the input stream
    * @param encodingFactory
    *          the encode factory
    * @return the value
    * @throws RpcException
    *           on error
    */
-  public Object decode(final InputStream iStream, final RpcEncodingFactory encodingFactory) throws RpcException;
+  public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException;
 }

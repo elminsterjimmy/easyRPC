@@ -45,7 +45,7 @@ public enum IDLBasicTypes implements IDL {
   private final Class<?> clazz;
   private final Class<? extends RpcCodec> codec;
 
-  // TODO 
+  // TODO
   private IDLBasicTypes(String local, String remote, Class<?> typeClass, Class<? extends RpcCodec> codecClass) {
     this.localName = local;
     this.remoteName = remote;

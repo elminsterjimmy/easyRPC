@@ -1,18 +1,16 @@
 package com.elminster.easy.rpc.util;
 
+import static com.elminster.common.constants.Constants.EncodingConstants.ASCII;
+import static com.elminster.common.constants.Constants.EncodingConstants.UTF8;
+import static com.elminster.common.constants.RegexConstants.REGEX_DOT;
+
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.elminster.common.constants.Constants.EncodingConstants.UTF8;
-import static com.elminster.common.constants.Constants.EncodingConstants.ASCII;
-import static com.elminster.common.constants.RegexConstants.REGEX_DOT;
 
 /**
  * The default implementation of RpcUtil.
@@ -24,6 +22,14 @@ public class RpcUtilImpl implements RpcUtil {
 
   /** the logger. */
   private static Logger logger = LoggerFactory.getLogger(RpcUtilImpl.class);
+  
+  /** shared byte buffer. */
+  private static ThreadLocal<ByteBuffer> byteBuffer = new ThreadLocal<ByteBuffer>() {
+
+    protected ByteBuffer initialValue() {
+      return ByteBuffer.allocate(1);
+    }
+  };
 
   /** shared int buffer. */
   private static ThreadLocal<ByteBuffer> intBuffer = new ThreadLocal<ByteBuffer>() {
@@ -40,78 +46,92 @@ public class RpcUtilImpl implements RpcUtil {
       return ByteBuffer.allocate(8);
     }
   };
+  
+  /** the IoUtil. */
+  private final IoUtil ioUtil;
 
   /** mark for is null {@literal0}. */
   private static final byte IS_NULL = 0;
   /** mark for not null {@literal1}. */
   private static final byte NOT_NULL = 1;
-
+  
+  public RpcUtilImpl(final IoUtil ioUtil) {
+    this.ioUtil = ioUtil;
+  }
+  
   /**
    * {@inheritDoc}
    */
-  public void writeByte(OutputStream oStream, byte value) throws IOException {
-    oStream.write(value);
+  @Override
+  public void writeByte(byte value) throws IOException {
+    byteBuffer.get().rewind();
+    byteBuffer.get().put(value);
+    ioUtil.write(byteBuffer.get().array(), 0, 1);
   }
 
   /**
    * {@inheritDoc}
    */
-  public byte readByte(InputStream iStream) throws IOException {
-    int value = iStream.read();
-    if (value < 0) {
-      throw new IOException("Could not decode data from closed stream");
-    }
-    return (byte) value;
+  @Override
+  public byte readByte() throws IOException {
+    byteBuffer.get().rewind();
+    readn(byteBuffer.get().array(), 0, byteBuffer.get().capacity());
+    return byteBuffer.get().get();
   }
 
   /**
    * {@inheritDoc}
    */
-  public void writeIntBigEndian(OutputStream oStream, int value) throws IOException {
+  @Override
+  public void writeIntBigEndian(int value) throws IOException {
     intBuffer.get().rewind();
     intBuffer.get().putInt(value);
-    oStream.write(intBuffer.get().array());
+    ioUtil.write(intBuffer.get().array(), 0, 4);
   }
-
+  
   /**
    * {@inheritDoc}
    */
-  public int readIntBigEndian(InputStream iStream) throws IOException {
+  @Override
+  public int readIntBigEndian() throws IOException {
     intBuffer.get().rewind();
-    readn(iStream, intBuffer.get().array(), 0, intBuffer.get().capacity());
+    readn(intBuffer.get().array(), 0, intBuffer.get().capacity());
     return intBuffer.get().getInt();
   }
 
   /**
    * {@inheritDoc}
    */
-  public void writeLongBigEndian(OutputStream oStream, long value) throws IOException {
+  @Override
+  public void writeLongBigEndian(long longValue) throws IOException {
     longBuffer.get().rewind();
-    longBuffer.get().putLong(value);
-    oStream.write(longBuffer.get().array());
+    longBuffer.get().putLong(longValue);
+    ioUtil.write(longBuffer.get().array(), 0, 8);
   }
 
   /**
    * {@inheritDoc}
    */
-  public long readLongBigEndian(InputStream iStream) throws IOException {
+  @Override
+  public long readLongBigEndian() throws IOException {
     longBuffer.get().rewind();
-    readn(iStream, longBuffer.get().array(), 0, longBuffer.get().capacity());
+    readn(longBuffer.get().array(), 0, longBuffer.get().capacity());
     return longBuffer.get().getLong();
   }
 
   /**
    * {@inheritDoc}
    */
-  public void readn(InputStream iStream, byte[] b, int off, int len) throws IOException {
-    if (len == 0) {
+  @Override
+  public void readn(byte[] b, int off, int len) throws IOException {
+    if (len <= 0) {
       return;
     }
     int byteToRead = len;
     int curOff = off;
     while (byteToRead > 0) {
       int curByteRead = 0;
-      curByteRead = iStream.read(b, curOff, byteToRead);
+      curByteRead = ioUtil.read(b, curOff, byteToRead);
       if (curByteRead < 0) {
         throw new IOException("Could not read data from closed stream");
       }
@@ -119,19 +139,21 @@ public class RpcUtilImpl implements RpcUtil {
       curOff += curByteRead;
     }
   }
-
+  
   /**
    * {@inheritDoc}
    */
-  public void writeStringAsciiNullable(OutputStream oStream, String stringValue) throws IOException {
-    writeStringNullable(oStream, stringValue, ASCII);
+  @Override
+  public void writeStringAsciiNullable(String stringValue) throws IOException {
+    writeStringNullable(stringValue, ASCII);
   }
 
   /**
    * {@inheritDoc}
    */
-  public void writeStringUTF8Nullable(OutputStream oStream, String stringValue) throws IOException {
-    writeStringNullable(oStream, stringValue, UTF8);
+  @Override
+  public void writeStringUTF8Nullable(String stringValue) throws IOException {
+    writeStringNullable(stringValue, UTF8);
   }
 
   /**
@@ -146,13 +168,13 @@ public class RpcUtilImpl implements RpcUtil {
    * @throws IOException
    *           on error
    */
-  private void writeStringNullable(OutputStream oStream, String stringValue, String encoding) throws IOException {
+  private void writeStringNullable(String stringValue, String encoding) throws IOException {
     if (stringValue == null) {
-      oStream.write(IS_NULL);
+      writeByte(IS_NULL);
       return;
     }
-    oStream.write(NOT_NULL);
-    writeString(oStream, stringValue, encoding);
+    writeByte(NOT_NULL);
+    writeString(stringValue, encoding);
   }
 
   /**
@@ -167,25 +189,27 @@ public class RpcUtilImpl implements RpcUtil {
    * @throws IOException
    *           on error
    */
-  private void writeString(OutputStream oStream, String stringValue, String encoding) throws IOException {
+  private void writeString(String stringValue, String encoding) throws IOException {
     byte[] encBytes = stringValue.getBytes(encoding);
     int encSize = encBytes.length;
-    writeIntBigEndian(oStream, encSize);
-    oStream.write(encBytes, 0, encSize);
+    writeIntBigEndian(encSize);
+    ioUtil.write(encBytes, 0, encSize);
   }
 
   /**
    * {@inheritDoc}
    */
-  public String readStringAsciiNullable(InputStream iStream) throws IOException {
-    return readStringNullable(iStream, ASCII);
+  @Override
+  public String readStringAsciiNullable() throws IOException {
+    return readStringNullable(ASCII);
   }
 
   /**
    * {@inheritDoc}
    */
-  public String readStringUTF8Nullable(InputStream iStream) throws IOException {
-    return readStringNullable(iStream, UTF8);
+  @Override
+  public String readStringUTF8Nullable() throws IOException {
+    return readStringNullable(UTF8);
   }
 
   /**
@@ -199,12 +223,12 @@ public class RpcUtilImpl implements RpcUtil {
    * @throws IOException
    *           on error
    */
-  private String readStringNullable(InputStream iStream, String encoding) throws IOException {
-    byte isNull = readByte(iStream);
+  private String readStringNullable(String encoding) throws IOException {
+    byte isNull = readByte();
     if (isNull == IS_NULL) {
       return null;
     }
-    return readString(iStream, encoding);
+    return readString(encoding);
   }
 
   /**
@@ -218,11 +242,11 @@ public class RpcUtilImpl implements RpcUtil {
    * @throws IOException
    *           on error
    */
-  private String readString(InputStream iStream, String encoding) throws IOException {
-    int len = readIntBigEndian(iStream);
+  private String readString(String encoding) throws IOException {
+    int len = readIntBigEndian();
     byte[] encodingBytes = new byte[len];
 
-    readn(iStream, encodingBytes, 0, len);
+    readn(encodingBytes, 0, len);
     Charset cs = Charset.forName(encoding);
     CharBuffer cb = cs.decode(ByteBuffer.wrap(encodingBytes));
     return cb.toString();
@@ -231,6 +255,7 @@ public class RpcUtilImpl implements RpcUtil {
   /**
    * {@inheritDoc}
    */
+  @Override
   public boolean compareVersions(String va, String vb) {
     if (logger.isDebugEnabled()) {
       logger.debug("Version A = " + va + "; version B = " + vb);
