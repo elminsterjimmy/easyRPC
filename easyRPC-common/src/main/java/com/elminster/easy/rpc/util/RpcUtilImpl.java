@@ -251,28 +251,4 @@ public class RpcUtilImpl implements RpcUtil {
     CharBuffer cb = cs.decode(ByteBuffer.wrap(encodingBytes));
     return cb.toString();
   }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public boolean compareVersions(String va, String vb) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("Version A = " + va + "; version B = " + vb);
-    }
-    if ((va == null) || (vb == null)) {
-      return false;
-    }
-    if (va.equals(vb)) {
-      return true;
-    }
-    String[] arrA = va.split(REGEX_DOT);
-    String[] arrB = vb.split(REGEX_DOT);
-    int length = Math.min(arrA.length, arrB.length);
-    if (length < 2) {
-      logger.error("Incorrect version format [" + va + "; " + vb + "]. Required: x.y.*");
-      return false;
-    }
-    return (arrA[0] + arrA[1]).equals(arrB[0] + arrB[1]);
-  }
 }

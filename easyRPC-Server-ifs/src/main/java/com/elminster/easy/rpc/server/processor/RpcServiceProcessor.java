@@ -1,6 +1,4 @@
-package com.elminster.easy.rpc.server.worker;
-
-import com.elminster.easy.rpc.context.RpcContext;
+package com.elminster.easy.rpc.server.processor;
 
 /**
  * The RPC Server Worker.
@@ -8,13 +6,11 @@ import com.elminster.easy.rpc.context.RpcContext;
  * @author jinggu
  * @version 1.0
  */
-public interface RpcServerWorker {
+public interface RpcServiceProcessor {
 
   /**
    * Invoke service method.
    * 
-   * @param clientCallContext
-   *          the context
    * @param serviceName
    *          the service name
    * @param methodName
@@ -25,5 +21,5 @@ public interface RpcServerWorker {
    * @throws Throwable
    *           on error
    */
-  public Object[] invokeServiceMethod(RpcContext clientCallContext, String serviceName, String methodName, Object[] params) throws Throwable;
+  public ReturnResult invokeServiceMethod(String serviceName, String methodName, Object[] params) throws Throwable;
 }

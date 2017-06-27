@@ -49,8 +49,4 @@ public interface CodecFactory {
    * @return the encoding factory
    */
   public RpcEncodingFactory createEncodingFactory(Collection<CodecRepository> repositories, String encodingFactoryName);
-
-//  public <ResultType, ProgressType> KisRpcFunctionCall<ResultType, ProgressType> createFunctionCall();
-//
-//  public <ResultType, ProgressType> KisRpcFunctionCall<ResultType, ProgressType> createFunctionCall(Long paramLong);
 }

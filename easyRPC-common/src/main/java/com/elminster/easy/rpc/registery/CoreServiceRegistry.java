@@ -16,7 +16,7 @@ public class CoreServiceRegistry {
 
   /** the RPCUtil. */
   private volatile RpcUtil rpcUtil;
-
+  
   /**
    * Get the RPCUtil.
    * @return the RPCUtil

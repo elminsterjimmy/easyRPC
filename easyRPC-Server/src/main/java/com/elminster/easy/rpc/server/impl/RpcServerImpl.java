@@ -1,24 +1,29 @@
 package com.elminster.easy.rpc.server.impl;
 
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elminster.common.misc.Version;
 import com.elminster.common.util.Assert;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
-import com.elminster.easy.rpc.connection.RpcConnection;
+import com.elminster.easy.rpc.context.ConnectionEndpoint;
+import com.elminster.easy.rpc.context.RpcContext;
+import com.elminster.easy.rpc.context.impl.SimpleConnectionEndpoint;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
+import com.elminster.easy.rpc.server.container.exception.StartContainerException;
+import com.elminster.easy.rpc.server.container.exception.StopContainerException;
 import com.elminster.easy.rpc.server.exception.ServerException;
+import com.elminster.easy.rpc.server.listener.RpcServerListenEvent;
+import com.elminster.easy.rpc.server.listener.RpcServerListener;
 import com.elminster.easy.rpc.service.RpcService;
 
 /**
@@ -32,8 +37,6 @@ public class RpcServerImpl implements RpcServer {
   /** the logger. */
   private static final Logger logger = LoggerFactory.getLogger(RpcServerImpl.class);
 
-  /** the open connections. */
-  private final List<RpcConnection> openConnections = new LinkedList<>();
   /** the encoding factories. */
   protected Map<String, RpcEncodingFactory> encodingFactories = new ConcurrentHashMap<>();
   /** the RPC services. */
@@ -44,8 +47,10 @@ public class RpcServerImpl implements RpcServer {
   private boolean useSecureConnection = false;
   /** the network containers. */
   private List<Container> containers = new LinkedList<>();
-  /** the lock. */
-  private Lock lock = new ReentrantLock();
+  /** the server listeners. */
+  private List<RpcServerListener> listeners = new ArrayList<>();
+  /** the PRC context. */
+  private RpcContext context;
 
   /**
    * {@inheritDoc}
@@ -81,11 +86,26 @@ public class RpcServerImpl implements RpcServer {
    * {@inheritDoc}
    */
   @Override
-  public void listen(int port) throws ServerException {
-    logger.info(String.format("RPC server listen on [%d]", port));
-    Container container = null; // TODO
-    container.start(port, useSecureConnection());
-    this.containers.add(container);
+  public void listen(final int port) throws ServerException {
+    ConnectionEndpoint endpoint = SimpleConnectionEndpoint.localhostConnectionEndpoint(port, this.useSecureConnection);
+    logger.info(String.format("RPC server listen on endpoint: %s.", endpoint.toString()));
+    for (RpcServerListener listener : listeners) {
+      listener.beforeServe(new RpcServerListenEvent(endpoint));
+    }
+
+    Container container = newContainer(); // TODO
+    try {
+      container.start();
+      this.containers.add(container);
+    } catch (StartContainerException e) {
+      String message = String.format("Rpc server failed to listen on endpoint: %s.", endpoint);
+      logger.error(message, e);
+      throw new ServerException(message, e);
+    }
+  }
+
+  protected Container newContainer() {
+    return null; // TODO
   }
 
   /**
@@ -95,35 +115,14 @@ public class RpcServerImpl implements RpcServer {
   public void shutdown(boolean force) throws ServerException {
     logger.info(String.format("Shutdown RPC server."));
     for (Container container : containers) {
-      container.stop();
-    }
-    if (force) {
       try {
-        this.lock.lock();
-        Iterator<RpcConnection> it = this.openConnections.iterator();
-        while (it.hasNext()) {
-          RpcConnection c = it.next();
-          c.close();
-          it.remove();
-        }
-      } finally {
-        this.lock.unlock();
+        container.stop(force);
+      } catch (StopContainerException e) {
+        String message = String.format("Rpc server failed to shutdown on endpoint: %s.", container.getConnectionEndpoint());
+        logger.error(message, e);
+        throw new ServerException(message, e);
       }
     }
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public int getNumberOfOpenConnections() {
-    return openConnections.size();
-  }
-
-  @Override
-  public ThreadPoolExecutor getAsyncWorkerThreadPool() {
-    // TODO Auto-generated method stub
-    return null;
   }
 
   /**
@@ -154,32 +153,6 @@ public class RpcServerImpl implements RpcServer {
    * {@inheritDoc}
    */
   @Override
-  public void removeOpenConnection(RpcConnection connection) {
-    try {
-      lock.lock();
-      openConnections.remove(connection);
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public void addOpenConnection(RpcConnection connection) {
-    try {
-      lock.lock();
-      openConnections.add(connection);
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
   public boolean useSecureConnection() {
     return useSecureConnection;
   }
@@ -190,5 +163,54 @@ public class RpcServerImpl implements RpcServer {
   @Override
   public void setUseSecureConnection(boolean useSecure) {
     this.useSecureConnection = useSecure;
+  }
+
+  @Override
+  public void addServerListener(RpcServerListener listener) {
+    Assert.notNull(listener);
+    this.listeners.add(listener);
+  }
+
+  @Override
+  public void removeServerListener(RpcServerListener listener) {
+    this.listeners.remove(listener);
+  }
+
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public RpcContext getContext() {
+    return context;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public List<RpcServerListener> getServerListeners() {
+    return Collections.unmodifiableList(listeners);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public String getVersion() {
+    return Version.getVersion(this.getClass());
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public int getOpenConnectionCount() {
+    // TODO Auto-generated method stub
+    int count = 0;
+    for (Container container : this.containers) {
+      count += container.getNumberOfOpenConnections();
+    }
+    return count;
   }
 }

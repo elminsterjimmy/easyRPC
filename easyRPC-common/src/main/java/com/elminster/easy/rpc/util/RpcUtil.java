@@ -118,15 +118,4 @@ public interface RpcUtil {
    *           on error
    */
   public String readStringUTF8Nullable() throws IOException;
-
-  /**
-   * Compare version A and version B.
-   * 
-   * @param va
-   *          the version A
-   * @param vb
-   *          the version B
-   * @return version compatible?
-   */
-  public boolean compareVersions(String va, String vb);
 }

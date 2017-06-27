@@ -1,11 +1,12 @@
 package com.elminster.easy.rpc.server;
 
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.List;
 
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
-import com.elminster.easy.rpc.connection.RpcConnection;
+import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.exception.ServerException;
+import com.elminster.easy.rpc.server.listener.RpcServerListener;
 import com.elminster.easy.rpc.service.RpcService;
 
 /**
@@ -66,15 +67,6 @@ public interface RpcServer {
   public void shutdown(boolean force) throws ServerException;
 
   /**
-   * Get number of open connections.
-   * 
-   * @return number of open connections
-   */
-  public int getNumberOfOpenConnections();
-
-  public ThreadPoolExecutor getAsyncWorkerThreadPool();
-
-  /**
    * Do the version check or not.
    * 
    * @return do the version check or not
@@ -99,22 +91,6 @@ public interface RpcServer {
   public RpcEncodingFactory getEncodingFactory(String encodingName);
 
   /**
-   * Remove an open connection.
-   * 
-   * @param connection
-   *          the open connection
-   */
-  public void removeOpenConnection(final RpcConnection connection);
-
-  /**
-   * Add an open connection.
-   * 
-   * @param connection
-   *          the open connection
-   */
-  public void addOpenConnection(final RpcConnection connection);
-
-  /**
    * Check the server uses secure connection?
    * 
    * @return if the server uses secure connection
@@ -128,4 +104,40 @@ public interface RpcServer {
    *          use secure conneciton or not
    */
   public void setUseSecureConnection(boolean useSecure);
+  
+  /**
+   * Add a server listener.
+   * @param listener the server listener
+   */
+  public void addServerListener(RpcServerListener listener);
+  
+  /**
+   * Get the server listeners.
+   * @return the server listeners
+   */
+  public List<RpcServerListener> getServerListeners();
+  
+  /**
+   * Remove a server listener.
+   * @param listener the server listener to remove
+   */
+  public void removeServerListener(RpcServerListener listener);
+  
+  /**
+   * Get the RPC context.
+   * @return the RPC context
+   */
+  public RpcContext getContext();
+  
+  /**
+   * Get the RPC server version.
+   * @return the RPC server version
+   */
+  public String getVersion();
+  
+  /**
+   * Get open connection count.
+   * @return open connection count
+   */
+  public int getOpenConnectionCount();
 }

@@ -1,6 +1,10 @@
 package com.elminster.easy.rpc.server.container;
 
-import com.elminster.easy.rpc.server.exception.ServerException;
+import java.util.concurrent.ThreadPoolExecutor;
+
+import com.elminster.easy.rpc.context.ConnectionEndpoint;
+import com.elminster.easy.rpc.server.container.exception.StartContainerException;
+import com.elminster.easy.rpc.server.container.exception.StopContainerException;
 
 /**
  * Network Container.
@@ -11,17 +15,13 @@ import com.elminster.easy.rpc.server.exception.ServerException;
 public interface Container {
 
   /**
-   * Start the network container on the port.
-   * 
-   * @param port
-   *          the port
-   * @param useSecure
-   *          use secure connection?
+   * Start the network container and listen.
    */
-  public void start(int port, boolean useSecure) throws ServerException;
-  
+  public void start() throws StartContainerException;
+
   /**
    * Use secure or not?
+   * 
    * @return use secure or not
    */
   public boolean isUseSecure();
@@ -29,8 +29,38 @@ public interface Container {
   /**
    * Stop the network container.
    * 
-   * @throws ServerException
+   * @param closeConnections
+   *          close open connections?
+   * @throws StopContainerException
    *           on error
    */
-  public void stop() throws ServerException;
+  public void stop(boolean closeConnections) throws StopContainerException;
+
+  /**
+   * Check if the container is serving?
+   * 
+   * @return if the container is serving?
+   */
+  public boolean isServing();
+  
+  /**
+   * Get number of open connections.
+   * 
+   * @return number of open connections
+   */
+  public int getNumberOfOpenConnections();
+
+  /**
+   * Get the worker thread pool.
+   * 
+   * @return the worker thread pool
+   */
+  public ThreadPoolExecutor getAsyncWorkerThreadPool();
+  
+  /**
+   * Get the Connection Endpoint.
+   * @return the connection endpoint
+   */
+  public ConnectionEndpoint getConnectionEndpoint();
+
 }

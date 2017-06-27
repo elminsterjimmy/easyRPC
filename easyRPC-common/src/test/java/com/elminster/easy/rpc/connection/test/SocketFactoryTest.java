@@ -22,11 +22,10 @@ import org.junit.Test;
 
 import com.elminster.easy.rpc.connection.SocketFactory;
 import com.elminster.easy.rpc.connection.impl.NIOSocketFactoryImpl;
-import com.elminster.easy.rpc.connection.impl.SocketFactoryImpl;
 import com.elminster.easy.rpc.connection.impl.StreamSocketFactoryImpl;
-import com.elminster.easy.rpc.context.Configurable;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
+import com.elminster.easy.rpc.registery.SocketFactoryRegsitery;
 import com.elminster.easy.rpc.util.RpcUtil;
 import com.elminster.easy.rpc.util.RpcUtilFactory;
 
@@ -202,17 +201,14 @@ public class SocketFactoryTest {
   }
 
   private SocketFactory setupStreamSocketFactory() {
-    SocketFactory socketFactory = new SocketFactoryImpl();
-    Configurable configurable = (Configurable) socketFactory;
-    RpcContext context = new RpcContext() {
+    RpcContext context = new RpcContextAdapter() {
 
       @Override
       public String getSocketFactoryClassName() {
         return StreamSocketFactoryImpl.class.getName();
       }
     };
-    configurable.setContext(context);
-    return socketFactory;
+    return SocketFactoryRegsitery.INSTANCE.getSocketFactory(context);
   }
 
   @Ignore
@@ -377,16 +373,14 @@ public class SocketFactoryTest {
   }
 
   private SocketFactory setupNIOSocketFactory() {
-    SocketFactory socketFactory = new SocketFactoryImpl();
-    Configurable configurable = (Configurable) socketFactory;
-    RpcContext context = new RpcContext() {
+    RpcContext context = new RpcContextAdapter() {
 
       @Override
       public String getSocketFactoryClassName() {
         return NIOSocketFactoryImpl.class.getName();
       }
     };
-    configurable.setContext(context);
+    SocketFactory socketFactory = SocketFactoryRegsitery.INSTANCE.getSocketFactory(context);
     return socketFactory;
   }
 
@@ -411,5 +405,34 @@ public class SocketFactoryTest {
       return false;
     // Just in case selector has other keys
     return selector.selectedKeys().contains(socket.keyFor(selector));
+  }
+  
+  
+  class RpcContextAdapter implements RpcContext {
+
+    @Override
+    public String getServerContainerClassName() {
+      return null;
+    }
+
+    @Override
+    public String getServerListenerClassName() {
+      return null;
+    }
+
+    @Override
+    public String getSocketFactoryClassName() {
+      return null;
+    }
+
+    @Override
+    public int getClientTimeout() {
+      return 0;
+    }
+
+    @Override
+    public boolean getClientTcpNoDelay() {
+      return false;
+    }
   }
 }
