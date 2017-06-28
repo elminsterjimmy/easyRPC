@@ -1,6 +1,6 @@
 package com.elminster.easy.rpc.codec.impl;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -10,17 +10,10 @@ import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 
-/**
- * List Codec.
- * Using LinkedList as default implementation.
- * 
- * @author jinggu
- * @version 1.0
- */
-public class LinkedListCodec implements RpcCodec {
+public class ArrayListCodec implements RpcCodec {
 
   /** the logger. */
-  private static Logger logger = LoggerFactory.getLogger(LinkedListCodec.class);
+  private static Logger logger = LoggerFactory.getLogger(ArrayListCodec.class);
 
   /**
    * {@inheritDoc}
@@ -28,7 +21,7 @@ public class LinkedListCodec implements RpcCodec {
   public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       int size = ((Integer) encodingFactory.readObjectNullable()).intValue();
-      List<Object> list = new LinkedList<>();
+      List<Object> list = new ArrayList<>();
       for (int i = 0; i < size; i++) {
         list.add(encodingFactory.readObjectNullable());
       }

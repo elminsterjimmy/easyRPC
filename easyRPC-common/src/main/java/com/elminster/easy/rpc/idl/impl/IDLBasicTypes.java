@@ -1,22 +1,28 @@
 package com.elminster.easy.rpc.idl.impl;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import com.elminster.easy.rpc.codec.RpcCodec;
+import com.elminster.easy.rpc.codec.impl.ArrayListCodec;
 import com.elminster.easy.rpc.codec.impl.BooleanCodec;
 import com.elminster.easy.rpc.codec.impl.ByteCodec;
 import com.elminster.easy.rpc.codec.impl.DoubleCodec;
 import com.elminster.easy.rpc.codec.impl.HashSetCodec;
 import com.elminster.easy.rpc.codec.impl.IntegerCodec;
-import com.elminster.easy.rpc.codec.impl.ListCodec;
+import com.elminster.easy.rpc.codec.impl.LinkedListCodec;
 import com.elminster.easy.rpc.codec.impl.LongCodec;
-import com.elminster.easy.rpc.codec.impl.MapCodec;
+import com.elminster.easy.rpc.codec.impl.HashMapCodec;
 import com.elminster.easy.rpc.codec.impl.ObjectCodec;
 import com.elminster.easy.rpc.codec.impl.StringCodec;
 import com.elminster.easy.rpc.codec.impl.TimestampCodec;
+import com.elminster.easy.rpc.codec.impl.TreeMapCodec;
+import com.elminster.easy.rpc.codec.impl.TreeSetCodec;
 import com.elminster.easy.rpc.idl.IDL;
 
 public enum IDLBasicTypes implements IDL {
@@ -35,9 +41,12 @@ public enum IDLBasicTypes implements IDL {
   STRING(String.class.getCanonicalName(), "S", String.class, StringCodec.class),
   OBJECT(Object.class.getCanonicalName(), "O", Object.class, ObjectCodec.class),
   TIMESTAMP(Timestamp.class.getCanonicalName(), "T", Timestamp.class, TimestampCodec.class),
-  LINKEDLIST(LinkedList.class.getCanonicalName(), "L", LinkedList.class, ListCodec.class),
-  HASHMAP(HashMap.class.getCanonicalName(), "M", HashMap.class, MapCodec.class),
-  HASHSET(HashSet.class.getCanonicalName(), "E", HashSet.class, HashSetCodec.class);
+  ARRAYLIST(ArrayList.class.getCanonicalName(), "A", ArrayList.class, ArrayListCodec.class),
+  LINKEDLIST(LinkedList.class.getCanonicalName(), "L", LinkedList.class, LinkedListCodec.class),
+  HASHMAP(HashMap.class.getCanonicalName(), "M", HashMap.class, HashMapCodec.class),
+  TREEMAP(TreeMap.class.getCanonicalName(), "N", TreeMap.class, TreeMapCodec.class),
+  HASHSET(HashSet.class.getCanonicalName(), "E", HashSet.class, HashSetCodec.class),
+  TREESET(TreeSet.class.getCanonicalName(), "R", TreeSet.class, TreeSetCodec.class);
   // @formatter:on
 
   private final String localName;

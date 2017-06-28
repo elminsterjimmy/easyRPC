@@ -2,6 +2,7 @@ package com.elminster.easy.rpc.codec.impl;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,17 +11,10 @@ import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 
-/**
- * Map Codec.
- * Using HashMap as the default implementation.
- * 
- * @author jinggu
- * @version 1.0
- */
-public class HashMapCodec implements RpcCodec {
+public class TreeMapCodec implements RpcCodec {
 
   /** the logger. */
-  private static Logger logger = LoggerFactory.getLogger(HashMapCodec.class);
+  private static Logger logger = LoggerFactory.getLogger(TreeMapCodec.class);
 
   /**
    * {@inheritDoc}
@@ -52,7 +46,7 @@ public class HashMapCodec implements RpcCodec {
   public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException {
     try {
       int size = ((Integer) encodingFactory.readObjectNullable()).intValue();
-      Map<Object, Object> map = new HashMap<>(size);
+      Map<Object, Object> map = new TreeMap<>();
       while (size > 0) {
         size--;
         Object curKey = encodingFactory.readObjectNullable();
@@ -67,4 +61,6 @@ public class HashMapCodec implements RpcCodec {
       throw new RpcException("Could not decode HashMap - " + e.getMessage());
     }
   }
+
+
 }
