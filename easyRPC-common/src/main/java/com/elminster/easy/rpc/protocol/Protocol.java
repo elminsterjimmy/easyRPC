@@ -2,11 +2,22 @@ package com.elminster.easy.rpc.protocol;
 
 import java.io.IOException;
 
-public interface Protocal {
+import com.elminster.easy.rpc.exception.RpcException;
 
-  public void encode() throws IOException;
+/**
+ * The protocol interface.
+ * @author jinggu
+ *
+ */
+public interface Protocol {
+
+  public void encode() throws IOException, RpcException;
   
-  public void decode() throws IOException;
+  public void decode() throws IOException, RpcException;
   
-  public void ready() throws IOException;
+  public void complete() throws IOException;
+  
+  public boolean isCompleted() throws IOException;
+  
+  public void fail() throws IOException;
 }

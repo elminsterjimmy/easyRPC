@@ -1,12 +1,10 @@
 package com.elminster.easy.rpc.protocol;
 
-public interface ResponseProtocal extends Protocal {
+public interface ResponseProtocol extends Protocol {
 
   public void setVoid(boolean isVoid);
   
   public boolean isVoid();
-  
-  public void setReturnValue();
   
   public Object getReturnValue();
 

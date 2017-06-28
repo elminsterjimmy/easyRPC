@@ -1,6 +1,6 @@
 package com.elminster.easy.rpc.protocol;
 
-public interface RequestHeaderProtocal extends Protocal {
+public interface RequestHeaderProtocol extends Protocol {
 
   public void setEncoding(String encodingName);
 

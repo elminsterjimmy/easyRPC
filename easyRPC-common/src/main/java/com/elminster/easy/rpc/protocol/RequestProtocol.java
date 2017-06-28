@@ -1,6 +1,6 @@
 package com.elminster.easy.rpc.protocol;
 
-public interface ReqestProtocal extends Protocal {
+public interface RequestProtocol extends Protocol {
 
   public String getMethodName();
 
