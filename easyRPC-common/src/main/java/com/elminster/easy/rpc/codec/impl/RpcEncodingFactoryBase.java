@@ -62,8 +62,6 @@ public class RpcEncodingFactoryBase extends RpcEncodingFactoryImpl {
       }
       addEncodingClass(bt.getTypeClass(), bt.getCodecClass(), bt.getRemoteName());
     }
-    // TODO
-    // addEncodingInstance(KisRpcFunctionCallImpl.class, new KisRpcFunctionCallCodec(), "KisRpcFC");
   }
 
   /**

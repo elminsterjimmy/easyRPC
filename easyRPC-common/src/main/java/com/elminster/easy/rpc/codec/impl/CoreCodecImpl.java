@@ -1,28 +1,24 @@
-package com.elminster.easy.rpc.util;
+package com.elminster.easy.rpc.codec.impl;
 
 import static com.elminster.common.constants.Constants.EncodingConstants.ASCII;
 import static com.elminster.common.constants.Constants.EncodingConstants.UTF8;
-import static com.elminster.common.constants.RegexConstants.REGEX_DOT;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.elminster.easy.rpc.codec.CoreCodec;
+import com.elminster.easy.rpc.util.IoUtil;
 
 /**
- * The default implementation of RpcUtil.
+ * The default implementation of CoreCodec.
  * 
  * @author jinggu
  * @version 1.0
  */
-public class RpcUtilImpl implements RpcUtil {
+public class CoreCodecImpl implements CoreCodec {
 
-  /** the logger. */
-  private static Logger logger = LoggerFactory.getLogger(RpcUtilImpl.class);
-  
   /** shared byte buffer. */
   private static ThreadLocal<ByteBuffer> byteBuffer = new ThreadLocal<ByteBuffer>() {
 
@@ -55,7 +51,7 @@ public class RpcUtilImpl implements RpcUtil {
   /** mark for not null {@literal1}. */
   private static final byte NOT_NULL = 1;
   
-  public RpcUtilImpl(final IoUtil ioUtil) {
+  public CoreCodecImpl(final IoUtil ioUtil) {
     this.ioUtil = ioUtil;
   }
   

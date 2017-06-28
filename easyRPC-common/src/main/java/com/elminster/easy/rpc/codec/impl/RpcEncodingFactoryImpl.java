@@ -14,8 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elminster.common.constants.Constants.StringConstants;
+import com.elminster.common.util.Assert;
 import com.elminster.common.util.StringUtil;
 import com.elminster.easy.rpc.codec.CodecRepository;
+import com.elminster.easy.rpc.codec.CoreCodec;
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.compressor.DataCompressor;
@@ -23,7 +25,6 @@ import com.elminster.easy.rpc.compressor.DataCompressorFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.idl.IDL;
 import com.elminster.easy.rpc.idl.impl.IDLBasicTypes;
-import com.elminster.easy.rpc.util.RpcUtil;
 
 /**
  * The RPC encoding factory implementation.
@@ -53,13 +54,9 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   /** class name -> codec instance. */
   protected HashMap<String, RpcCodec> encodingInstanceMap = new HashMap<>();
 
-  private RpcUtil rpcUtil;
+  private CoreCodec rpcUtil;
   private DataCompressorFactory compressorFactory;
   
-  public void setRpcUtil(RpcUtil rpcUtil) {
-    this.rpcUtil = rpcUtil;
-  }
-
   public RpcEncodingFactoryImpl(String encodingName) {
     this.encodingName = encodingName;
   }
@@ -467,6 +464,22 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    * {@inheritDoc}
    */
   @Override
+  public String readAsciiNullable() throws IOException, RpcException {
+    return rpcUtil.readStringAsciiNullable();
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writeAsciiNullable(String value) throws IOException, RpcException {
+    rpcUtil.writeStringAsciiNullable(value);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public Double readDoubleNullable() throws IOException, RpcException {
     if (!readIsNotNull()) {
       return null;
@@ -502,7 +515,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    * {@inheritDoc}
    */
   @Override
-  public void writeInt64(long vaue) throws IOException, RpcException {
+  public void writeInt64(long vaue) throws IOException {
     rpcUtil.writeLongBigEndian(vaue);
   }
 
@@ -510,7 +523,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    * {@inheritDoc}
    */
   @Override
-  public int readInt32() throws IOException, RpcException {
+  public int readInt32() throws IOException {
     return rpcUtil.readIntBigEndian();
   }
 
@@ -518,7 +531,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    * {@inheritDoc}
    */
   @Override
-  public void writeInt32(int value) throws IOException, RpcException {
+  public void writeInt32(int value) throws IOException {
     rpcUtil.writeIntBigEndian(value);
   }
 
@@ -526,7 +539,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    * {@inheritDoc}
    */
   @Override
-  public byte readInt8() throws IOException, RpcException {
+  public byte readInt8() throws IOException {
     return rpcUtil.readByte();
   }
 
@@ -534,7 +547,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    * {@inheritDoc}
    */
   @Override
-  public void writeInt8(byte value) throws IOException, RpcException {
+  public void writeInt8(byte value) throws IOException {
     rpcUtil.writeByte(value);
   }
 
@@ -570,6 +583,15 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   @Override
   public DataCompressor getCompressor(final int type) throws RpcException {
     return compressorFactory.getCompressor(type);
+  }
+  
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void setCoreCodec(CoreCodec coreCodec) {
+    Assert.notNull(coreCodec);
+    this.rpcUtil = coreCodec;
   }
 
   /**

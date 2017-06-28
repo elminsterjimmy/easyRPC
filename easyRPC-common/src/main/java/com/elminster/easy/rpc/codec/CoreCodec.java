@@ -1,4 +1,4 @@
-package com.elminster.easy.rpc.util;
+package com.elminster.easy.rpc.codec;
 
 import java.io.IOException;
 
@@ -8,7 +8,7 @@ import java.io.IOException;
  * @author jinggu
  * @version 1.0
  */
-public interface RpcUtil {
+public interface CoreCodec {
 
   /**
    * Write a byte value.

@@ -1,28 +1,34 @@
-package com.elminster.easy.rpc.util;
+package com.elminster.easy.rpc.codec.impl;
 
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
-public class RpcUtilFactory {
-  
-  public static final RpcUtilFactory INSTANCE = new RpcUtilFactory();
-  
-  private RpcUtilFactory() {}
+import com.elminster.easy.rpc.codec.CoreCodec;
+import com.elminster.easy.rpc.util.ByteBufferIoImpl;
+import com.elminster.easy.rpc.util.IoUtil;
+import com.elminster.easy.rpc.util.NioChannelUtil;
+import com.elminster.easy.rpc.util.StreamIOUitlImpl;
 
-  public RpcUtil getRpcUtil(InputStream in, OutputStream out) {
+public class CoreCodecFactory {
+  
+  public static final CoreCodecFactory INSTANCE = new CoreCodecFactory();
+  
+  private CoreCodecFactory() {}
+
+  public CoreCodec getCoreCodec(InputStream in, OutputStream out) {
     IoUtil ioUtil = new StreamIOUitlImpl(in, out);
-    return new RpcUtilImpl(ioUtil);
+    return new CoreCodecImpl(ioUtil);
   }
 
-  public RpcUtil getRpcUtil(ByteBuffer byteBuffer) {
+  public CoreCodec getCoreCodec(ByteBuffer byteBuffer) {
     IoUtil ioUtil = new ByteBufferIoImpl(byteBuffer);
-    return new RpcUtilImpl(ioUtil);
+    return new CoreCodecImpl(ioUtil);
   }
   
-  public RpcUtil getRpcUtil(SocketChannel socketChannel) {
+  public CoreCodec getCoreCodec(SocketChannel socketChannel) {
     IoUtil ioUtil = new NioChannelUtil(socketChannel);
-    return new RpcUtilImpl(ioUtil);
+    return new CoreCodecImpl(ioUtil);
   }
 }
