@@ -6,6 +6,7 @@ import com.elminster.common.util.Assert;
 import com.elminster.common.util.ReflectUtil;
 import com.elminster.easy.rpc.connection.SocketFactory;
 import com.elminster.easy.rpc.context.RpcContext;
+import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
 
 /**
  * The Socket Factory Registry.
@@ -27,7 +28,7 @@ public class SocketFactoryRegsitery extends RegaistryBase<SocketFactory> impleme
    *          the RPC context
    * @return the socket factory
    */
-  public SocketFactory getSocketFactory(RpcContext context) {
+  public SocketFactory getSocketFactory(RpcContext context) throws ObjectInstantiationExcption {
     Assert.notNull(context);
     String socketFactoryClassName = context.getSocketFactoryClassName();
     SocketFactory factory = findObject(socketFactoryClassName);
@@ -55,13 +56,12 @@ public class SocketFactoryRegsitery extends RegaistryBase<SocketFactory> impleme
    * {@inheritDoc}
    */
   @Override
-  protected SocketFactory instaceObject(String socketFactoryClassName) {
+  protected SocketFactory instaceObject(String socketFactoryClassName) throws ObjectInstantiationExcption {
     try {
       return (SocketFactory) ReflectUtil.newInstanceViaReflect(socketFactoryClassName);
     } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
         | ClassNotFoundException e) {
-      // TODO Auto-generated catch block
-      return null;
+      throw new ObjectInstantiationExcption(e);
     }
   }
 }

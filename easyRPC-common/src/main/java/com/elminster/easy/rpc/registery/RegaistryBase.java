@@ -3,6 +3,8 @@ package com.elminster.easy.rpc.registery;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
+
 /**
  * The Registry Template.
  * 
@@ -20,7 +22,7 @@ abstract public class RegaistryBase<T> implements Registrable<T> {
    * @param key the key
    * @return the object found
    */
-  protected T findObject(String key) {
+  protected T findObject(String key) throws ObjectInstantiationExcption {
     T t = cache.get(key);
     if (null == t) {
       t = instaceObject(key);
@@ -36,5 +38,5 @@ abstract public class RegaistryBase<T> implements Registrable<T> {
    * @param key the key
    * @return the instanced object
    */
-  abstract protected T instaceObject(String key);
+  abstract protected T instaceObject(String key) throws ObjectInstantiationExcption;
 }

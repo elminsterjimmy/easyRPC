@@ -1,7 +1,7 @@
 package com.elminster.easy.rpc.registery;
 
 import com.elminster.common.util.Assert;
-import com.elminster.easy.rpc.util.RpcUtil;
+import com.elminster.easy.rpc.codec.CoreCodec;
 
 /**
  * A Service Registry for injection.
@@ -15,13 +15,13 @@ public class CoreServiceRegistry {
   public static final CoreServiceRegistry INSTANCE = new CoreServiceRegistry();
 
   /** the RPCUtil. */
-  private volatile RpcUtil rpcUtil;
+  private volatile CoreCodec rpcUtil;
   
   /**
    * Get the RPCUtil.
    * @return the RPCUtil
    */
-  public RpcUtil getRpcUtil() {
+  public CoreCodec getRpcUtil() {
     Assert.notNull(rpcUtil);
     return this.rpcUtil;
   }
@@ -30,7 +30,7 @@ public class CoreServiceRegistry {
    * Set the RPCUtil.
    * @param RpcUtil the RPCUtil
    */
-  public void setRpcUtil(RpcUtil RpcUtil) {
+  public void setRpcUtil(CoreCodec RpcUtil) {
     this.rpcUtil = RpcUtil;
   }
 }
