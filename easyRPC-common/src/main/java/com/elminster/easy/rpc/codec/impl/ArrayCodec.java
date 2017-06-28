@@ -44,14 +44,15 @@ public class ArrayCodec implements RpcCodec {
       Class<?> typeClass = bt != null ? bt.getTypeClass() : ReflectUtil.forName(arrayTypeName);
 
       Object array = Array.newInstance(typeClass, arraySize);
-      Object[] decoded = new Object[arraySize];
+      Object decoded = Array.newInstance(typeClass, arraySize);
+      
       for (int i = 0; i < arraySize; i++) {
         boolean notNull = encodingFactory.readIsNotNull();
         Object entry = null;
         if (notNull) {
           entry = typeEncoder.decode(encodingFactory);
         }
-        decoded[i] = entry;
+        Array.set(decoded, i, entry);
       }
       System.arraycopy(decoded, 0, array, 0, arraySize);
       return array;
@@ -61,7 +62,7 @@ public class ArrayCodec implements RpcCodec {
       String typeName = arrayTypeName != null ? arrayTypeName : remoteTypeName;
       String message = "Could not decode array of " + typeName + "[] - " + e;
       logger.error(message, e);
-      throw new RpcException(message);
+      throw new RpcException(message, e);
     }
   }
 
@@ -88,20 +89,22 @@ public class ArrayCodec implements RpcCodec {
       encodingFactory.writeObjectNullable(remoteTypeName);
 
       RpcCodec componentEncoder = encodingFactory.getEncodingObject(componentClass);
-
-      for (Object obj : (Object[]) value) {
+      for (int i = 0; i < arraySize; i++) {
+        // to support primitive array
+        Object obj = Array.get(value, i);
         encodingFactory.writeIsNotNull(null != obj);
         if (null != obj) {
           // auto boxing and auto unboxing
           componentEncoder.encode(obj, encodingFactory);
         }
       }
+        
     } catch (RpcException e) {
       throw e;
     } catch (Exception e) {
       String message = "Could not encode array of " + arrayTypeName + "[] - " + e;
       logger.error(message, e);
-      throw new RpcException(message);
+      throw new RpcException(message, e);
     }
   }
 }
