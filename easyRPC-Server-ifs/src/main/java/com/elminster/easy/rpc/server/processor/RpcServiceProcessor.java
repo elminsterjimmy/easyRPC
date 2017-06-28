@@ -21,5 +21,5 @@ public interface RpcServiceProcessor {
    * @throws Throwable
    *           on error
    */
-  public ReturnResult invokeServiceMethod(String serviceName, String methodName, Object[] params) throws Throwable;
+  public ReturnResult invokeServiceMethod(InvokeContext context, String serviceName, String methodName, Object[] params) throws Throwable;
 }

@@ -2,6 +2,7 @@ package com.elminster.easy.rpc.server;
 
 import java.util.List;
 
+import com.elminster.easy.rpc.codec.CoreCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.exception.RpcException;
@@ -86,9 +87,11 @@ public interface RpcServer {
    * 
    * @param encodingName
    *          the encodeing name
+   * @param coreCodec
+   *          the core codec
    * @return the encoding factory
    */
-  public RpcEncodingFactory getEncodingFactory(String encodingName);
+  public RpcEncodingFactory getEncodingFactory(String encodingName, CoreCodec coreCodec);
 
   /**
    * Check the server uses secure connection?
@@ -104,39 +107,47 @@ public interface RpcServer {
    *          use secure conneciton or not
    */
   public void setUseSecureConnection(boolean useSecure);
-  
+
   /**
    * Add a server listener.
-   * @param listener the server listener
+   * 
+   * @param listener
+   *          the server listener
    */
   public void addServerListener(RpcServerListener listener);
-  
+
   /**
    * Get the server listeners.
+   * 
    * @return the server listeners
    */
   public List<RpcServerListener> getServerListeners();
-  
+
   /**
    * Remove a server listener.
-   * @param listener the server listener to remove
+   * 
+   * @param listener
+   *          the server listener to remove
    */
   public void removeServerListener(RpcServerListener listener);
-  
+
   /**
    * Get the RPC context.
+   * 
    * @return the RPC context
    */
   public RpcContext getContext();
-  
+
   /**
    * Get the RPC server version.
+   * 
    * @return the RPC server version
    */
   public String getVersion();
-  
+
   /**
    * Get open connection count.
+   * 
    * @return open connection count
    */
   public int getOpenConnectionCount();
