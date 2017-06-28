@@ -20,14 +20,15 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.elminster.easy.rpc.codec.CoreCodec;
+import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
 import com.elminster.easy.rpc.connection.SocketFactory;
 import com.elminster.easy.rpc.connection.impl.NIOSocketFactoryImpl;
 import com.elminster.easy.rpc.connection.impl.StreamSocketFactoryImpl;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
+import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
 import com.elminster.easy.rpc.registery.SocketFactoryRegsitery;
-import com.elminster.easy.rpc.util.RpcUtil;
-import com.elminster.easy.rpc.util.RpcUtilFactory;
 
 import sun.nio.ch.ServerSocketAdaptor;
 import sun.nio.ch.SocketAdaptor;
@@ -37,7 +38,7 @@ public class SocketFactoryTest {
   private ExecutorService executor = Executors.newFixedThreadPool(10);
 
   @Test
-  public void testStreamSocketFactoryWithoutSecure() throws IOException {
+  public void testStreamSocketFactoryWithoutSecure() throws IOException, ObjectInstantiationExcption {
     SocketFactory socketFactory = setupStreamSocketFactory();
 
     final CountDownLatch latch = new CountDownLatch(2);
@@ -71,7 +72,7 @@ public class SocketFactoryTest {
         try {
           Socket socket = serverSocket.accept();
           try (InputStream in = socket.getInputStream(); OutputStream out = socket.getOutputStream()) {
-            RpcUtil rpcUtil = RpcUtilFactory.INSTANCE.getRpcUtil(in, out);
+            CoreCodec rpcUtil = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
             String str = rpcUtil.readStringAsciiNullable();
             if ("hello".equals(str)) {
               rpcUtil.writeStringAsciiNullable("bye");
@@ -94,7 +95,7 @@ public class SocketFactoryTest {
       @Override
       public void run() {
         try (InputStream in = clientSocket.getInputStream(); OutputStream out = clientSocket.getOutputStream()) {
-          RpcUtil rpcUtil = RpcUtilFactory.INSTANCE.getRpcUtil(in, out);
+          CoreCodec rpcUtil = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
           rpcUtil.writeStringAsciiNullable("hello");
           if ("bye".equals(rpcUtil.readStringAsciiNullable())) {
             rpcUtil.writeStringAsciiNullable("bye");
@@ -119,7 +120,7 @@ public class SocketFactoryTest {
   }
 
   @Test
-  public void testStreamSocketFactoryWithSecure() throws IOException {
+  public void testStreamSocketFactoryWithSecure() throws IOException, ObjectInstantiationExcption {
     SocketFactory socketFactory = setupStreamSocketFactory();
 
     final CountDownLatch latch = new CountDownLatch(2);
@@ -153,7 +154,7 @@ public class SocketFactoryTest {
         try {
           Socket socket = serverSocket.accept();
           try (InputStream in = socket.getInputStream(); OutputStream out = socket.getOutputStream()) {
-            RpcUtil rpcUtil = RpcUtilFactory.INSTANCE.getRpcUtil(in, out);
+            CoreCodec rpcUtil = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
             if ("hello".equals(rpcUtil.readStringAsciiNullable())) {
               rpcUtil.writeStringAsciiNullable("bye");
             } else if ("bye".equals(rpcUtil.readStringAsciiNullable())) {
@@ -175,7 +176,7 @@ public class SocketFactoryTest {
       @Override
       public void run() {
         try (InputStream in = clientSocket.getInputStream(); OutputStream out = clientSocket.getOutputStream()) {
-          RpcUtil rpcUtil = RpcUtilFactory.INSTANCE.getRpcUtil(in, out);
+          CoreCodec rpcUtil = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
           rpcUtil.writeStringAsciiNullable("hello");
           String str = rpcUtil.readStringAsciiNullable();
           if ("bye".equals(str)) {
@@ -200,7 +201,7 @@ public class SocketFactoryTest {
     }
   }
 
-  private SocketFactory setupStreamSocketFactory() {
+  private SocketFactory setupStreamSocketFactory() throws ObjectInstantiationExcption {
     RpcContext context = new RpcContextAdapter() {
 
       @Override
@@ -214,7 +215,7 @@ public class SocketFactoryTest {
   @Ignore
   @SuppressWarnings("restriction")
   @Test
-  public void testNIOSocketFactory() throws IOException {
+  public void testNIOSocketFactory() throws IOException, ObjectInstantiationExcption {
     SocketFactory socketFactory = setupNIOSocketFactory();
 
     final CountDownLatch latch = new CountDownLatch(2);
@@ -286,7 +287,7 @@ public class SocketFactoryTest {
 
         public void handleRead(SelectionKey key, ServerSocketChannel serverChannel) throws IOException {
           SocketChannel socketChannel = (SocketChannel) key.channel();
-          RpcUtil util = RpcUtilFactory.INSTANCE.getRpcUtil(socketChannel);
+          CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(socketChannel);
           String str = util.readStringAsciiNullable();
           System.out.println(str);
           if ("hello".equals(str)) {
@@ -341,7 +342,7 @@ public class SocketFactoryTest {
           try {
             while (!socketChannel.finishConnect())
               ;
-            RpcUtil util = RpcUtilFactory.INSTANCE.getRpcUtil(socketChannel);
+            CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(socketChannel);
             util.writeStringAsciiNullable("hello");
             String str = util.readStringAsciiNullable();
             System.out.println(str);
@@ -372,7 +373,7 @@ public class SocketFactoryTest {
     }
   }
 
-  private SocketFactory setupNIOSocketFactory() {
+  private SocketFactory setupNIOSocketFactory() throws ObjectInstantiationExcption {
     RpcContext context = new RpcContextAdapter() {
 
       @Override
@@ -433,6 +434,11 @@ public class SocketFactoryTest {
     @Override
     public boolean getClientTcpNoDelay() {
       return false;
+    }
+
+    @Override
+    public String getServiceProcessorClassName() {
+      return null;
     }
   }
 }
