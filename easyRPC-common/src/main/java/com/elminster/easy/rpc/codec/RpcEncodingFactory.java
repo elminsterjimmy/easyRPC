@@ -165,10 +165,8 @@ public interface RpcEncodingFactory {
    *          the value
    * @throws IOException
    *           on error
-   * @throws RpcException
-   *           on error
    */
-  public void writeInt64(final long vaue) throws IOException, RpcException;
+  public void writeInt64(final long vaue) throws IOException;
 
   /**
    * Read a nullable int32.
@@ -187,10 +185,8 @@ public interface RpcEncodingFactory {
    * @return an int32
    * @throws IOException
    *           on error
-   * @throws RpcException
-   *           on error
    */
-  public int readInt32() throws IOException, RpcException;
+  public int readInt32() throws IOException;
 
   /**
    * Write a nullable int32.
@@ -211,10 +207,8 @@ public interface RpcEncodingFactory {
    *          the value
    * @throws IOException
    *           on error
-   * @throws RpcException
-   *           on error
    */
-  public void writeInt32(final int value) throws IOException, RpcException;
+  public void writeInt32(final int value) throws IOException;
 
   /**
    * Read a nullable int8.
@@ -233,10 +227,8 @@ public interface RpcEncodingFactory {
    * @return an int8
    * @throws IOException
    *           on error
-   * @throws RpcException
-   *           on error
    */
-  public byte readInt8() throws IOException, RpcException;
+  public byte readInt8() throws IOException;
 
   /**
    * Write a nullable int8.
@@ -257,15 +249,13 @@ public interface RpcEncodingFactory {
    *          the value
    * @throws IOException
    *           on error
-   * @throws RpcException
-   *           on error
    */
-  public void writeInt8(final byte value) throws IOException, RpcException;
+  public void writeInt8(final byte value) throws IOException;
   
   /**
-   * Read a nullable int64.
+   * Read a nullable String.
    * 
-   * @return a nullable int64
+   * @return a nullable String
    * @throws IOException
    *           on error
    * @throws RpcException
@@ -284,6 +274,29 @@ public interface RpcEncodingFactory {
    *           on error
    */
   public void writeStringNullable(final String value) throws IOException, RpcException;
+
+  /**
+   * Read a nullable ASCII.
+   * 
+   * @return a nullable int64
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  public String readAsciiNullable() throws IOException, RpcException;
+  
+  /**
+   * Write a nullable ASCII.
+   * 
+   * @param value
+   *          the value
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  public void writeAsciiNullable(final String value) throws IOException, RpcException;
 
   /**
    * Read a nullable double.
@@ -407,4 +420,10 @@ public interface RpcEncodingFactory {
    *          the remote type name
    */
   public void addEncodingInstance(final String className, final RpcCodec encObject, final String remoteName);
+  
+  /**
+   * Inject the core codec.
+   * @param coreCodec the core codec
+   */
+  public void setCoreCodec(CoreCodec coreCodec);
 }
