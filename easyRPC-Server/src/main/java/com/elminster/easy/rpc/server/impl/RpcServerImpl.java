@@ -12,7 +12,9 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.common.misc.Version;
 import com.elminster.common.util.Assert;
+import com.elminster.easy.rpc.codec.CoreCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.codec.impl.RpcEncodingFactoryBase;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.context.impl.SimpleConnectionEndpoint;
@@ -51,6 +53,15 @@ public class RpcServerImpl implements RpcServer {
   private List<RpcServerListener> listeners = new ArrayList<>();
   /** the PRC context. */
   private RpcContext context;
+  
+  public RpcServerImpl() {
+    addDefaultEncodingFactory();
+  }
+
+  private void addDefaultEncodingFactory() {
+    RpcEncodingFactory defaultEncodingFactory = new RpcEncodingFactoryBase("default");
+    this.addEncodingFactory(defaultEncodingFactory);
+  }
 
   /**
    * {@inheritDoc}
@@ -145,8 +156,10 @@ public class RpcServerImpl implements RpcServer {
    * {@inheritDoc}
    */
   @Override
-  public RpcEncodingFactory getEncodingFactory(String encodingName) {
-    return encodingFactories.get(encodingName);
+  public RpcEncodingFactory getEncodingFactory(String encodingName, CoreCodec coreCodec) {
+    RpcEncodingFactory factory = encodingFactories.get(encodingName);
+    factory.setCoreCodec(coreCodec);
+    return factory;
   }
 
   /**

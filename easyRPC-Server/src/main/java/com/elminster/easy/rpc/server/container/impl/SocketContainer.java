@@ -1,7 +1,10 @@
 package com.elminster.easy.rpc.server.container.impl;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
@@ -17,7 +20,12 @@ import com.elminster.easy.rpc.server.container.listener.impl.ServerListenerFacto
  * @version 1.0
  */
 public class SocketContainer extends ContainerBase implements Container {
+  
+  private static final Logger logger = LoggerFactory.getLogger(SocketContainer.class);
 
+  private static final int RETRY_THRESHOLD = 15;
+  private static final int RETRY_INTERVAL = 500;
+  
   private volatile boolean isStop = true;
 
   public SocketContainer(RpcServer rpcServer, ConnectionEndpoint endpoint) {
@@ -32,25 +40,28 @@ public class SocketContainer extends ContainerBase implements Container {
 
   @Override
   protected void serve() throws Exception {
-    ServerListener listener;
-    try {
-      listener = ServerListenerFactory.INSTANCE.getServerListener(rpcServer, endpoint);
-    } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
-        | ClassNotFoundException e1) {
-      throw new Exception("Server Listener cannot be found.", e1);
-    }
+    ServerListener listener = ServerListenerFactory.INSTANCE.getServerListener(rpcServer, endpoint);
     setServing(true);
     
     isStop = false;
     while (!isStop) {
       try {
         RpcConnection connection = listener.accept();
+        int retryCnt = 0;
         while (true) {
+          ThreadPoolExecutor threadpool = getAsyncWorkerThreadPool();
           try {
-            getAsyncWorkerThreadPool().execute(connection);
+            threadpool.execute(connection);
             break;
           } catch (RejectedExecutionException e) {
             // TODO retry
+            logger.warn(String.format("Failed to push connection [%s] to thread pool [%s]. Cause: %s.", connection, threadpool, e));
+            if (retryCnt++ < RETRY_THRESHOLD) {
+              logger.debug(String.format("Try to repush connection [%s] to thread pool [%s] after %d ms", connection, threadpool, RETRY_INTERVAL));
+              Thread.sleep(RETRY_INTERVAL);
+            } else {
+              logger.error(String.format("Retry many times to push connection [%s] to thread pool [%s] but failed, drop connection!!", connection, threadpool));
+            }
           }
         }
       } catch (Exception e) {
