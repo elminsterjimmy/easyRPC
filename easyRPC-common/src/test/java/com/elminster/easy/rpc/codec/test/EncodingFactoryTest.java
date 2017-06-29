@@ -140,19 +140,19 @@ public class EncodingFactoryTest {
       void withTemplate(RpcEncodingFactory encodingFactory) throws Exception {
         double zero = 0d;
         encodingFactory.writeDouble(zero);
-        Assert.assertEquals(zero, encodingFactory.readDouble());
+        Assert.assertEquals(zero, encodingFactory.readDouble(), 0.000001d);
         encodingFactory.writeDoubleNullable(Double.valueOf(zero));
         Assert.assertEquals(Double.valueOf(zero), encodingFactory.readDoubleNullable());
 
         double max = Double.MAX_VALUE;
         encodingFactory.writeDouble(max);
-        Assert.assertEquals(max, encodingFactory.readDouble());
+        Assert.assertEquals(max, encodingFactory.readDouble(), 0.000001d);
         encodingFactory.writeDoubleNullable(Double.valueOf(zero));
         Assert.assertEquals(Double.valueOf(zero), encodingFactory.readDoubleNullable());
 
         double min = Long.MIN_VALUE;
         encodingFactory.writeDouble(min);
-        Assert.assertEquals(min, encodingFactory.readDouble());
+        Assert.assertEquals(min, encodingFactory.readDouble(), 0.000001d);
         encodingFactory.writeDoubleNullable(Double.valueOf(min));
         Assert.assertEquals(Double.valueOf(min), encodingFactory.readDoubleNullable());
 
@@ -219,6 +219,11 @@ public class EncodingFactoryTest {
       @Override
       void withTemplate(RpcEncodingFactory encodingFactory) throws Exception {
         List<String> stringList = new LinkedList<String>() {
+          /**
+           * 
+           */
+          private static final long serialVersionUID = 1L;
+
           {
             add("one");
             add("two");
@@ -233,6 +238,11 @@ public class EncodingFactoryTest {
         Assert.assertEquals(stringArrayList, encodingFactory.readObjectNullable());
 
         List<Integer> intList = new LinkedList<Integer>() {
+          /**
+           * 
+           */
+          private static final long serialVersionUID = 1L;
+
           {
             add(1);
             add(2);
@@ -256,6 +266,11 @@ public class EncodingFactoryTest {
       @Override
       void withTemplate(RpcEncodingFactory encodingFactory) throws Exception {
         Set<String> stringSet = new HashSet<String>() {
+          /**
+           * 
+           */
+          private static final long serialVersionUID = 1L;
+
           {
             add("one");
             add("two");
@@ -270,6 +285,11 @@ public class EncodingFactoryTest {
         Assert.assertEquals(stringTreeSet, encodingFactory.readObjectNullable());
 
         Set<Integer> intSet = new HashSet<Integer>() {
+          /**
+           * 
+           */
+          private static final long serialVersionUID = 1L;
+
           {
             add(1);
             add(2);
@@ -293,6 +313,11 @@ public class EncodingFactoryTest {
       @Override
       void withTemplate(RpcEncodingFactory encodingFactory) throws Exception {
         Map<Integer, String> map = new HashMap<Integer, String>() {
+          /**
+           * 
+           */
+          private static final long serialVersionUID = 1L;
+
           {
             put(1, "one");
             put(2, "two");
