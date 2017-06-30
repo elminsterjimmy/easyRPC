@@ -1,7 +1,7 @@
 package com.elminster.easy.rpc.protocol;
 
+import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
-import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
 
 /**
  * Protocol Factory.

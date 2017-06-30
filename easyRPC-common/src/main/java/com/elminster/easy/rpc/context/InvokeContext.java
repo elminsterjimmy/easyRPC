@@ -1,4 +1,4 @@
-package com.elminster.easy.rpc.server.processor;
+package com.elminster.easy.rpc.context;
 
 import java.net.InetAddress;
 
@@ -10,9 +10,9 @@ public interface InvokeContext {
   
   public String getInvokerVersion();
   
-  public InetAddress getServerHost();
+  public InetAddress getInvokeeHost();
   
-  public int getServerPort();
+  public int getInvokeePort();
   
-  public String getServerVersion();
+  public String getInvokeeVersion();
 }

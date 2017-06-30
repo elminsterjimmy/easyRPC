@@ -2,11 +2,11 @@ package com.elminster.easy.rpc.registery;
 
 import java.lang.reflect.InvocationTargetException;
 
+import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.common.util.Assert;
 import com.elminster.common.util.ReflectUtil;
 import com.elminster.easy.rpc.connection.SocketFactory;
 import com.elminster.easy.rpc.context.RpcContext;
-import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
 
 /**
  * The Socket Factory Registry.

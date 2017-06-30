@@ -3,10 +3,10 @@ package com.elminster.easy.rpc.protocol.impl;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
+import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.common.util.Assert;
 import com.elminster.common.util.ReflectUtil;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
-import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
 import com.elminster.easy.rpc.protocol.Protocol;
 import com.elminster.easy.rpc.protocol.ProtocolFactory;
 

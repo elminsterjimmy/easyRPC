@@ -2,10 +2,16 @@ package com.elminster.easy.rpc.context;
 
 public interface RpcContext {
   
+  /////// server side context
   public String getServerContainerClassName();
   public String getServerListenerClassName();
-  public String getSocketFactoryClassName();
   public String getServiceProcessorClassName();
-  public int getClientTimeout();
-  public boolean getClientTcpNoDelay();
+  
+  /////// client side context
+  public String getClientContainerClassName();
+  
+  /////// both side context
+  public String getSocketFactoryClassName();
+  public Integer getClientTimeout();
+  public Boolean getClientTcpNoDelay();
 }

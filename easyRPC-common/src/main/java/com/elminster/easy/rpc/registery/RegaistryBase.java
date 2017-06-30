@@ -3,7 +3,7 @@ package com.elminster.easy.rpc.registery;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
+import com.elminster.common.exception.ObjectInstantiationExcption;
 
 /**
  * The Registry Template.

@@ -20,6 +20,7 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.easy.rpc.codec.CoreCodec;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
 import com.elminster.easy.rpc.connection.SocketFactory;
@@ -27,7 +28,6 @@ import com.elminster.easy.rpc.connection.impl.NIOSocketFactoryImpl;
 import com.elminster.easy.rpc.connection.impl.StreamSocketFactoryImpl;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
-import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
 import com.elminster.easy.rpc.registery.SocketFactoryRegsitery;
 
 import sun.nio.ch.ServerSocketAdaptor;
@@ -427,13 +427,13 @@ public class SocketFactoryTest {
     }
 
     @Override
-    public int getClientTimeout() {
-      return 0;
+    public Integer getClientTimeout() {
+      return null;
     }
 
     @Override
-    public boolean getClientTcpNoDelay() {
-      return false;
+    public Boolean getClientTcpNoDelay() {
+      return null;
     }
 
     @Override
