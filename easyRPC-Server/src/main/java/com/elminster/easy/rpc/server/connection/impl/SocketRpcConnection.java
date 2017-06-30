@@ -9,10 +9,10 @@ import java.net.Socket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.easy.rpc.codec.CoreCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
-import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.exception.VersionCompatibleException;
 import com.elminster.easy.rpc.protocol.RequestHeaderProtocol;
@@ -22,8 +22,8 @@ import com.elminster.easy.rpc.protocol.ShakehandProtocol;
 import com.elminster.easy.rpc.protocol.VersionProtocol;
 import com.elminster.easy.rpc.protocol.impl.ProtocolFactoryImpl;
 import com.elminster.easy.rpc.server.RpcServer;
-import com.elminster.easy.rpc.server.processor.InvokeContextImpl;
-import com.elminster.easy.rpc.server.processor.InvokeContextImpl.InvokeContextImplBuilder;
+import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl;
+import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl.InvokeeContextImplBuilder;
 import com.elminster.easy.rpc.server.processor.ReturnResult;
 import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
 import com.elminster.easy.rpc.server.processor.RpcServiceProcessorFactoryImpl;
@@ -34,7 +34,7 @@ public class SocketRpcConnection extends RpcConnectionImpl {
   private static final Logger logger = LoggerFactory.getLogger(SocketRpcConnection.class);
 
   private final Socket socket;
-  private final RpcServiceProcessor processor;
+  private RpcServiceProcessor processor;
 
   private final InetAddress localAddr;
   private final InetAddress remoteAddr;
@@ -57,14 +57,14 @@ public class SocketRpcConnection extends RpcConnectionImpl {
   protected void doRun() {
     // init the core codec
     try (InputStream in = socket.getInputStream(); OutputStream out = socket.getOutputStream()) {
-      CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+      CoreCodec coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
 
-      InvokeContextImplBuilder builder = new InvokeContextImplBuilder();
-      InvokeContextImpl invokeContext = builder.withServerHost(localAddr)
+      InvokeeContextImplBuilder builder = new InvokeeContextImplBuilder();
+      InvokeeContextImpl invokeContext = builder.withServerHost(localAddr)
           .withClientHost(remoteAddr)
           .withClientPort(remotePort)
           .withServerPort(localPort).build();
-      RpcEncodingFactory defaultEncodingFactory = rpcServer.getEncodingFactory("default", util);
+      RpcEncodingFactory defaultEncodingFactory = rpcServer.getEncodingFactory("default", coreCodec);
       ShakehandProtocol shakehandProtocol;
       VersionProtocol versionProtocol;
       RequestHeaderProtocol requestHeaderProtocol;
@@ -94,12 +94,17 @@ public class SocketRpcConnection extends RpcConnectionImpl {
         versionProtocol.decode();
         String clientVersion = versionProtocol.getVersion();
         String serverVersion = rpcServer.getVersion();
-        invokeContext.setClientVersion(clientVersion);
-        invokeContext.setServerVersion(serverVersion);
+        invokeContext.setInvokerVersion(clientVersion);
+        invokeContext.setInvokeeVersion(serverVersion);
+        
+        // send server version
+        versionProtocol.setVersion(serverVersion);
+        versionProtocol.encode();
         if (rpcServer.isVersionCheck()) {
           if (!VersionChecker.compatible(clientVersion, serverVersion)) {
             // return exception and disconnection
             String msg = String.format("Incompatible versions! Server version is [%s] but Client version is [%s].", serverVersion, clientVersion);
+            versionProtocol.fail();
             throw new VersionCompatibleException(msg);
           }
         }
@@ -128,10 +133,9 @@ public class SocketRpcConnection extends RpcConnectionImpl {
             continue;
           }
           
-          
           String encodingName = requestHeaderProtocol.getEncoding();
 
-          RpcEncodingFactory rpcEncodingFactory = rpcServer.getEncodingFactory(encodingName, util);
+          RpcEncodingFactory rpcEncodingFactory = rpcServer.getEncodingFactory(encodingName, coreCodec);
           if (null == rpcEncodingFactory) {
             requestHeaderProtocol.fail();
             String message = String.format(Messages.CANNOT_FOUND_ENCODINGFACTORY.getMessage(), encodingName, invokeContext);
@@ -168,7 +172,7 @@ public class SocketRpcConnection extends RpcConnectionImpl {
           }
 
           try {
-            RpcServiceProcessorFactoryImpl.INSTANCE.createServiceProcessor(rpcServer);
+            processor = RpcServiceProcessorFactoryImpl.INSTANCE.createServiceProcessor(rpcServer);
           } catch (ObjectInstantiationExcption e) {
             logger.error(String.format(Messages.CANNOT_INS_PROCESSOR.getMessage(), serviceName, invokeContext));
           }
@@ -176,15 +180,25 @@ public class SocketRpcConnection extends RpcConnectionImpl {
           ReturnResult result = null;
           try {
             result = processor.invokeServiceMethod(invokeContext, serviceName, methodName, args);
-          } catch (Throwable e) {
-            requestProtocol.fail();
+          } catch (final Throwable e) {
             if (e instanceof RpcException) {
+              requestProtocol.fail();
               writeRpcException(defaultEncodingFactory, (RpcException)e);
+              continue; // start over
             } else {
-              String message = String.format(Messages.CANNOT_DECODE_REQUEST.getMessage(), methodName, serviceName, args.length, invokeContext);
-              writeException(defaultEncodingFactory, e, message);
+              result = new ReturnResult() {
+
+                @Override
+                public Object getReturnValue() {
+                  return e;
+                }
+
+                @Override
+                public Class<?> getReturnType() {
+                  return e.getClass();
+                }
+              };
             }
-            continue; // start over
           }
           
           try {
@@ -198,13 +212,15 @@ public class SocketRpcConnection extends RpcConnectionImpl {
             continue; // start over
           }
           
+          
+          
           Class<?> returnType = result.getReturnType();
           Object returnValue = result.getReturnValue();
           responseProtocol.setVoid(returnType == Void.class || returnType == void.class);
           responseProtocol.setReturnValue(returnValue);
           try {
-            responseProtocol.encode();
             responseProtocol.complete();
+            responseProtocol.encode();
           } catch (RpcException e) {
             responseProtocol.fail();
             String message = String.format(Messages.CANNOT_ENCODE_RESPONSE.getMessage(), invokeContext);
@@ -212,11 +228,12 @@ public class SocketRpcConnection extends RpcConnectionImpl {
             continue; // start over
           }
         } catch (IOException ioe) {
-          logger.error(String.format(Messages.CLIENT_DISCONNECTED.getMessage(), remoteAddr, remotePort));
+          throw ioe;
         }
       }
     } catch (IOException e) {
-
+      logger.error(String.format(Messages.CLIENT_DISCONNECTED.getMessage(), remoteAddr, remotePort));
+      return;
     }
   }
 
