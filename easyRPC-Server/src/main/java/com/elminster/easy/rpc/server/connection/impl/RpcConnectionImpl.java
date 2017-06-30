@@ -1,4 +1,4 @@
-package com.elminster.easy.rpc.server.connection;
+package com.elminster.easy.rpc.server.connection.impl;
 
 import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.server.RpcServer;

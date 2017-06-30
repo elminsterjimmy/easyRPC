@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.server.RpcServer;
-import com.elminster.easy.rpc.server.connection.SocketRpcConnection;
+import com.elminster.easy.rpc.server.connection.impl.SocketRpcConnection;
 
 public class BioServerListenerImpl extends ServerListenerBase {
 

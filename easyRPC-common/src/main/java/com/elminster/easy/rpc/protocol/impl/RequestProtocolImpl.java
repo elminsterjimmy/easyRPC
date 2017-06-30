@@ -3,7 +3,6 @@ package com.elminster.easy.rpc.protocol.impl;
 import java.io.IOException;
 
 import com.elminster.common.util.Assert;
-import com.elminster.common.util.ObjectUtil;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.protocol.RequestProtocol;

@@ -1,4 +1,4 @@
-package com.elminster.easy.rpc.server.connection;
+package com.elminster.easy.rpc.server.connection.impl;
 
 import java.net.InetAddress;
 import java.nio.channels.SocketChannel;
