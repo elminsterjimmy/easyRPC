@@ -129,7 +129,7 @@ public class EncodingFactoryTest {
         encodingFactory.writeInt64Nullable(null);
         Assert.assertEquals(null, encodingFactory.readInt64Nullable());
       }
-    };
+    }.test();
   }
 
   @Test
@@ -159,7 +159,7 @@ public class EncodingFactoryTest {
         encodingFactory.writeDoubleNullable(null);
         Assert.assertEquals(null, encodingFactory.readDoubleNullable());
       }
-    };
+    }.test();
   }
 
   @Test
