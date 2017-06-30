@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.common.misc.Version;
 import com.elminster.common.util.Assert;
 import com.elminster.easy.rpc.codec.CoreCodec;
@@ -23,6 +24,7 @@ import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.container.exception.StartContainerException;
 import com.elminster.easy.rpc.server.container.exception.StopContainerException;
+import com.elminster.easy.rpc.server.container.impl.ContainerFactoryImpl;
 import com.elminster.easy.rpc.server.exception.ServerException;
 import com.elminster.easy.rpc.server.listener.RpcServerListenEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListener;
@@ -52,9 +54,10 @@ public class RpcServerImpl implements RpcServer {
   /** the server listeners. */
   private List<RpcServerListener> listeners = new ArrayList<>();
   /** the PRC context. */
-  private RpcContext context;
+  private final RpcContext context;
   
-  public RpcServerImpl() {
+  public RpcServerImpl(RpcContext context) {
+    this.context = context;
     addDefaultEncodingFactory();
   }
 
@@ -104,19 +107,16 @@ public class RpcServerImpl implements RpcServer {
       listener.beforeServe(new RpcServerListenEvent(endpoint));
     }
 
-    Container container = newContainer(); // TODO
+    Container container;
     try {
+      container = ContainerFactoryImpl.INSTANCE.getContainer(this, endpoint);
       container.start();
       this.containers.add(container);
-    } catch (StartContainerException e) {
+    } catch (StartContainerException | ObjectInstantiationExcption e) {
       String message = String.format("Rpc server failed to listen on endpoint: %s.", endpoint);
       logger.error(message, e);
       throw new ServerException(message, e);
     }
-  }
-
-  protected Container newContainer() {
-    return null; // TODO
   }
 
   /**
@@ -219,7 +219,6 @@ public class RpcServerImpl implements RpcServer {
    */
   @Override
   public int getOpenConnectionCount() {
-    // TODO Auto-generated method stub
     int count = 0;
     for (Container container : this.containers) {
       count += container.getNumberOfOpenConnections();
