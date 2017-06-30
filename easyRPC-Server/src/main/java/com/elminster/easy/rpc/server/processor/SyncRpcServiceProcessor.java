@@ -17,7 +17,7 @@ public class SyncRpcServiceProcessor implements RpcServiceProcessor {
   }
 
   @Override
-  public ReturnResult invokeServiceMethod(InvokeContext context, String serviceName, String methodName, Object[] args) throws Throwable {
+  public ReturnResult invokeServiceMethod(InvokeeContext context, String serviceName, String methodName, Object[] args) throws Throwable {
     RpcService service = rpcServer.getService(serviceName);
     if (null == service) {
       throw new RpcException(String.format("Service [%s] is NOT found! Context: [%s].", serviceName, context));

@@ -48,12 +48,12 @@ public class RpcServerTest {
       }
       
       @Override
-      public int getClientTimeout() {
+      public Integer getClientTimeout() {
         return 0;
       }
       
       @Override
-      public boolean getClientTcpNoDelay() {
+      public Boolean getClientTcpNoDelay() {
         // TODO Auto-generated method stub
         return false;
       }

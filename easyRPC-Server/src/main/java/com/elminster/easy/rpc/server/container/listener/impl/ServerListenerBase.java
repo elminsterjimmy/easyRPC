@@ -13,6 +13,8 @@ import com.elminster.common.util.ExceptionUtil;
 import com.elminster.easy.rpc.connection.SocketFactory;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
+import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
+import com.elminster.easy.rpc.registery.SocketFactoryRegsitery;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.listener.ServerListener;
 import com.elminster.easy.rpc.server.listener.RpcServerListenEvent;
@@ -40,6 +42,11 @@ abstract public class ServerListenerBase implements ServerListener {
   public ServerListenerBase(RpcServer rpcServer, ConnectionEndpoint endpoint) {
     this.rpcServer = rpcServer;
     this.endpoint = endpoint;
+    try {
+      socketFactory = SocketFactoryRegsitery.INSTANCE.getSocketFactory(rpcServer.getContext());
+    } catch (ObjectInstantiationExcption e) {
+      throw new RuntimeException("Cannot Instantiate socket factory!", e);
+    }
   }
 
   @Override
@@ -60,8 +67,12 @@ abstract public class ServerListenerBase implements ServerListener {
   protected void setupClientSocket(Socket socket) {
     RpcContext context = rpcServer.getContext();
     try {
-      socket.setSoTimeout(context.getClientTimeout());
-      socket.setTcpNoDelay(context.getClientTcpNoDelay());
+      if (null != context.getClientTimeout()) {
+        socket.setSoTimeout(context.getClientTimeout());
+      }
+      if (null != context.getClientTcpNoDelay()) {
+        socket.setTcpNoDelay(context.getClientTcpNoDelay());
+      }
     } catch (IOException ioe) {
       logger.warn("Failed to set client socket timeout and tcp no delay flag. Cause: " + ExceptionUtil.getStackTrace(ioe));
     }
