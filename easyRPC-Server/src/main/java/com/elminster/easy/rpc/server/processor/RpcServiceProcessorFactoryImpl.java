@@ -1,32 +1,28 @@
 package com.elminster.easy.rpc.server.processor;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-
-import com.elminster.common.util.ReflectUtil;
+import com.elminster.common.exception.ObjectInstantiationExcption;
+import com.elminster.common.factory.ReflectFactory;
+import com.elminster.common.util.Assert;
 import com.elminster.easy.rpc.context.RpcContext;
-import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
 import com.elminster.easy.rpc.server.RpcServer;
 
-public class RpcServiceProcessorFactoryImpl implements RpcServiceProcessorFactory {
+public class RpcServiceProcessorFactoryImpl extends ReflectFactory<RpcServiceProcessor> implements RpcServiceProcessorFactory {
   
   public static final RpcServiceProcessorFactory INSTANCE = new RpcServiceProcessorFactoryImpl();
   
   private RpcServiceProcessorFactoryImpl() {}
 
-  @SuppressWarnings("unchecked")
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public RpcServiceProcessor createServiceProcessor(RpcServer rpcServer) throws ObjectInstantiationExcption {
     RpcContext context = rpcServer.getContext();
     String className = context.getServiceProcessorClassName();
-    try {
-      Class<? extends RpcServiceProcessor> clazz = (Class<? extends RpcServiceProcessor>) ReflectUtil.forName(className);
-      Constructor<? extends RpcServiceProcessor> constructor = ReflectUtil.getConstructor(clazz, RpcServer.class);
-      RpcServiceProcessor processor = constructor.newInstance(rpcServer);
-      return processor;
-    } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-      throw new ObjectInstantiationExcption(e);
-    }
+    Assert.notNull(className);
+    Class<?>[] classes = { RpcServer.class };
+    Object[] args = { rpcServer };
+    return super.instantiateInstance(className, classes, args);
   }
 
 }

@@ -1,12 +1,10 @@
 package com.elminster.easy.rpc.server.container.listener.impl;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-
-import com.elminster.common.util.ReflectUtil;
+import com.elminster.common.exception.ObjectInstantiationExcption;
+import com.elminster.common.factory.ReflectFactory;
+import com.elminster.common.util.Assert;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
-import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.listener.ServerListener;
 import com.elminster.easy.rpc.server.listener.RpcServerListenerFactory;
@@ -17,26 +15,24 @@ import com.elminster.easy.rpc.server.listener.RpcServerListenerFactory;
  * @author jinggu
  * @version 1.0
  */
-public class ServerListenerFactory implements RpcServerListenerFactory {
+public class ServerListenerFactory extends ReflectFactory<ServerListener> implements RpcServerListenerFactory {
 
   public static ServerListenerFactory INSTANCE = new ServerListenerFactory();
 
   private ServerListenerFactory() {
   }
 
-  @SuppressWarnings("unchecked")
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public ServerListener getServerListener(RpcServer rpcServer, ConnectionEndpoint endpoint)
       throws ObjectInstantiationExcption {
     RpcContext context = rpcServer.getContext();
     String serverlistenerClassName = context.getServerListenerClassName();
-    Class<? extends ServerListener> clazz;
-    try {
-      clazz = (Class<? extends ServerListener>) ReflectUtil.forName(serverlistenerClassName);
-      Constructor<? extends ServerListener> constructor = ReflectUtil.getConstructor(clazz, RpcServer.class, ConnectionEndpoint.class);
-      ServerListener listener = constructor.newInstance(rpcServer, endpoint);
-      return listener;
-    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException e) {
-      throw new ObjectInstantiationExcption(e);
-    }
+    Assert.notNull(serverlistenerClassName);
+    Class<?>[] classes = { RpcServer.class, ConnectionEndpoint.class };
+    Object[] args = { rpcServer, endpoint };
+    return super.instantiateInstance(serverlistenerClassName, classes, args);
   }
 }
