@@ -2,6 +2,8 @@ package com.elminster.easy.rpc.client;
 
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
+import com.elminster.easy.rpc.context.RpcContext;
+import com.elminster.easy.rpc.exception.ConnectionException;
 import com.elminster.easy.rpc.exception.RpcException;
 
 /**
@@ -27,6 +29,13 @@ public interface RpcClient {
   public RpcEncodingFactory getEncodingFactory();
 
   /**
+   * Get the RPC context;
+   * 
+   * @return the RPC context
+   */
+  public RpcContext getRpcContext();
+
+  /**
    * Is using the secure connection?
    * 
    * @return is using the secure connection?
@@ -39,7 +48,7 @@ public interface RpcClient {
    * @throws RpcException
    *           on error
    */
-  public void connect() throws RpcException;
+  public void connect() throws ConnectionException;
 
   /**
    * Disconnect from the RPC server.
@@ -52,11 +61,25 @@ public interface RpcClient {
    * @return is connected to the RPC server?
    */
   public boolean isConnected();
+  
+  /**
+   * Get version.
+   * @return the version
+   */
+  public String getVersion();
 
   /**
-   * Is it a stay connection long or just a one call connection?
+   * Remote Method Call.
    * 
-   * @return Is it a connection stay long or just a one call connection?
+   * @param serviceName
+   *          the service name
+   * @param methodName
+   *          the method name
+   * @param args
+   *          the args
+   * @return result
+   * @throws Throwable
+   *           on error
    */
-  public boolean isLongConnection();
+  public Object invokeService(String serviceName, String methodName, Object[] args) throws Throwable;
 }

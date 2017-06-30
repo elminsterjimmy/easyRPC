@@ -59,5 +59,10 @@
       <artifactId>esay-rpc-common</artifactId>
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
+    <dependency>
+      <groupId>com.elminster</groupId>
+      <artifactId>esay-rpc-client-ifs</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
   </dependencies>
 </project>
