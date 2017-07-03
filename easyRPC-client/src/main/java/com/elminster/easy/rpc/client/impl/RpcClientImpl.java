@@ -107,8 +107,7 @@ public class RpcClientImpl implements RpcClient {
    */
   @Override
   public boolean isConnected() {
-    Assert.notNull(container, "Rpc client still not connect to any server!");
-    return container.isConnected();
+    return null != container && container.isConnected();
   }
 
   /**

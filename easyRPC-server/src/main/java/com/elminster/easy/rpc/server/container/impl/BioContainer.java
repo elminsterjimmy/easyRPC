@@ -1,5 +1,6 @@
 package com.elminster.easy.rpc.server.container.impl;
 
+import java.io.IOException;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -19,16 +20,16 @@ import com.elminster.easy.rpc.server.container.listener.impl.ServerListenerFacto
  * @author jinggu
  * @version 1.0
  */
-public class SocketContainer extends ContainerBase implements Container {
+public class BioContainer extends ContainerBase implements Container {
   
-  private static final Logger logger = LoggerFactory.getLogger(SocketContainer.class);
+  private static final Logger logger = LoggerFactory.getLogger(BioContainer.class);
 
   private static final int RETRY_THRESHOLD = 15;
   private static final int RETRY_INTERVAL = 500;
   
   private volatile boolean isStop = true;
 
-  public SocketContainer(RpcServer rpcServer, ConnectionEndpoint endpoint) {
+  public BioContainer(RpcServer rpcServer, ConnectionEndpoint endpoint) {
     super(rpcServer, endpoint);
   }
 
@@ -41,6 +42,7 @@ public class SocketContainer extends ContainerBase implements Container {
   @Override
   protected void serve() throws Exception {
     ServerListener listener = ServerListenerFactory.INSTANCE.getServerListener(rpcServer, endpoint);
+    listener.listen();
     setServing(true);
     
     isStop = false;
@@ -64,7 +66,8 @@ public class SocketContainer extends ContainerBase implements Container {
             }
           }
         }
-      } catch (Exception e) {
+      } catch (IOException e) {
+        ;
       }
     }
     setServing(false);

@@ -80,8 +80,9 @@ public class BioContainerImpl implements Container {
         String clientVersion = rpcClient.getVersion();
         invokerContext.setInvokerVersion(clientVersion);
         versionProtocol.setVersion(clientVersion);
-
         versionProtocol.encode();
+        
+        versionProtocol.decode();
         String serverVersion = versionProtocol.getVersion();
         invokerContext.setInvokeeVersion(serverVersion);
 
@@ -92,6 +93,10 @@ public class BioContainerImpl implements Container {
             // server force version check throw exception
             throw new VersionCompatibleException(msg);
           }
+        }
+        
+        if (!versionProtocol.isCompleted()) {
+          throw new RpcException("Unexpect retrun from Version Protocol.");
         }
 
         processor = new BioRpcClientProcessor(encodingFactory, invokerContext);

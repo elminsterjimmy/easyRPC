@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -12,6 +14,11 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.common.misc.Version;
+import com.elminster.common.thread.IJobMonitor;
+import com.elminster.common.thread.Job;
+import com.elminster.common.thread.SaveAndNotifyUncatchedExceptionHandler;
+import com.elminster.common.thread.ThreadUncatchedExceptionEvent;
+import com.elminster.common.threadpool.ThreadPool;
 import com.elminster.common.util.Assert;
 import com.elminster.easy.rpc.codec.CoreCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
@@ -22,7 +29,6 @@ import com.elminster.easy.rpc.context.impl.SimpleConnectionEndpoint;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
-import com.elminster.easy.rpc.server.container.exception.StartContainerException;
 import com.elminster.easy.rpc.server.container.exception.StopContainerException;
 import com.elminster.easy.rpc.server.container.impl.ContainerFactoryImpl;
 import com.elminster.easy.rpc.server.exception.ServerException;
@@ -36,7 +42,7 @@ import com.elminster.easy.rpc.service.RpcService;
  * @author jinggu
  * @version 1.0
  */
-public class RpcServerImpl implements RpcServer {
+public class RpcServerImpl implements RpcServer, Observer {
 
   /** the logger. */
   private static final Logger logger = LoggerFactory.getLogger(RpcServerImpl.class);
@@ -107,18 +113,28 @@ public class RpcServerImpl implements RpcServer {
       listener.beforeServe(new RpcServerListenEvent(endpoint));
     }
 
-    Container container;
     try {
-      container = ContainerFactoryImpl.INSTANCE.getContainer(this, endpoint);
-      container.start();
+      final Container container = ContainerFactoryImpl.INSTANCE.getContainer(this, endpoint);
       this.containers.add(container);
-    } catch (StartContainerException | ObjectInstantiationExcption e) {
+      Job listenJob = new Job(containers.size(), container.getClass().getName()) {
+        
+        @Override
+        protected JobStatus doWork(IJobMonitor monitor) throws Throwable {
+          container.start();
+          return JobStatus.DONE;
+        }
+      };
+      SaveAndNotifyUncatchedExceptionHandler handler = new SaveAndNotifyUncatchedExceptionHandler(listenJob);
+      handler.addObserver(this);
+      listenJob.setUncatchedExceptionHandler(handler);
+      ThreadPool.getDefaultThreadPool().execute(listenJob);
+    } catch (ObjectInstantiationExcption e) {
       String message = String.format("Rpc server failed to listen on endpoint: %s.", endpoint);
       logger.error(message, e);
       throw new ServerException(message, e);
     }
   }
-
+  
   /**
    * {@inheritDoc}
    */
@@ -224,5 +240,16 @@ public class RpcServerImpl implements RpcServer {
       count += container.getNumberOfOpenConnections();
     }
     return count;
+  }
+  
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void update(Observable o, Object arg) {
+    if (arg instanceof ThreadUncatchedExceptionEvent) {
+      ThreadUncatchedExceptionEvent event = (ThreadUncatchedExceptionEvent) arg;
+      logger.error(event.toString());
+    }
   }
 }

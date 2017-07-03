@@ -78,11 +78,8 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
       
       try {
         ResponseProtocol responseProtocol = (ResponseProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ResponseProtocol.class, encodingFactory);
-        if (!responseProtocol.isCompleted()) {
-          RpcException rpce = (RpcException) encodingFactory.readObjectNullable();
-          throw rpce;
-        }
         responseProtocol.decode();
+        responseProtocol.complete();
         Object returnValue = null;
         if (!responseProtocol.isVoid()) {
           returnValue = responseProtocol.getReturnValue();

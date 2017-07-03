@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import com.elminster.easy.rpc.codec.CodecRepository;
 import com.elminster.easy.rpc.codec.CodecRepositoryElement;
 import com.elminster.easy.rpc.codec.RpcCodec;
+import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.idl.impl.IDLBasicTypes;
 
 /**
@@ -62,6 +63,7 @@ public class RpcEncodingFactoryBase extends RpcEncodingFactoryImpl {
       }
       addEncodingClass(bt.getTypeClass(), bt.getCodecClass(), bt.getRemoteName());
     }
+    addEncodingClass(RpcException.class.getCanonicalName(), RpcServerExceptionCodec.class, RpcException.class.getCanonicalName());
   }
 
   /**

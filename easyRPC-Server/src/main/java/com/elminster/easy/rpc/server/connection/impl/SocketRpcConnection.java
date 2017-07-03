@@ -26,7 +26,7 @@ import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl;
 import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl.InvokeeContextImplBuilder;
 import com.elminster.easy.rpc.server.processor.ReturnResult;
 import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
-import com.elminster.easy.rpc.server.processor.RpcServiceProcessorFactoryImpl;
+import com.elminster.easy.rpc.server.processor.impl.RpcServiceProcessorFactoryImpl;
 import com.elminster.easy.rpc.version.VersionChecker;
 
 public class SocketRpcConnection extends RpcConnectionImpl {
@@ -174,12 +174,15 @@ public class SocketRpcConnection extends RpcConnectionImpl {
           try {
             processor = RpcServiceProcessorFactoryImpl.INSTANCE.createServiceProcessor(rpcServer);
           } catch (ObjectInstantiationExcption e) {
-            logger.error(String.format(Messages.CANNOT_INS_PROCESSOR.getMessage(), serviceName, invokeContext));
+            String msg = String.format(Messages.CANNOT_INS_PROCESSOR.getMessage(), serviceName, invokeContext);
+            writeException(defaultEncodingFactory, e, msg);
           }
           
           ReturnResult result = null;
           try {
+            beforeProcess(serviceName, methodName, args, invokeContext);
             result = processor.invokeServiceMethod(invokeContext, serviceName, methodName, args);
+            afterProcess(serviceName, methodName, args, result, invokeContext);
           } catch (final Throwable e) {
             if (e instanceof RpcException) {
               requestProtocol.fail();
@@ -212,15 +215,18 @@ public class SocketRpcConnection extends RpcConnectionImpl {
             continue; // start over
           }
           
-          
-          
           Class<?> returnType = result.getReturnType();
           Object returnValue = result.getReturnValue();
           responseProtocol.setVoid(returnType == Void.class || returnType == void.class);
           responseProtocol.setReturnValue(returnValue);
           try {
-            responseProtocol.complete();
             responseProtocol.encode();
+            if (!responseProtocol.isCompleted()) {
+              String message = "Client is not complete for receiving respose.";
+              RpcException e = new RpcException(message);
+              writeRpcException(defaultEncodingFactory, e);
+              continue; // start over
+            }
           } catch (RpcException e) {
             responseProtocol.fail();
             String message = String.format(Messages.CANNOT_ENCODE_RESPONSE.getMessage(), invokeContext);

@@ -1,7 +1,11 @@
 package com.elminster.easy.rpc.server.connection.impl;
 
 import com.elminster.easy.rpc.connection.RpcConnection;
+import com.elminster.easy.rpc.context.InvokeContext;
 import com.elminster.easy.rpc.server.RpcServer;
+import com.elminster.easy.rpc.server.listener.RpcProcessEvent;
+import com.elminster.easy.rpc.server.listener.RpcServerListener;
+import com.elminster.easy.rpc.server.processor.ReturnResult;
 
 abstract public class RpcConnectionImpl implements RpcConnection {
   
@@ -13,8 +17,6 @@ abstract public class RpcConnectionImpl implements RpcConnection {
 
   @Override
   public void run() {
-    // TODO Auto-generated method stub
-    // client check
     doRun();
   }
   
@@ -83,5 +85,17 @@ abstract public class RpcConnectionImpl implements RpcConnection {
     };
     
     abstract public String getMessage();
+  }
+  
+  protected void beforeProcess(String serviceName, String methodName, Object[] args, InvokeContext context) {
+    for (RpcServerListener listener : rpcServer.getServerListeners()) {
+      listener.preProcess(new RpcProcessEvent(serviceName, methodName, args, context));
+    }
+  }
+  
+  protected void afterProcess(String serviceName, String methodName, Object[] args, ReturnResult result, InvokeContext context) {
+    for (RpcServerListener listener : rpcServer.getServerListeners()) {
+      listener.postProcess(new RpcProcessEvent(serviceName, methodName, args, result, context));
+    }
   }
 }

@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
-import com.elminster.easy.rpc.exception.RpcServerException;
 
 /**
  * The RPC Server Exception Codec.
@@ -42,9 +41,8 @@ public class RpcServerExceptionCodec implements RpcCodec {
         return null;
       }
       String errorMessage = encodingFactory.readStringNullable();
-      int errorCode = encodingFactory.readInt32();
 
-      RpcServerException serverException = new RpcServerException(errorMessage, errorCode);
+      RpcException serverException = new RpcException(errorMessage);
       serverException.setCausedByClassName(encodingFactory.readStringNullable());
       serverException.setCausedByStackTrace(encodingFactory.readStringNullable());
 
@@ -63,7 +61,7 @@ public class RpcServerExceptionCodec implements RpcCodec {
           }
           serverException.setStackTrace((StackTraceElement[]) stl.toArray(new StackTraceElement[stl.size()]));
           if (encodingFactory.readInt8() == HAS_MORE) {
-            RpcServerException next = (RpcServerException) decode(encodingFactory);
+            RpcException next = (RpcException) decode(encodingFactory);
             serverException.initCause(next);
           }
         }
@@ -87,11 +85,9 @@ public class RpcServerExceptionCodec implements RpcCodec {
       }
       encodingFactory.writeInt8(NOT_NULL);
 
-      RpcServerException serverException = (RpcServerException) value;
+      RpcException serverException = (RpcException) value;
 
       encodingFactory.writeStringNullable(serverException.getMessage());
-
-      encodingFactory.writeInt32(serverException.getErrorCode());
 
       encodingFactory.writeStringNullable(serverException.getCausedByClassName());
 
@@ -120,7 +116,7 @@ public class RpcServerExceptionCodec implements RpcCodec {
           cause = cause.getCause();
           if (cause != null) {
             encodingFactory.writeInt8(HAS_MORE);
-            RpcServerException next = new RpcServerException(cause.getClass().getCanonicalName() + ":" + cause.getMessage(), cause, serverException.getErrorCode());
+            RpcException next = new RpcException(cause.getClass().getCanonicalName() + ":" + cause.getMessage(), cause);
             encode(next, encodingFactory);
           } else {
             encodingFactory.writeInt8(NO_MORE);

@@ -29,12 +29,12 @@ public class ProxyInvocationHandler implements InvocationHandler {
   }
 
   private String getServiceName(Rpc rpc) {
-    String servieName = rpc.value();
-    if (null == servieName) {
+    String name = rpc.value();
+    if (null == name) {
       String simpleName = rpcInterface.getSimpleName();
       return simpleName.substring(0, simpleName.length() - 2);
     }
-    return serviceName;
+    return name;
   }
 
   public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {

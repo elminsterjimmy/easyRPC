@@ -9,11 +9,11 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.common.util.ExceptionUtil;
 import com.elminster.easy.rpc.connection.SocketFactory;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
-import com.elminster.easy.rpc.exception.ObjectInstantiationExcption;
 import com.elminster.easy.rpc.registery.SocketFactoryRegsitery;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.listener.ServerListener;
@@ -53,6 +53,9 @@ abstract public class ServerListenerBase implements ServerListener {
   public void listen() throws IOException {
     serverSocket = socketFactory.createServerSocket(endpoint.getPort(), endpoint.useSecureSocket());
     setupServerSocket(serverSocket);
+    for (RpcServerListener l : rpcServer.getServerListeners()) {
+      l.afterListened(new RpcServerListenEvent(endpoint));
+    }
   }
 
   protected void setupServerSocket(ServerSocket serverSocket) {

@@ -7,6 +7,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.elminster.common.threadpool.ThreadPool;
 import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.server.RpcServer;
@@ -28,14 +29,14 @@ abstract public class ContainerBase implements Container {
   /** the lock. */
   protected Lock lock = new ReentrantLock();
   /** the worker thread pool. */
-  private ThreadPoolExecutor workerThreadPool;
+  private final ThreadPoolExecutor workerThreadPool;
   /** the open connections. */
   private final List<RpcConnection> openConnections = new LinkedList<>();
-  
 
   public ContainerBase(RpcServer rpcServer, ConnectionEndpoint endpoint) {
     this.rpcServer = rpcServer;
     this.endpoint = endpoint;
+    this.workerThreadPool = ThreadPool.createThreadPool(rpcServer.getContext().getWorkerThreadPoolConfiguration()).getExecutor();
   }
 
   /**
@@ -60,9 +61,9 @@ abstract public class ContainerBase implements Container {
   }
 
   abstract protected void startWorkerThreads();
-  
+
   abstract protected void serve() throws Exception;
-  
+
   protected void setServing(boolean isServing) {
     this.isServing = isServing;
   }
@@ -74,7 +75,7 @@ abstract public class ContainerBase implements Container {
   public void stop(boolean closeConnections) throws StopContainerException {
     try {
       stopServe();
-      
+
       if (closeConnections) {
         try {
           this.lock.lock();
@@ -94,9 +95,9 @@ abstract public class ContainerBase implements Container {
       isServing = false;
     }
   }
-  
+
   abstract protected void stopServe() throws Exception;
-  
+
   /**
    * {@inheritDoc}
    */
@@ -104,7 +105,7 @@ abstract public class ContainerBase implements Container {
   public boolean isServing() {
     return isServing;
   }
-  
+
   /**
    * {@inheritDoc}
    */
@@ -128,7 +129,6 @@ abstract public class ContainerBase implements Container {
       lock.unlock();
     }
   }
-
 
   /**
    * {@inheritDoc}

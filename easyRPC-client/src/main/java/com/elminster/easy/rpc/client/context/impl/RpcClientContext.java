@@ -1,5 +1,8 @@
 package com.elminster.easy.rpc.client.context.impl;
 
+import com.elminster.common.threadpool.ThreadPoolConfiguration;
+import com.elminster.easy.rpc.client.container.impl.BioContainerImpl;
+import com.elminster.easy.rpc.connection.impl.StreamSocketFactoryImpl;
 import com.elminster.easy.rpc.context.RpcContext;
 
 public class RpcClientContext implements RpcContext {
@@ -44,5 +47,16 @@ public class RpcClientContext implements RpcContext {
   @Override
   public String getServiceProcessorClassName() {
     return null;
+  }
+  @Override
+  public ThreadPoolConfiguration getWorkerThreadPoolConfiguration() {
+    return null;
+  }
+  
+  public static RpcContext createBioClientContext() {
+    RpcClientContext context = new RpcClientContext();
+    context.setClientContainerClassName(BioContainerImpl.class.getName());
+    context.setSocketFactoryClassName(StreamSocketFactoryImpl.class.getName());
+    return context;
   }
 }

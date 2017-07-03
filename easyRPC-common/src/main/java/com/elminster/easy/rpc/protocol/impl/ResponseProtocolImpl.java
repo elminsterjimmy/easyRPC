@@ -17,14 +17,14 @@ public class ResponseProtocolImpl extends ProtocolImpl implements ResponseProtoc
 
   @Override
   public void encode() throws IOException, RpcException {
-    // TODO Auto-generated method stub
-    
+    encodingFactory.writeIsNotNull(isVoid);
+    encodingFactory.writeObjectNullable(returnValue);
   }
 
   @Override
   public void decode() throws IOException, RpcException {
-    // TODO Auto-generated method stub
-    
+    isVoid = encodingFactory.readIsNotNull();
+    returnValue = encodingFactory.readObjectNullable();
   }
 
   @Override
