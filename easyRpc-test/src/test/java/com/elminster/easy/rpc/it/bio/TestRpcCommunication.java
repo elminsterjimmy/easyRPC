@@ -30,7 +30,7 @@ public class TestRpcCommunication {
     ConnectionEndpoint endpoint = SimpleConnectionEndpoint.localhostConnectionEndpoint(9100);
 
     final RpcServer rpcServer = RpcServerFactoryImpl.INSTANCE.createRpcServer(serverContext);
-    rpcServer.addService(new TestRpcServiceImpl());
+    rpcServer.addService(new RpcTestServiceImpl());
     rpcServer.listen(9100);
 
     waitServerUp(rpcServer);
@@ -38,7 +38,7 @@ public class TestRpcCommunication {
     RpcClient rpcClient = RpcClientFactoryImpl.INSTANCE.createRpcClient(endpoint, clientContext);
 
     RpcProxy proxy = new DynamicProxy();
-    TestIf testIf = proxy.makeProxy(TestIf.class, rpcClient);
+    RpcTestIf testIf = proxy.makeProxy(RpcTestIf.class, rpcClient);
 
     String helloWord = testIf.testString("world");
     Assert.assertEquals("hello world", helloWord);

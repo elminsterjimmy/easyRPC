@@ -5,7 +5,7 @@ import java.sql.Timestamp;
 import com.elminster.easy.rpc.service.Rpc;
 
 @Rpc("Test")
-public interface TestIf {
+public interface RpcTestIf {
 
   public String testString(String world);
   

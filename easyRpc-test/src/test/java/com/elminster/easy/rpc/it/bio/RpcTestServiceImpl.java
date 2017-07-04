@@ -4,7 +4,7 @@ import java.sql.Timestamp;
 
 import com.elminster.easy.rpc.service.RpcService;
 
-public class TestRpcServiceImpl implements RpcService, TestIf {
+public class RpcTestServiceImpl implements RpcService, RpcTestIf {
 
   @Override
   public String[] getServiceMethods() {
