@@ -9,6 +9,7 @@ import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.common.util.Assert;
 import com.elminster.common.util.ReflectUtil;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol;
 import com.elminster.easy.rpc.protocol.Protocol;
 import com.elminster.easy.rpc.protocol.ProtocolFactory;
 import com.elminster.easy.rpc.protocol.RequestHeaderProtocol;
@@ -36,6 +37,7 @@ public class ProtocolFactoryImpl implements ProtocolFactory {
     interfaces2classes.put(RequestHeaderProtocol.class, RequestHeaderProtocalImpl.class);
     interfaces2classes.put(RequestProtocol.class, RequestProtocolImpl.class);
     interfaces2classes.put(ResponseProtocol.class, ResponseProtocolImpl.class);
+    interfaces2classes.put(ConfirmFrameProtocol.class, ConfirmFrameProtocolImpl.class);
   }
   
   private ProtocolFactoryImpl() {

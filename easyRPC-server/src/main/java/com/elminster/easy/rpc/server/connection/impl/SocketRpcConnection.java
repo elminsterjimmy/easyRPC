@@ -15,6 +15,8 @@ import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.exception.VersionCompatibleException;
+import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol;
+import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol.Frame;
 import com.elminster.easy.rpc.protocol.RequestHeaderProtocol;
 import com.elminster.easy.rpc.protocol.RequestProtocol;
 import com.elminster.easy.rpc.protocol.ResponseProtocol;
@@ -68,10 +70,12 @@ public class SocketRpcConnection extends RpcConnectionImpl {
       ShakehandProtocol shakehandProtocol;
       VersionProtocol versionProtocol;
       RequestHeaderProtocol requestHeaderProtocol;
+      ConfirmFrameProtocol confirmFrameProtocol;
       try {
         shakehandProtocol = (ShakehandProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ShakehandProtocol.class, defaultEncodingFactory);
         versionProtocol = (VersionProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(VersionProtocol.class, defaultEncodingFactory);
         requestHeaderProtocol = (RequestHeaderProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(RequestHeaderProtocol.class, defaultEncodingFactory);
+        confirmFrameProtocol = (ConfirmFrameProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ConfirmFrameProtocol.class, defaultEncodingFactory);
       } catch (ObjectInstantiationExcption e1) {
         logger.error("Cannot instantiate base protocols, and this should NOT happened!");
         defaultEncodingFactory.writeIsNotNull(false);
@@ -80,7 +84,8 @@ public class SocketRpcConnection extends RpcConnectionImpl {
       try {
         // shakehand
         shakehandProtocol.decode();
-        shakehandProtocol.complete();
+        
+        confirmFrameProtocol.nextFrame(Frame.FRAME_VERSION.getFrame());
       } catch (IOException ioe) {
         logger.error(String.format(Messages.CLIENT_DISCONNECTED.getMessage(), remoteAddr, remotePort));
         return;
@@ -103,17 +108,16 @@ public class SocketRpcConnection extends RpcConnectionImpl {
         if (rpcServer.isVersionCheck()) {
           if (!VersionChecker.compatible(clientVersion, serverVersion)) {
             // return exception and disconnection
+            confirmFrameProtocol.nextFrame(Frame.FRAME_FAIL.getFrame());
             String msg = String.format("Incompatible versions! Server version is [%s] but Client version is [%s].", serverVersion, clientVersion);
-            versionProtocol.fail();
             throw new VersionCompatibleException(msg);
           }
         }
-        versionProtocol.complete();
       } catch (IOException e) {
         logger.error(String.format(Messages.CLIENT_DISCONNECTED.getMessage(), invokeContext));
         return;
       } catch (RpcException rpce) {
-        versionProtocol.fail();
+        confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
         writeRpcException(defaultEncodingFactory, rpce);
         return;
       }
@@ -125,9 +129,10 @@ public class SocketRpcConnection extends RpcConnectionImpl {
           ResponseProtocol responseProtocol = null;
           
           try {
+            confirmFrameProtocol.nextFrame(Frame.FRAME_HEADER.getFrame());
             requestHeaderProtocol.decode();
           } catch (RpcException rpce) {
-            requestHeaderProtocol.fail();
+            confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
             String message = String.format(Messages.CANNOT_DECODE_REQUEST.getMessage(), invokeContext);
             writeException(defaultEncodingFactory, rpce, message);
             continue;
@@ -137,7 +142,7 @@ public class SocketRpcConnection extends RpcConnectionImpl {
 
           RpcEncodingFactory rpcEncodingFactory = rpcServer.getEncodingFactory(encodingName, coreCodec);
           if (null == rpcEncodingFactory) {
-            requestHeaderProtocol.fail();
+            confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
             String message = String.format(Messages.CANNOT_FOUND_ENCODINGFACTORY.getMessage(), encodingName, invokeContext);
             RpcException rpcException = new RpcException(message);
             writeRpcException(defaultEncodingFactory, rpcException);
@@ -146,10 +151,10 @@ public class SocketRpcConnection extends RpcConnectionImpl {
 
           try {
             requestProtocol = (RequestProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(RequestProtocol.class, rpcEncodingFactory);
-            requestHeaderProtocol.complete();
+            confirmFrameProtocol.nextFrame(Frame.FRAME_REQUEST.getFrame());
           } catch (ObjectInstantiationExcption e) {
             // unexpected error
-            requestHeaderProtocol.fail();
+            confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
             String message = "Cannot instantiate request protocols, and this should NOT happened!";
             writeException(defaultEncodingFactory, e, message);
             continue; // start over
@@ -158,7 +163,7 @@ public class SocketRpcConnection extends RpcConnectionImpl {
           try {
             requestProtocol.decode();
           } catch (RpcException rpce) {
-            requestProtocol.fail();
+            confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
             String message = String.format(Messages.CANNOT_DECODE_REQUEST.getMessage(), invokeContext);
             writeException(defaultEncodingFactory, rpce, message);
             continue;
@@ -185,7 +190,7 @@ public class SocketRpcConnection extends RpcConnectionImpl {
             afterProcess(serviceName, methodName, args, result, invokeContext);
           } catch (final Throwable e) {
             if (e instanceof RpcException) {
-              requestProtocol.fail();
+              confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
               writeRpcException(defaultEncodingFactory, (RpcException)e);
               continue; // start over
             } else {
@@ -206,10 +211,10 @@ public class SocketRpcConnection extends RpcConnectionImpl {
           
           try {
             responseProtocol = (ResponseProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ResponseProtocol.class, rpcEncodingFactory);
-            requestProtocol.complete();
+            confirmFrameProtocol.nextFrame(Frame.FRAME_RESPONSE.getFrame());
           } catch (ObjectInstantiationExcption e) {
             // unexpected error
-            requestHeaderProtocol.fail();
+            confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
             String message = "Cannot instantiate request protocols, and this should NOT happened!";
             writeException(defaultEncodingFactory, e, message);
             continue; // start over
@@ -221,14 +226,8 @@ public class SocketRpcConnection extends RpcConnectionImpl {
           responseProtocol.setReturnValue(returnValue);
           try {
             responseProtocol.encode();
-            if (!responseProtocol.isCompleted()) {
-              String message = "Client is not complete for receiving respose.";
-              RpcException e = new RpcException(message);
-              writeRpcException(defaultEncodingFactory, e);
-              continue; // start over
-            }
           } catch (RpcException e) {
-            responseProtocol.fail();
+            confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
             String message = String.format(Messages.CANNOT_ENCODE_RESPONSE.getMessage(), invokeContext);
             writeException(defaultEncodingFactory, e, message);
             continue; // start over

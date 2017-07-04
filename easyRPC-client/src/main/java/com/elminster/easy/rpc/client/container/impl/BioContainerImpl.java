@@ -25,6 +25,8 @@ import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.exception.VersionCompatibleException;
+import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol;
+import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol.Frame;
 import com.elminster.easy.rpc.protocol.ShakehandProtocol;
 import com.elminster.easy.rpc.protocol.VersionProtocol;
 import com.elminster.easy.rpc.protocol.impl.ProtocolFactoryImpl;
@@ -68,9 +70,10 @@ public class BioContainerImpl implements Container {
 
         // shakehand
         ShakehandProtocol shakehandProtocol = (ShakehandProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ShakehandProtocol.class, encodingFactory);
+        ConfirmFrameProtocol confirmFrameProtocol = (ConfirmFrameProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ConfirmFrameProtocol.class, encodingFactory);
         shakehandProtocol.encode();
 
-        if (!shakehandProtocol.isCompleted()) {
+        if (!confirmFrameProtocol.expact(Frame.FRAME_VERSION.getFrame())) {
           throw new RpcException("Unexpect retrun from Shakehand Protocol.");
         }
 
@@ -85,20 +88,16 @@ public class BioContainerImpl implements Container {
         versionProtocol.decode();
         String serverVersion = versionProtocol.getVersion();
         invokerContext.setInvokeeVersion(serverVersion);
-
+        
         if (!VersionChecker.compatible(serverVersion, clientVersion)) {
           String msg = String.format("Incompatible versions! Server version is [%s] but Client version is [%s].", serverVersion, clientVersion);
           logger.warn(msg);
-          if (!versionProtocol.isCompleted()) {
+          if (confirmFrameProtocol.expact(Frame.FRAME_FAIL.getFrame())) {
             // server force version check throw exception
             throw new VersionCompatibleException(msg);
           }
         }
         
-        if (!versionProtocol.isCompleted()) {
-          throw new RpcException("Unexpect retrun from Version Protocol.");
-        }
-
         processor = new BioRpcClientProcessor(encodingFactory, invokerContext);
       } catch (IOException | ObjectInstantiationExcption | RpcException e) {
         closeStreams();
