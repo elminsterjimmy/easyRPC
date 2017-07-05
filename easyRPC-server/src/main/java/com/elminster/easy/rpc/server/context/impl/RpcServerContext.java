@@ -4,30 +4,23 @@ import com.elminster.common.threadpool.ThreadPoolConfiguration;
 import com.elminster.easy.rpc.connection.impl.StreamSocketFactoryImpl;
 import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.server.container.impl.BioContainer;
-import com.elminster.easy.rpc.server.container.listener.impl.BioServerListenerImpl;
 import com.elminster.easy.rpc.server.processor.impl.SyncRpcServiceProcessor;
 
 public class RpcServerContext implements RpcContext {
 
   private String serverContainerClassName;
-  private String serverListenerClassName;
   private String serviceProcessorClassName;
   private String socketFactoryClassName;
   private Integer clientTimeout;
   private Boolean clientTcpNoDelay;
   private ThreadPoolConfiguration workerThreadPoolConfiguration;
+  private Integer readerWorkerCount;
   
   public String getServerContainerClassName() {
     return serverContainerClassName;
   }
   public void setServerContainerClassName(String serverContainerClassName) {
     this.serverContainerClassName = serverContainerClassName;
-  }
-  public String getServerListenerClassName() {
-    return serverListenerClassName;
-  }
-  public void setServerListenerClassName(String serverListenerClassName) {
-    this.serverListenerClassName = serverListenerClassName;
   }
   public String getServiceProcessorClassName() {
     return serviceProcessorClassName;
@@ -64,14 +57,19 @@ public class RpcServerContext implements RpcContext {
   public void setWorkerThreadPoolConfiguration(ThreadPoolConfiguration workerThreadPoolConfiguration) {
     this.workerThreadPoolConfiguration = workerThreadPoolConfiguration;
   }
-  
+  public Integer getReaderWorkerCount() {
+    return readerWorkerCount;
+  }
+  public void setReaderWorkerCount(Integer readerWorkerCount) {
+    this.readerWorkerCount = readerWorkerCount;
+  }
   public static RpcContext createBioServerContext() {
     RpcServerContext context = new RpcServerContext();
     context.setServerContainerClassName(BioContainer.class.getName());
-    context.setServerListenerClassName(BioServerListenerImpl.class.getName());
     context.setServiceProcessorClassName(SyncRpcServiceProcessor.class.getName());
     context.setSocketFactoryClassName(StreamSocketFactoryImpl.class.getName());
     context.setWorkerThreadPoolConfiguration(new ThreadPoolConfiguration());
+    context.setReaderWorkerCount(10);
     return context;
   }
 }

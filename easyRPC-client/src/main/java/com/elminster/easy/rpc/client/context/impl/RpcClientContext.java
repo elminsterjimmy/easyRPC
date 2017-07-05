@@ -41,15 +41,15 @@ public class RpcClientContext implements RpcContext {
     return null;
   }
   @Override
-  public String getServerListenerClassName() {
-    return null;
-  }
-  @Override
   public String getServiceProcessorClassName() {
     return null;
   }
   @Override
   public ThreadPoolConfiguration getWorkerThreadPoolConfiguration() {
+    return null;
+  }
+  @Override
+  public Integer getReaderWorkerCount() {
     return null;
   }
   

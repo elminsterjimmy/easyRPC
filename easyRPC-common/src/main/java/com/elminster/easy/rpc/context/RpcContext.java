@@ -6,9 +6,9 @@ public interface RpcContext {
   
   /////// server side context
   public String getServerContainerClassName();
-  public String getServerListenerClassName();
   public String getServiceProcessorClassName();
   public ThreadPoolConfiguration getWorkerThreadPoolConfiguration();
+  public Integer getReaderWorkerCount();
   
   /////// client side context
   public String getClientContainerClassName();
