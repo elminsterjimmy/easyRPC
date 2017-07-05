@@ -7,10 +7,23 @@ import java.nio.channels.SocketChannel;
 public class NioChannelUtil implements IoUtil {
   
   private SocketChannel socketChannel;
-  private ByteBuffer writeByteBuffer = ByteBuffer.allocate(1024);
-  private ByteBuffer readByteBuffer = ByteBuffer.allocate(1024);
-  private ByteBufferIoImpl readIo = new ByteBufferIoImpl(readByteBuffer);
-  private ByteBufferIoImpl writeIo = new ByteBufferIoImpl(writeByteBuffer);
+  
+  /** shared byte buffer. */
+  private static ThreadLocal<ByteBuffer> writeByteBuffer = new ThreadLocal<ByteBuffer>() {
+
+    protected ByteBuffer initialValue() {
+      return ByteBuffer.allocate(1024);
+    }
+  };
+  private static ThreadLocal<ByteBuffer> readByteBuffer = new ThreadLocal<ByteBuffer>() {
+    
+    protected ByteBuffer initialValue() {
+      return ByteBuffer.allocate(1024);
+    }
+  };
+  
+  private ByteBufferIoImpl readIo = new ByteBufferIoImpl(readByteBuffer.get());
+  private ByteBufferIoImpl writeIo = new ByteBufferIoImpl(writeByteBuffer.get());
   
   public NioChannelUtil(SocketChannel socketChannel) {
     this.socketChannel = socketChannel;
@@ -20,21 +33,21 @@ public class NioChannelUtil implements IoUtil {
   public void write(byte[] bytes, int off, int len) throws IOException {
     int curLen = len;
     while (curLen > 0) {
-      int size = Math.min(writeByteBuffer.capacity(), curLen);
+      int size = Math.min(writeByteBuffer.get().capacity(), curLen);
       writeIo.write(bytes, 0, size);
-      writeByteBuffer.flip();
-      socketChannel.write(writeByteBuffer);
-      writeByteBuffer.clear();
-      curLen -= writeByteBuffer.capacity();
+      writeByteBuffer.get().flip();
+      socketChannel.write(writeByteBuffer.get());
+      writeByteBuffer.get().clear();
+      curLen -= writeByteBuffer.get().capacity();
     }
   }
 
   @Override
   public int read(byte[] bytes, int off, int len) throws IOException {
-    int readBytes = socketChannel.read(readByteBuffer);
-    readByteBuffer.rewind();
+    int readBytes = socketChannel.read(readByteBuffer.get());
+    readByteBuffer.get().rewind();
     readBytes = readIo.read(bytes, off, len);
-    readByteBuffer.compact();
+    readByteBuffer.get().compact();
     return readBytes;
   }
 }
