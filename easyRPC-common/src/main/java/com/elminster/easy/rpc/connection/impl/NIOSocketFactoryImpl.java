@@ -5,7 +5,8 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+
+import javax.net.SocketFactory;
 
 import com.elminster.common.util.Assert;
 import com.elminster.easy.rpc.connection.NIOSocketFactory;
@@ -41,11 +42,12 @@ public class NIOSocketFactoryImpl implements NIOSocketFactory {
   @Override
   public Socket createClientSocket(ConnectionEndpoint connectionEndpoint) throws IOException {
     vaildateEndpoint(connectionEndpoint);
-    SocketChannel clientChannel = SocketChannel.open();
-    clientChannel.configureBlocking(false);
-    Socket clientSocket = clientChannel.socket();
-    clientChannel.connect(new InetSocketAddress(connectionEndpoint.getHost(), connectionEndpoint.getPort()));
-    return clientSocket;
+//    SocketChannel clientChannel = SocketChannel.open();
+//    clientChannel.configureBlocking(false);
+//    Socket clientSocket = clientChannel.socket();
+//    clientChannel.connect(new InetSocketAddress(connectionEndpoint.getHost(), connectionEndpoint.getPort()));
+//    return clientSocket;
+    return SocketFactory.getDefault().createSocket(connectionEndpoint.getHost(), connectionEndpoint.getPort());
   }
 
   /**

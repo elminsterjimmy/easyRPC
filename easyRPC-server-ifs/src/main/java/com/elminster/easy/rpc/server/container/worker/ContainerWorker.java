@@ -1,20 +1,13 @@
 package com.elminster.easy.rpc.server.container.worker;
 
+import com.elminster.common.thread.IJob;
+
 /**
  * The Container Worker.
  * 
  * @author jinggu
  * @version 1.0
  */
-public interface ContainerWorker {
+public interface ContainerWorker extends IJob {
 
-  public void doAccept();
-  
-  public void doConnect();
-  
-  public void doRead();
-  
-  public void doWrite();
-  
-  public void doInvaild();
 }
