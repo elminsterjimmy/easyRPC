@@ -1,5 +1,6 @@
 package com.elminster.easy.rpc.client.processor.impl;
 
+import java.io.EOFException;
 import java.io.IOException;
 
 import org.slf4j.Logger;
@@ -40,13 +41,14 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
    */
   @Override
   public Object invokeService(String serviceName, String methodName, Object[] args) throws Throwable {
+    long startTs = System.currentTimeMillis();
     if (logger.isDebugEnabled()) {
       String methodArgs = generMethodArgs(args);
-      logger.debug(String.format("Calling RPC [%s@%s] with args %s on context [%s]", methodName, serviceName, methodArgs, invokerContext));
+      logger.debug(String.format("Before calling RPC [%s@%s] with args %s on context [%s]", methodName, serviceName, methodArgs, invokerContext));
     }
     try {
       ConfirmFrameProtocol confirmFrameProtocol = (ConfirmFrameProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ConfirmFrameProtocol.class, encodingFactory);
-      
+      confirmFrameProtocol.nextFrame(Frame.FRAME_HEADER.getFrame());
       if (!confirmFrameProtocol.expact(Frame.FRAME_HEADER.getFrame())) {
         RpcException rpce = (RpcException) encodingFactory.readObjectNullable();
         throw rpce;
@@ -95,7 +97,7 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
 
         if (logger.isDebugEnabled()) {
           String methodArgs = generMethodArgs(args);
-          logger.debug(String.format("Calling RPC [%s@%s] with args %s on context [%s] returns [%s]", methodName, serviceName, methodArgs, invokerContext, returnValue));
+          logger.debug(String.format("After calling RPC [%s@%s] with args %s on context [%s] returns [%s] within [%d] ms.", methodName, serviceName, methodArgs, invokerContext, returnValue, System.currentTimeMillis() - startTs));
         }
 
         if (returnValue instanceof Throwable) {
@@ -110,9 +112,13 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
       }
 
     } catch (IOException ioe) {
-      String msg = String.format("Connection with Rpc Server is broken. Context [%s]", invokerContext);
-      logger.error(msg);
-      throw new RpcException(msg, ioe);
+      if (ioe instanceof EOFException) {
+        String msg = String.format("Connection with Rpc Server is broken. Context [%s]", invokerContext);
+        logger.error(msg);
+        throw new RpcException(msg, ioe);
+      } else {
+        throw ioe;
+      }
     }
   }
 
@@ -120,13 +126,15 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
     StringBuilder sb = new StringBuilder();
     sb.append("[");
     boolean first = true;
-    for (Object arg : args) {
-      if (first) {
-        first = false;
-      } else {
-        sb.append(", ");
+    if (null != args) {
+      for (Object arg : args) {
+        if (first) {
+          first = false;
+        } else {
+          sb.append(", ");
+        }
+        sb.append(arg);
       }
-      sb.append(arg);
     }
     sb.append("]");
     return sb.toString();
