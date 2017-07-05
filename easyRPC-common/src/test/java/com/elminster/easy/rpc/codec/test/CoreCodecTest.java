@@ -3,6 +3,7 @@ package com.elminster.easy.rpc.codec.test;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.util.Random;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -11,6 +12,70 @@ import com.elminster.easy.rpc.codec.CoreCodec;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
 
 public class CoreCodecTest {
+  
+  @Test
+  public void testWithThreads() {
+    Thread[] threads = new Thread[20];
+    for (int i = 0; i < threads.length; i++) {
+      threads[i] = new Thread() {
+        Random random = new Random();
+        public void run() {
+          try {
+            testWriteAndReadByte();
+          } catch (IOException e) {
+            Assert.fail();
+          }
+          try {
+            Thread.sleep(random.nextInt(1000));
+          } catch (InterruptedException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+          }
+          try {
+            testWriteAndReadInt();
+          } catch (IOException e) {
+            Assert.fail();
+          }
+          try {
+            Thread.sleep(random.nextInt(1000));
+          } catch (InterruptedException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+          }
+          try {
+            testWriteAndReadLong();
+          } catch (IOException e) {
+            Assert.fail();
+          }
+          try {
+            Thread.sleep(random.nextInt(1000));
+          } catch (InterruptedException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+          }
+          try {
+            testWriteAndReadString();
+          } catch (IOException e) {
+            Assert.fail();
+          }
+        }
+      };
+    }
+    
+    for (Thread thread : threads) {
+      thread.start();
+    }
+    
+    for (Thread thread : threads) {
+      try {
+        thread.join();
+      } catch (InterruptedException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+    }
+  }
+  
 
   @Test
   public void testWriteAndReadByte() throws IOException {

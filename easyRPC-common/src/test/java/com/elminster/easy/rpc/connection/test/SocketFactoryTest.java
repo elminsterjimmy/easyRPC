@@ -31,9 +31,6 @@ import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.registery.SocketFactoryRegsitery;
 
-import sun.nio.ch.ServerSocketAdaptor;
-import sun.nio.ch.SocketAdaptor;
-
 public class SocketFactoryTest {
 
   private ExecutorService executor = Executors.newFixedThreadPool(10);
@@ -224,98 +221,94 @@ public class SocketFactoryTest {
     final CountDownLatch latch = new CountDownLatch(2);
 
     ServerSocket serverSocket = socketFactory.createServerSocket(9005, false);
-    if (serverSocket instanceof sun.nio.ch.ServerSocketAdaptor) {
-      sun.nio.ch.ServerSocketAdaptor adaptor = (ServerSocketAdaptor) serverSocket;
-      final ServerSocketChannel serverChannel = adaptor.getChannel();
+    final ServerSocketChannel serverChannel = serverSocket.getChannel();
 
-      executor.execute(new Runnable() {
+    executor.execute(new Runnable() {
 
-        @Override
-        public void run() {
-          Selector selector;
-          try {
-            selector = Selector.open();
-            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+      @Override
+      public void run() {
+        Selector selector;
+        try {
+          selector = Selector.open();
+          serverChannel.register(selector, SelectionKey.OP_ACCEPT);
 
-            while (true) {
-              if (0 == selector.select(100)) {
-                continue;
+          while (true) {
+            if (0 == selector.select(100)) {
+              continue;
+            }
+
+            Iterator<SelectionKey> selecionKeys = selector.selectedKeys().iterator();
+
+            while (selecionKeys.hasNext()) {
+              SelectionKey selctionKey = selecionKeys.next();
+              // remove the key otherwise the key will be rereaded.
+              selecionKeys.remove();
+
+              if (!selctionKey.isValid()) {
+                cleanupSelctionKey(selctionKey);
               }
-
-              Iterator<SelectionKey> selecionKeys = selector.selectedKeys().iterator();
-
-              while (selecionKeys.hasNext()) {
-                SelectionKey selctionKey = selecionKeys.next();
-                // remove the key otherwise the key will be rereaded.
-                selecionKeys.remove();
-
-                if (!selctionKey.isValid()) {
-                  cleanupSelctionKey(selctionKey);
-                }
-                if (selctionKey.isAcceptable()) {
-                  System.out.println("accpet...");
-                  handleAccept(selctionKey);
-                } else if (selctionKey.isConnectable()) {
-                  System.out.println("connecting...");
-                } else if (selctionKey.isReadable()) {
-                  System.out.println("readable...");
-                  handleRead(selctionKey, serverChannel);
-                } else if (selctionKey.isWritable()) {
-                  System.out.println("writable...");
-                  handleWrite(selctionKey);
-                }
+              if (selctionKey.isAcceptable()) {
+                System.out.println("accpet...");
+                handleAccept(selctionKey);
+              } else if (selctionKey.isConnectable()) {
+                System.out.println("connecting...");
+              } else if (selctionKey.isReadable()) {
+                System.out.println("readable...");
+                handleRead(selctionKey, serverChannel);
+              } else if (selctionKey.isWritable()) {
+                System.out.println("writable...");
+                handleWrite(selctionKey);
               }
             }
-          } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-          } finally {
-            latch.countDown();
           }
+        } catch (IOException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        } finally {
+          latch.countDown();
         }
+      }
 
-        private void cleanupSelctionKey(SelectionKey selctionKey) {
-          selctionKey.cancel();
+      private void cleanupSelctionKey(SelectionKey selctionKey) {
+        selctionKey.cancel();
+      }
+
+      public void handleAccept(SelectionKey key) throws IOException {
+        ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
+        SocketChannel socketChannel = serverSocketChannel.accept();
+        System.out.println("Server: accept client socket " + socketChannel);
+        socketChannel.configureBlocking(false);
+        socketChannel.register(key.selector(), SelectionKey.OP_READ);
+        ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+        key.attach(byteBuffer);
+      }
+
+      public void handleRead(SelectionKey key, ServerSocketChannel serverChannel) throws IOException {
+        SocketChannel socketChannel = (SocketChannel) key.channel();
+        CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(socketChannel);
+        String str = util.readStringAsciiNullable();
+        System.out.println(str);
+        if ("hello".equals(str)) {
+          util.writeStringAsciiNullable("bye");
+          System.out.println("wrote bye");
+        } else if ("bye".equals(str)) {
+          serverChannel.close();
+        } else {
+          Assert.fail("Unexpected result." + str);
         }
+      }
 
-        public void handleAccept(SelectionKey key) throws IOException {
-          ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
-          SocketChannel socketChannel = serverSocketChannel.accept();
-          System.out.println("Server: accept client socket " + socketChannel);
-          socketChannel.configureBlocking(false);
-          socketChannel.register(key.selector(), SelectionKey.OP_READ);
-          ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-          key.attach(byteBuffer);
+      public void handleWrite(SelectionKey key) throws IOException {
+        ByteBuffer byteBuffer = (ByteBuffer) key.attachment();
+        byteBuffer.flip();
+        SocketChannel socketChannel = (SocketChannel) key.channel();
+        socketChannel.write(byteBuffer);
+        if (byteBuffer.hasRemaining()) {
+          key.interestOps(SelectionKey.OP_READ);
         }
-
-        public void handleRead(SelectionKey key, ServerSocketChannel serverChannel) throws IOException {
-          SocketChannel socketChannel = (SocketChannel) key.channel();
-          CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(socketChannel);
-          String str = util.readStringAsciiNullable();
-          System.out.println(str);
-          if ("hello".equals(str)) {
-            util.writeStringAsciiNullable("bye");
-            System.out.println("wrote bye");
-          } else if ("bye".equals(str)) {
-            serverChannel.close();
-          } else {
-            Assert.fail("Unexpected result." + str);
-          }
-        }
-
-        public void handleWrite(SelectionKey key) throws IOException {
-          ByteBuffer byteBuffer = (ByteBuffer) key.attachment();
-          byteBuffer.flip();
-          SocketChannel socketChannel = (SocketChannel) key.channel();
-          socketChannel.write(byteBuffer);
-          if (byteBuffer.hasRemaining()) {
-            key.interestOps(SelectionKey.OP_READ);
-          }
-          byteBuffer.compact();
-        }
-      });
-
-    }
+        byteBuffer.compact();
+      }
+    });
 
     final Socket clientSocket = socketFactory.createClientSocket(new ConnectionEndpoint() {
 
@@ -335,38 +328,35 @@ public class SocketFactoryTest {
       }
     });
 
-    if (clientSocket instanceof sun.nio.ch.SocketAdaptor) {
-      sun.nio.ch.SocketAdaptor adaptor = (SocketAdaptor) clientSocket;
-      final SocketChannel socketChannel = adaptor.getChannel();
-      executor.execute(new Runnable() {
+    final SocketChannel socketChannel = clientSocket.getChannel();
+    executor.execute(new Runnable() {
 
-        @Override
-        public void run() {
-          try {
-            while (!socketChannel.finishConnect())
-              ;
-            CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(socketChannel);
-            util.writeStringAsciiNullable("hello");
-            String str = util.readStringAsciiNullable();
-            System.out.println(str);
-            if (null != str) {
-              if ("bye".equals(str)) {
-                util.writeStringAsciiNullable("bye");
-                clientSocket.close();
-              } else {
-                Assert.fail("unexcpeted result." + str);
-              }
+      @Override
+      public void run() {
+        try {
+          while (!socketChannel.finishConnect())
+            ;
+          CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(socketChannel);
+          util.writeStringAsciiNullable("hello");
+          String str = util.readStringAsciiNullable();
+          System.out.println(str);
+          if (null != str) {
+            if ("bye".equals(str)) {
+              util.writeStringAsciiNullable("bye");
+              clientSocket.close();
+            } else {
+              Assert.fail("unexcpeted result." + str);
             }
-          } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-          } finally {
-            latch.countDown();
           }
+        } catch (IOException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        } finally {
+          latch.countDown();
         }
+      }
 
-      });
-    }
+    });
 
     try {
       latch.await();
@@ -410,17 +400,11 @@ public class SocketFactoryTest {
     // Just in case selector has other keys
     return selector.selectedKeys().contains(socket.keyFor(selector));
   }
-  
-  
+
   class RpcContextAdapter implements RpcContext {
 
     @Override
     public String getServerContainerClassName() {
-      return null;
-    }
-
-    @Override
-    public String getServerListenerClassName() {
       return null;
     }
 
@@ -452,6 +436,12 @@ public class SocketFactoryTest {
 
     @Override
     public ThreadPoolConfiguration getWorkerThreadPoolConfiguration() {
+      // TODO Auto-generated method stub
+      return null;
+    }
+
+    @Override
+    public Integer getReaderWorkerCount() {
       // TODO Auto-generated method stub
       return null;
     }
