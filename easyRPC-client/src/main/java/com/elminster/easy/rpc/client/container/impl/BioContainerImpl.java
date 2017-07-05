@@ -1,5 +1,6 @@
 package com.elminster.easy.rpc.client.container.impl;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -101,6 +102,11 @@ public class BioContainerImpl implements Container {
         processor = new BioRpcClientProcessor(encodingFactory, invokerContext);
       } catch (IOException | ObjectInstantiationExcption | RpcException e) {
         closeStreams();
+        if (e instanceof EOFException) {
+          String msg = String.format("Connection with Rpc Server is broken. Context [%s]", invokerContext);
+          logger.error(msg);
+          throw new ContainerConnectionException(msg, e);
+        }
         throw new ContainerConnectionException(String.format("Cannot create connection to server [%s].", endpoint), e);
       }
     }
