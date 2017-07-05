@@ -92,6 +92,15 @@ public interface RpcServer {
    * @return the encoding factory
    */
   public RpcEncodingFactory getEncodingFactory(String encodingName, CoreCodec coreCodec);
+  
+  /**
+   * Get default encoding factory.
+   * 
+   * @param coreCodec
+   *          the core codec
+   * @return the encoding factory
+   */
+  public RpcEncodingFactory getDefaultEncodingFactory(CoreCodec coreCodec);
 
   /**
    * Check the server uses secure connection?

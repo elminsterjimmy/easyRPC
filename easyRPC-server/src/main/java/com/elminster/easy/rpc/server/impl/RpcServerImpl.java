@@ -14,11 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.common.misc.Version;
-import com.elminster.common.thread.IJobMonitor;
-import com.elminster.common.thread.Job;
-import com.elminster.common.thread.SaveAndNotifyUncatchedExceptionHandler;
 import com.elminster.common.thread.ThreadUncatchedExceptionEvent;
-import com.elminster.common.threadpool.ThreadPool;
 import com.elminster.common.util.Assert;
 import com.elminster.easy.rpc.codec.CoreCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
@@ -29,6 +25,7 @@ import com.elminster.easy.rpc.context.impl.SimpleConnectionEndpoint;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
+import com.elminster.easy.rpc.server.container.exception.StartContainerException;
 import com.elminster.easy.rpc.server.container.exception.StopContainerException;
 import com.elminster.easy.rpc.server.container.impl.ContainerFactoryImpl;
 import com.elminster.easy.rpc.server.exception.ServerException;
@@ -47,6 +44,7 @@ public class RpcServerImpl implements RpcServer, Observer {
   /** the logger. */
   private static final Logger logger = LoggerFactory.getLogger(RpcServerImpl.class);
 
+  private static final String DEFAULT_ENCODING_FACTORY_NAME = "default";
   /** the encoding factories. */
   protected Map<String, RpcEncodingFactory> encodingFactories = new ConcurrentHashMap<>();
   /** the RPC services. */
@@ -61,14 +59,15 @@ public class RpcServerImpl implements RpcServer, Observer {
   private List<RpcServerListener> listeners = new ArrayList<>();
   /** the PRC context. */
   private final RpcContext context;
-  
+
   public RpcServerImpl(RpcContext context) {
     this.context = context;
     addDefaultEncodingFactory();
+
   }
 
   private void addDefaultEncodingFactory() {
-    RpcEncodingFactory defaultEncodingFactory = new RpcEncodingFactoryBase("default");
+    RpcEncodingFactory defaultEncodingFactory = new RpcEncodingFactoryBase(DEFAULT_ENCODING_FACTORY_NAME);
     this.addEncodingFactory(defaultEncodingFactory);
   }
 
@@ -116,25 +115,14 @@ public class RpcServerImpl implements RpcServer, Observer {
     try {
       final Container container = ContainerFactoryImpl.INSTANCE.getContainer(this, endpoint);
       this.containers.add(container);
-      Job listenJob = new Job(containers.size(), container.getClass().getName()) {
-        
-        @Override
-        protected JobStatus doWork(IJobMonitor monitor) throws Throwable {
-          container.start();
-          return JobStatus.DONE;
-        }
-      };
-      SaveAndNotifyUncatchedExceptionHandler handler = new SaveAndNotifyUncatchedExceptionHandler(listenJob);
-      handler.addObserver(this);
-      listenJob.setUncatchedExceptionHandler(handler);
-      ThreadPool.getDefaultThreadPool().execute(listenJob);
-    } catch (ObjectInstantiationExcption e) {
+      container.start();
+    } catch (ObjectInstantiationExcption | StartContainerException e) {
       String message = String.format("Rpc server failed to listen on endpoint: %s.", endpoint);
       logger.error(message, e);
       throw new ServerException(message, e);
     }
   }
-  
+
   /**
    * {@inheritDoc}
    */
@@ -173,9 +161,21 @@ public class RpcServerImpl implements RpcServer, Observer {
    */
   @Override
   public RpcEncodingFactory getEncodingFactory(String encodingName, CoreCodec coreCodec) {
+    RpcEncodingFactory rtn = null;
     RpcEncodingFactory factory = encodingFactories.get(encodingName);
-    factory.setCoreCodec(coreCodec);
-    return factory;
+    if (null != factory) {
+      rtn = factory.cloneEncodingFactory();
+      rtn.setCoreCodec(coreCodec);
+    }
+    return rtn;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public RpcEncodingFactory getDefaultEncodingFactory(CoreCodec coreCodec) {
+    return getEncodingFactory(DEFAULT_ENCODING_FACTORY_NAME, coreCodec);
   }
 
   /**
@@ -204,7 +204,6 @@ public class RpcServerImpl implements RpcServer, Observer {
   public void removeServerListener(RpcServerListener listener) {
     this.listeners.remove(listener);
   }
-
 
   /**
    * {@inheritDoc}
@@ -241,7 +240,7 @@ public class RpcServerImpl implements RpcServer, Observer {
     }
     return count;
   }
-  
+
   /**
    * {@inheritDoc}
    */
