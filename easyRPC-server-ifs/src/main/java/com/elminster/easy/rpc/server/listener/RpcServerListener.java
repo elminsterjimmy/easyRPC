@@ -8,6 +8,8 @@ public interface RpcServerListener extends Listener {
   
   public void afterListened(RpcServerListenEvent event);
   
+  public void onAccept(RpcServerAcceptEvent event);
+  
   public void preProcess(RpcProcessEvent event);
   
   public void postProcess(RpcProcessEvent event);

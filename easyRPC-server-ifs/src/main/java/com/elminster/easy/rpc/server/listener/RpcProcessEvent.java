@@ -46,4 +46,10 @@ public class RpcProcessEvent {
   public InvokeContext getContext() {
     return context;
   }
+  
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("Calling ").append(methodName).append(" from ").append(context.toString());
+    return sb.toString();
+  }
 }
