@@ -16,6 +16,7 @@ import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.registery.SocketFactoryRegsitery;
 import com.elminster.easy.rpc.server.RpcServer;
+import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.container.listener.ServerListener;
 import com.elminster.easy.rpc.server.listener.RpcServerListenEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListener;
@@ -33,14 +34,17 @@ abstract public class ServerListenerBase implements ServerListener {
 
   /** the RPC server. */
   protected final RpcServer rpcServer;
+  /** the container. */
+  protected final Container container;
   /** the Connection Endpoint. */
   protected final ConnectionEndpoint endpoint;
   /** the socket factory. */
   protected SocketFactory socketFactory;
   protected ServerSocket serverSocket;
 
-  public ServerListenerBase(RpcServer rpcServer, ConnectionEndpoint endpoint) {
+  public ServerListenerBase(RpcServer rpcServer, Container container, ConnectionEndpoint endpoint) {
     this.rpcServer = rpcServer;
+    this.container = container;
     this.endpoint = endpoint;
     try {
       socketFactory = SocketFactoryRegsitery.INSTANCE.getSocketFactory(rpcServer.getContext());
@@ -88,7 +92,9 @@ abstract public class ServerListenerBase implements ServerListener {
     for (RpcServerListener listener : listeners) {
       listener.beforeClose(new RpcServerListenEvent(endpoint));
     }
-    serverSocket.close();
+    if (null != serverSocket) {
+      serverSocket.close();
+    }
   }
 
   @Override

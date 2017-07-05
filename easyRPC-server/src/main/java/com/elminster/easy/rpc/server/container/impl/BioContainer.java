@@ -1,18 +1,14 @@
 package com.elminster.easy.rpc.server.container.impl;
 
-import java.io.IOException;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadPoolExecutor;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.elminster.easy.rpc.connection.RpcConnection;
+import com.elminster.common.thread.IJobMonitor;
+import com.elminster.common.thread.Job;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.container.listener.ServerListener;
-import com.elminster.easy.rpc.server.container.listener.impl.ServerListenerFactory;
+import com.elminster.easy.rpc.server.container.listener.impl.BioServerListenerImpl;
+import com.elminster.easy.rpc.server.container.worker.ContainerWorker;
+import com.elminster.easy.rpc.server.container.worker.impl.WorkerJobId;
 
 /**
  * The Socket Container.
@@ -22,60 +18,76 @@ import com.elminster.easy.rpc.server.container.listener.impl.ServerListenerFacto
  */
 public class BioContainer extends ContainerBase implements Container {
   
-  private static final Logger logger = LoggerFactory.getLogger(BioContainer.class);
-
-  private static final int RETRY_THRESHOLD = 15;
-  private static final int RETRY_INTERVAL = 500;
-  
-  private volatile boolean isStop = true;
+  private ContainerWorker listenWorker;
 
   public BioContainer(RpcServer rpcServer, ConnectionEndpoint endpoint) {
     super(rpcServer, endpoint);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected void startWorkerThreads() {
-    // TODO Auto-generated method stub
-
+    ServerListener listener = new BioServerListenerImpl(rpcServer, this, endpoint);
+    listenWorker = new ListenWorker(listener);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected void serve() throws Exception {
-    ServerListener listener = ServerListenerFactory.INSTANCE.getServerListener(rpcServer, endpoint);
-    listener.listen();
-    setServing(true);
-    
-    isStop = false;
-    while (!isStop) {
-      try {
-        RpcConnection connection = listener.accept();
-        int retryCnt = 0;
-        while (true) {
-          ThreadPoolExecutor threadpool = getAsyncWorkerThreadPool();
-          try {
-            threadpool.execute(connection);
-            break;
-          } catch (RejectedExecutionException e) {
-            // TODO retry
-            logger.warn(String.format("Failed to push connection [%s] to thread pool [%s]. Cause: %s.", connection, threadpool, e));
-            if (retryCnt++ < RETRY_THRESHOLD) {
-              logger.debug(String.format("Try to repush connection [%s] to thread pool [%s] after %d ms", connection, threadpool, RETRY_INTERVAL));
-              Thread.sleep(RETRY_INTERVAL);
-            } else {
-              logger.error(String.format("Retry many times to push connection [%s] to thread pool [%s] but failed, drop connection!!", connection, threadpool));
-            }
-          }
-        }
-      } catch (IOException e) {
-        ;
-      }
-    }
-    setServing(false);
+    this.getAsyncWorkerThreadPool().execute(listenWorker);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected void stopServe() throws Exception {
-    isStop = true;
+    listenWorker.cancel();
   }
+  
+  /**
+   * The listen worker.
+   * 
+   * @author jinggu
+   * @version 1.0
+   */
+  class ListenWorker extends Job implements ContainerWorker {
+    
+    private final ServerListener listener;
 
+    public ListenWorker(ServerListener listener) {
+      super(WorkerJobId.BIO_LISTEN_WORKER.getJobId(), "Bio Container Listen Worker.");
+      this.listener = listener;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected JobStatus doWork(IJobMonitor monitor) throws Throwable {
+      try {
+        setServing(true);
+        listener.listen();
+        return monitor.done();
+      } finally {
+        setServing(false);
+        if (null != listener) {
+          listener.close();
+        }
+      }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void cancel() {
+      super.cancel();
+      listener.interrupt();
+    }
+  }
 }

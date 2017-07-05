@@ -2,6 +2,7 @@ package com.elminster.easy.rpc.server.container;
 
 import java.util.concurrent.ThreadPoolExecutor;
 
+import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.server.container.exception.StartContainerException;
 import com.elminster.easy.rpc.server.container.exception.StopContainerException;
@@ -63,4 +64,7 @@ public interface Container {
    */
   public ConnectionEndpoint getConnectionEndpoint();
 
+  public void addOpenConnection(RpcConnection connection);
+  
+  public void removeOpenConnection(RpcConnection connection);
 }

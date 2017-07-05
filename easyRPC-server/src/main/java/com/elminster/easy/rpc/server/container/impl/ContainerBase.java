@@ -1,5 +1,9 @@
 package com.elminster.easy.rpc.server.container.impl;
 
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -7,9 +11,14 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.elminster.common.threadpool.ThreadPool;
+import com.elminster.common.util.ExceptionUtil;
 import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
+import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.container.exception.StartContainerException;
@@ -22,6 +31,8 @@ import com.elminster.easy.rpc.server.container.exception.StopContainerException;
  * @version 1.0
  */
 abstract public class ContainerBase implements Container {
+  
+  private static final Logger logger = LoggerFactory.getLogger(ContainerBase.class);
 
   protected final RpcServer rpcServer;
   protected final ConnectionEndpoint endpoint;
@@ -52,15 +63,15 @@ abstract public class ContainerBase implements Container {
    */
   @Override
   public void start() throws StartContainerException {
-    startWorkerThreads();
     try {
+      startWorkerThreads();
       serve();
     } catch (Exception e) {
       throw new StartContainerException(e);
     }
   }
 
-  abstract protected void startWorkerThreads();
+  abstract protected void startWorkerThreads() throws Exception;
 
   abstract protected void serve() throws Exception;
 
@@ -109,7 +120,7 @@ abstract public class ContainerBase implements Container {
   /**
    * {@inheritDoc}
    */
-  protected void removeOpenConnection(RpcConnection connection) {
+  public void removeOpenConnection(RpcConnection connection) {
     try {
       lock.lock();
       openConnections.remove(connection);
@@ -121,7 +132,7 @@ abstract public class ContainerBase implements Container {
   /**
    * {@inheritDoc}
    */
-  protected void addOpenConnection(RpcConnection connection) {
+  public void addOpenConnection(RpcConnection connection) {
     try {
       lock.lock();
       openConnections.add(connection);
@@ -158,4 +169,28 @@ abstract public class ContainerBase implements Container {
   public ConnectionEndpoint getConnectionEndpoint() {
     return this.endpoint;
   }
+  
+  protected void setupServerSocket(ServerSocket serverSocket) {
+    try {
+      serverSocket.setSoTimeout(0);
+    } catch (SocketException e) {
+      e.printStackTrace();
+      logger.warn("Failed to set server socket timeout to 0. Cause: " + ExceptionUtil.getStackTrace(e));
+    }
+  }
+
+  protected void setupClientSocket(Socket socket) {
+    RpcContext context = rpcServer.getContext();
+    try {
+      if (null != context.getClientTimeout()) {
+        socket.setSoTimeout(context.getClientTimeout());
+      }
+      if (null != context.getClientTcpNoDelay()) {
+        socket.setTcpNoDelay(context.getClientTcpNoDelay());
+      }
+    } catch (IOException ioe) {
+      logger.warn("Failed to set client socket timeout and tcp no delay flag. Cause: " + ExceptionUtil.getStackTrace(ioe));
+    }
+  }
+
 }
