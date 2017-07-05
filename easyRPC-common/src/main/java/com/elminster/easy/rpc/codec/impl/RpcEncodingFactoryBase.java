@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import com.elminster.easy.rpc.codec.CodecRepository;
 import com.elminster.easy.rpc.codec.CodecRepositoryElement;
 import com.elminster.easy.rpc.codec.RpcCodec;
+import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.idl.impl.IDLBasicTypes;
 
@@ -58,9 +59,6 @@ public class RpcEncodingFactoryBase extends RpcEncodingFactoryImpl {
    */
   private void addBaseCodecs() {
     for (IDLBasicTypes bt : IDLBasicTypes.values()) {
-      if (logger.isDebugEnabled()) {
-        logger.debug("Add IDL type:" + bt);
-      }
       addEncodingClass(bt.getTypeClass(), bt.getCodecClass(), bt.getRemoteName());
     }
     addEncodingClass(RpcException.class.getCanonicalName(), RpcServerExceptionCodec.class, RpcException.class.getCanonicalName());
@@ -69,7 +67,31 @@ public class RpcEncodingFactoryBase extends RpcEncodingFactoryImpl {
   /**
    * {@inheritDoc}
    */
+  @Override
   protected RpcCodec getDefaultArrayCodec() {
     return this.theArrayCodec;
   }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected RpcEncodingFactory clone() {
+    RpcEncodingFactoryBase cloned = new RpcEncodingFactoryBase(this.getEncodingName());
+    cloned.classNameToRemoteTypeNameMap = this.classNameToRemoteTypeNameMap;
+    cloned.encodingClassMap = this.encodingClassMap;
+    cloned.encodingInstanceMap = this.encodingInstanceMap;
+    cloned.remoteTypeNameToClassNameMap = this.remoteTypeNameToClassNameMap;
+    cloned.theArrayCodec = this.theArrayCodec;
+    return cloned;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public RpcEncodingFactory cloneEncodingFactory() {
+    return this.clone();
+  }
+  
 }

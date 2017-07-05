@@ -54,7 +54,8 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   /** class name -> codec instance. */
   protected HashMap<String, RpcCodec> encodingInstanceMap = new HashMap<>();
 
-  private CoreCodec rpcUtil;
+  private transient CoreCodec rpcUtil;
+  
   private DataCompressorFactory compressorFactory;
   
   public RpcEncodingFactoryImpl(String encodingName) {

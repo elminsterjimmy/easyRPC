@@ -13,7 +13,7 @@ import com.elminster.easy.rpc.exception.RpcException;
  * @author jinggu
  * @version 1.0
  */
-public interface RpcEncodingFactory {
+public interface RpcEncodingFactory extends Cloneable {
 
   /**
    * Get the encoding name.
@@ -178,7 +178,7 @@ public interface RpcEncodingFactory {
    *           on error
    */
   public Integer readInt32Nullable() throws IOException, RpcException;
-  
+
   /**
    * Read an int32.
    * 
@@ -199,7 +199,7 @@ public interface RpcEncodingFactory {
    *           on error
    */
   public void writeInt32Nullable(final Integer value) throws IOException, RpcException;
-  
+
   /**
    * Write an int32.
    * 
@@ -220,7 +220,7 @@ public interface RpcEncodingFactory {
    *           on error
    */
   public Byte readInt8Nullable() throws IOException, RpcException;
-  
+
   /**
    * Read an int8.
    * 
@@ -251,7 +251,7 @@ public interface RpcEncodingFactory {
    *           on error
    */
   public void writeInt8(final byte value) throws IOException;
-  
+
   /**
    * Read a nullable String.
    * 
@@ -285,7 +285,7 @@ public interface RpcEncodingFactory {
    *           on error
    */
   public String readAsciiNullable() throws IOException, RpcException;
-  
+
   /**
    * Write a nullable ASCII.
    * 
@@ -308,7 +308,7 @@ public interface RpcEncodingFactory {
    *           on error
    */
   public Double readDoubleNullable() throws IOException, RpcException;
-  
+
   /**
    * Read a double.
    * 
@@ -420,10 +420,19 @@ public interface RpcEncodingFactory {
    *          the remote type name
    */
   public void addEncodingInstance(final String className, final RpcCodec encObject, final String remoteName);
-  
+
   /**
    * Inject the core codec.
-   * @param coreCodec the core codec
+   * 
+   * @param coreCodec
+   *          the core codec
    */
   public void setCoreCodec(CoreCodec coreCodec);
+
+  /**
+   * Clone the encoding factory.
+   * 
+   * @return cloned encoding factory
+   */
+  public RpcEncodingFactory cloneEncodingFactory();
 }

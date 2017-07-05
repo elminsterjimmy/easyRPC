@@ -10,7 +10,7 @@ import com.elminster.easy.rpc.idl.IDL;
  * @author jinggu
  * @version 1.0
  */
-public interface CodecFactory {
+public interface CodecFactory extends Cloneable {
 
   /**
    * Create a codec repository element.
