@@ -3,6 +3,7 @@ package com.elminster.easy.rpc.codec.impl;
 import static com.elminster.common.constants.Constants.EncodingConstants.ASCII;
 import static com.elminster.common.constants.Constants.EncodingConstants.UTF8;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -129,7 +130,7 @@ public class CoreCodecImpl implements CoreCodec {
       int curByteRead = 0;
       curByteRead = ioUtil.read(b, curOff, byteToRead);
       if (curByteRead < 0) {
-        throw new IOException("Could not read data from closed stream");
+        throw new EOFException("Could not read data from closed stream");
       }
       byteToRead -= curByteRead;
       curOff += curByteRead;
