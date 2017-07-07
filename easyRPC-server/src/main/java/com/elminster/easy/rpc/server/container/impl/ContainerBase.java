@@ -23,6 +23,10 @@ import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.container.exception.StartContainerException;
 import com.elminster.easy.rpc.server.container.exception.StopContainerException;
+import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
+import com.elminster.easy.rpc.server.processor.impl.AsyncRpcServiceProcessor;
+import com.elminster.easy.rpc.server.processor.impl.RpcServiceProcessorDelegate;
+import com.elminster.easy.rpc.server.processor.impl.SyncRpcServiceProcessor;
 
 /**
  * The Container Base.
@@ -36,18 +40,22 @@ abstract public class ContainerBase implements Container {
 
   protected final RpcServer rpcServer;
   protected final ConnectionEndpoint endpoint;
+  
   private volatile boolean isServing = false;
   /** the lock. */
   protected Lock lock = new ReentrantLock();
   /** the worker thread pool. */
-  private final ThreadPoolExecutor workerThreadPool;
+  private final ThreadPool workerThreadPool;
   /** the open connections. */
   private final List<RpcConnection> openConnections = new LinkedList<>();
+  
+  protected final RpcServiceProcessorDelegate serviceProcessor;
 
   public ContainerBase(RpcServer rpcServer, ConnectionEndpoint endpoint) {
     this.rpcServer = rpcServer;
     this.endpoint = endpoint;
-    this.workerThreadPool = ThreadPool.createThreadPool(rpcServer.getContext().getWorkerThreadPoolConfiguration()).getExecutor();
+    this.workerThreadPool = ThreadPool.createThreadPool(rpcServer.getContext().getWorkerThreadPoolConfiguration());
+    serviceProcessor = new RpcServiceProcessorDelegate(rpcServer);
   }
 
   /**
@@ -86,6 +94,8 @@ abstract public class ContainerBase implements Container {
   public void stop(boolean closeConnections) throws StopContainerException {
     try {
       stopServe();
+      // release resources
+      workerThreadPool.shutdown();
 
       if (closeConnections) {
         try {
@@ -159,7 +169,7 @@ abstract public class ContainerBase implements Container {
    */
   @Override
   public ThreadPoolExecutor getAsyncWorkerThreadPool() {
-    return workerThreadPool;
+    return workerThreadPool.getExecutor();
   }
 
   /**
@@ -193,4 +203,8 @@ abstract public class ContainerBase implements Container {
     }
   }
 
+  @Override
+  public RpcServiceProcessor getServiceProcessor() {
+    return serviceProcessor;
+  }
 }

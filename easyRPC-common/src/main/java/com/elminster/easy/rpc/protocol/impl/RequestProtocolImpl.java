@@ -9,9 +9,11 @@ import com.elminster.easy.rpc.protocol.RequestProtocol;
 
 public class RequestProtocolImpl extends ProtocolImpl implements RequestProtocol {
   
+  private String requestId;
   private String methodName;
   private String serviceName;
   private Object[] args;
+  private boolean isAsyncCall;
 
   public RequestProtocolImpl(RpcEncodingFactory encodingFactory) {
     super(encodingFactory);
@@ -19,16 +21,20 @@ public class RequestProtocolImpl extends ProtocolImpl implements RequestProtocol
 
   @Override
   public void encode() throws IOException, RpcException {
+    encodingFactory.writeAsciiNullable(requestId);
+    encodingFactory.writeBoolean(isAsyncCall);
     encodingFactory.writeAsciiNullable(serviceName);
     encodingFactory.writeAsciiNullable(methodName);
     encodingFactory.writeInt32(args.length);
     for (Object arg : args) {
-      encodingFactory.writeObjectNullable(arg);
+      encodingFactory.writeObjectNullable(arg); // could happen encoding problem
     }
   }
 
   @Override
   public void decode() throws IOException, RpcException {
+    this.requestId = encodingFactory.readAsciiNullable();
+    this.isAsyncCall = encodingFactory.readBoolean();
     this.serviceName = encodingFactory.readAsciiNullable();
     this.methodName = encodingFactory.readAsciiNullable();
     int len = encodingFactory.readInt32();
@@ -36,6 +42,16 @@ public class RequestProtocolImpl extends ProtocolImpl implements RequestProtocol
     for (int i = 0; i < len; i++) {
       this.args[i] = encodingFactory.readObjectNullable();
     }
+  }
+
+  @Override
+  public String getRequestId() {
+    return requestId;
+  }
+
+  @Override
+  public void setRequestId(String requestId) {
+    this.requestId = requestId;
   }
 
   @Override
@@ -71,6 +87,16 @@ public class RequestProtocolImpl extends ProtocolImpl implements RequestProtocol
   @Override
   public Object[] getMethodArgs() {
     return this.args;
+  }
+
+  @Override
+  public boolean isAsyncCall() {
+    return isAsyncCall;
+  }
+
+  @Override
+  public void setAsyncCall(boolean isAsyncCall) {
+    this.isAsyncCall = isAsyncCall;
   }
 
 }

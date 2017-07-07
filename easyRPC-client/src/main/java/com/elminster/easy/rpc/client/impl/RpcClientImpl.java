@@ -6,9 +6,10 @@ import org.slf4j.LoggerFactory;
 import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.common.misc.Version;
 import com.elminster.common.util.Assert;
+import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.client.RpcClient;
+import com.elminster.easy.rpc.client.connection.Connection;
 import com.elminster.easy.rpc.client.container.Container;
-import com.elminster.easy.rpc.client.container.exception.ContainerConnectionException;
 import com.elminster.easy.rpc.client.container.impl.ContainerFactoryImpl;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
@@ -22,21 +23,25 @@ import com.elminster.easy.rpc.exception.ConnectionException;
  * @version 1.0
  */
 public class RpcClientImpl implements RpcClient {
-  
+
   private static final Logger logger = LoggerFactory.getLogger(RpcClientImpl.class);
-  
+
   private final ConnectionEndpoint endpoint;
   private final RpcEncodingFactory encodingFactory;
   private final RpcContext context;
   private Container container;
-  
-  public RpcClientImpl(ConnectionEndpoint endpoint, RpcEncodingFactory encodingFactory, RpcContext context) {
+  private Connection connection;
+  private boolean stayConnection = false;
+  private volatile boolean isConnected = false;
+
+  public RpcClientImpl(ConnectionEndpoint endpoint, RpcEncodingFactory encodingFactory, RpcContext context, boolean stayConnection) {
     Assert.notNull(endpoint);
     Assert.notNull(context);
     Assert.notNull(encodingFactory);
     this.endpoint = endpoint;
     this.encodingFactory = encodingFactory;
     this.context = context;
+    this.stayConnection = stayConnection;
   }
 
   /**
@@ -68,6 +73,9 @@ public class RpcClientImpl implements RpcClient {
    */
   @Override
   public void connect() throws ConnectionException {
+    if (logger.isDebugEnabled()) {
+      logger.debug(String.format("Connect to Endpoint: [%s].", endpoint));
+    }
     if (null == container) {
       try {
         initContainer();
@@ -79,17 +87,20 @@ public class RpcClientImpl implements RpcClient {
     }
     if (!isConnected()) {
       try {
-        container.connect();
-      } catch (ContainerConnectionException e) {
+        connection = container.connect();
+      } catch (ConnectionException e) {
         String msg = String.format("Cannot connect to RPC server [%s].", endpoint);
         logger.error(msg, e);
         throw new ConnectionException(msg, e);
       }
     }
+    isConnected = true;
   }
 
-  private void initContainer() throws ObjectInstantiationExcption {
-    container = ContainerFactoryImpl.INSTANCE.getContainer(this, endpoint);
+  private synchronized void initContainer() throws ObjectInstantiationExcption {
+    if (null == container) {
+      container = ContainerFactoryImpl.INSTANCE.getContainer(this, endpoint);
+    }
   }
 
   /**
@@ -97,9 +108,13 @@ public class RpcClientImpl implements RpcClient {
    */
   @Override
   public void disconnect() {
+    if (logger.isDebugEnabled()) {
+      logger.debug(String.format("Disconnect from endpoint [%s]", endpoint));
+    }
     if (isConnected()) {
       container.disconnect();
     }
+    isConnected = false;
   }
 
   /**
@@ -107,7 +122,7 @@ public class RpcClientImpl implements RpcClient {
    */
   @Override
   public boolean isConnected() {
-    return null != container && container.isConnected();
+    return isConnected;
   }
 
   /**
@@ -122,13 +137,35 @@ public class RpcClientImpl implements RpcClient {
    * {@inheritDoc}
    */
   @Override
-  public Object invokeService(String serviceName, String methodName, Object[] args) throws Throwable {
-    if (isConnected()) {
-      return container.getProcessor().invokeService(serviceName, methodName, args);
+  public synchronized Object invokeService(RpcCall rpcCall) throws Throwable {
+    if (rpcCall.isAsyncCall()) {
+      // TODO always create new connection for async call
+      if (null == container) {
+        initContainer();
+      }
+      Connection asyncConn = null;
+      try {
+        asyncConn = container.connect();
+        return null;
+      } finally {
+        if (null != asyncConn) {
+          asyncConn.disconnect();
+        }
+      }
     } else {
-      String msg = "Rpc client still not connect to any server!";
-      logger.warn(msg);
-      throw new IllegalStateException(msg);
+      if (isConnected()) {
+        try {
+          return connection.invokeService(rpcCall);
+        } finally {
+          if (!stayConnection) {
+            disconnect();
+          }
+        }
+      } else {
+        String msg = "Rpc client still not connect to any server!";
+        logger.warn(msg);
+        throw new IllegalStateException(msg);
+      }
     }
   }
 

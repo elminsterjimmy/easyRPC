@@ -1,5 +1,8 @@
 package com.elminster.easy.rpc.server.processor;
 
+import com.elminster.easy.rpc.call.RpcCall;
+import com.elminster.easy.rpc.exception.RpcException;
+
 /**
  * The RPC Server Worker.
  * 
@@ -8,18 +11,7 @@ package com.elminster.easy.rpc.server.processor;
  */
 public interface RpcServiceProcessor {
 
-  /**
-   * Invoke service method.
-   * 
-   * @param serviceName
-   *          the service name
-   * @param methodName
-   *          the method name
-   * @param params
-   *          the params
-   * @return the invoke result
-   * @throws Throwable
-   *           on error
-   */
-  public ReturnResult invokeServiceMethod(InvokeeContext context, String serviceName, String methodName, Object[] params) throws Throwable;
+  public void invoke(RpcCall call) throws RpcException;
+  
+  public RpcCall getResult(RpcCall call, int timeout);
 }

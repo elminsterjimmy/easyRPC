@@ -1,0 +1,30 @@
+package com.elminster.easy.rpc.call;
+
+import com.elminster.easy.rpc.context.InvokeContext;
+
+public interface RpcCall {
+  
+  public InvokeContext getContext();
+  public void setContext(InvokeContext context);
+  
+  public ReturnResult getResult();
+  public void setResult(ReturnResult result);
+  public String getRequestId();
+  public String getServiceName();
+  public String getMethodName();
+  public Object[] getArgs();
+  public boolean isAsyncCall();
+  
+  public Long getInvokeStartAt();
+  public void setInvokeStartAt(long invokeStartAt);
+  public Long getInvokeEndAt();
+  public void setInvokeEndAt(long invokeEndAt);
+  
+  public Long getRpcCallStartAt();
+  public void setRpcCallStartAt(long callStartAt);
+  public Long getRpcCallEndAt();
+  public void setRpcCallEndAt(long callEndAt);
+  
+  public long getInvokeDuration() throws CallNotFinishedException;
+  public long getRpcCallDuration() throws CallNotFinishedException;
+}

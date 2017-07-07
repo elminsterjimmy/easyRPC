@@ -1,5 +1,6 @@
 package com.elminster.easy.rpc.it.bio;
 
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.log4j.xml.DOMConfigurator;
@@ -27,7 +28,7 @@ import com.elminster.easy.rpc.server.listener.RpcServerListener;
 
 public class TestRpcCommunication {
   
-  private static final int CLIENT_COUNT = 100;
+  private static final int CLIENT_COUNT = 10;
   
   @BeforeClass
   public static void initLog4j() {
@@ -60,7 +61,6 @@ public class TestRpcCommunication {
     } catch (InterruptedException e) {
       ;
     }
-
     rpcServer.shutdown(true);
   }
 
@@ -75,10 +75,11 @@ public class TestRpcCommunication {
     
     public void run() {
       RpcClient rpcClient = null;
+      Random random = new Random();
       try {
         RpcContext clientContext = createRpcClientContext();
         ConnectionEndpoint endpoint = SimpleConnectionEndpoint.localhostConnectionEndpoint(9100);
-        rpcClient = RpcClientFactoryImpl.INSTANCE.createRpcClient(endpoint, clientContext);
+        rpcClient = RpcClientFactoryImpl.INSTANCE.createRpcClient(endpoint, clientContext, 0 == random.nextInt(10) % 2);
         
         RpcProxy proxy = new DynamicProxy();
         RpcTestIf testIf = proxy.makeProxy(RpcTestIf.class, rpcClient);
@@ -146,7 +147,7 @@ public class TestRpcCommunication {
     });
     synchronized (rpcServer) {
       try {
-        rpcServer.wait(30 * 1000l);
+        rpcServer.wait(10 * 1000l);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

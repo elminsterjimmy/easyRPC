@@ -42,9 +42,12 @@ public class NioRpcConnection extends RpcConnectionImpl {
   private final RpcEncodingFactory defaultEncodingFactory;
   private final InvokeeContextImpl invokeContext;
   
+  {
+    SERIAL.getAndIncrement();
+  }
+  
   public NioRpcConnection(RpcServer server, Container container, SocketChannel socketChannel) {
-    super(server, container, SERIAL.get(), "Nio Rpc Connection - " + SERIAL.get());
-    SERIAL.incrementAndGet();
+    super(server, container, SERIAL.get(), "Nio Rpc Connection - " + Integer.toHexString(SERIAL.get()));
     this.socketChannel = socketChannel;
     Socket socket = socketChannel.socket();
     localAddr = socket.getLocalAddress();

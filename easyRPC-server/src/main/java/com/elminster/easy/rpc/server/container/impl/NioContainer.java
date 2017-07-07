@@ -45,10 +45,7 @@ public class NioContainer extends ContainerBase implements Container {
   @Override
   protected void startWorkerThreads() throws Exception {
     RpcContext context = rpcServer.getContext();
-    Integer readerWorkerCount = context.getReaderWorkerCount();
-    if (null == readerWorkerCount) {
-      readerWorkerCount = 10;
-    }
+    int readerWorkerCount = context.getReaderWorkerCount();
 
     try {
       ServerListener listener = new NioServerListenerImpl(rpcServer, this, endpoint);

@@ -1,15 +1,14 @@
 package com.elminster.easy.rpc.client.container;
 
-import com.elminster.easy.rpc.client.container.exception.ContainerConnectionException;
-import com.elminster.easy.rpc.client.processor.RpcClientProcessor;
+
+import com.elminster.easy.rpc.client.connection.Connection;
+import com.elminster.easy.rpc.exception.ConnectionException;
 
 public interface Container {
 
-  public void connect() throws ContainerConnectionException;
+  public Connection connect() throws ConnectionException;
   
   public void disconnect();
   
   public boolean isConnected();
-  
-  public RpcClientProcessor getProcessor();
 }

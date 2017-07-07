@@ -6,6 +6,7 @@ import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.server.container.exception.StartContainerException;
 import com.elminster.easy.rpc.server.container.exception.StopContainerException;
+import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
 
 /**
  * Network Container.
@@ -43,7 +44,7 @@ public interface Container {
    * @return if the container is serving?
    */
   public boolean isServing();
-  
+
   /**
    * Get number of open connections.
    * 
@@ -57,14 +58,34 @@ public interface Container {
    * @return the worker thread pool
    */
   public ThreadPoolExecutor getAsyncWorkerThreadPool();
-  
+
   /**
    * Get the Connection Endpoint.
+   * 
    * @return the connection endpoint
    */
   public ConnectionEndpoint getConnectionEndpoint();
 
+  /**
+   * Add an open connection.
+   * 
+   * @param connection
+   *          the open connection
+   */
   public void addOpenConnection(RpcConnection connection);
-  
+
+  /**
+   * Remove an connection.
+   * 
+   * @param connection
+   *          the connection
+   */
   public void removeOpenConnection(RpcConnection connection);
+
+  /**
+   * Get the service processor.
+   * 
+   * @return the service processor
+   */
+  public RpcServiceProcessor getServiceProcessor();
 }

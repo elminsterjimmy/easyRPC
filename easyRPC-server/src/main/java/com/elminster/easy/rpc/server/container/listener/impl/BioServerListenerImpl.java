@@ -49,7 +49,7 @@ public class BioServerListenerImpl extends ServerListenerBase {
             container.addOpenConnection(connection);
             break;
           } catch (RejectedExecutionException e) {
-            // TODO retry
+            // retry
             logger.warn(String.format("Failed to push connection [%s] to thread pool [%s]. Cause: %s.", connection, threadpool, e));
             if (retryCnt++ < RETRY_THRESHOLD) {
               logger.debug(String.format("Try to repush connection [%s] to thread pool [%s] after %d ms", connection, threadpool, RETRY_INTERVAL));

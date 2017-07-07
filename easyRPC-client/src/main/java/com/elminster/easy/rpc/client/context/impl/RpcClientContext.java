@@ -49,7 +49,15 @@ public class RpcClientContext implements RpcContext {
     return null;
   }
   @Override
-  public Integer getReaderWorkerCount() {
+  public int getReaderWorkerCount() {
+    return 10;
+  }
+  @Override
+  public int getProcessorQueueSize() {
+    return 200;
+  }
+  @Override
+  public ThreadPoolConfiguration getProcessingThreadPoolConfiguration() {
     return null;
   }
   

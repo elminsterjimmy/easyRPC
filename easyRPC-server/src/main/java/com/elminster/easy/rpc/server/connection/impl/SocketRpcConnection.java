@@ -6,8 +6,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -41,9 +39,12 @@ public class SocketRpcConnection extends RpcConnectionImpl {
   private final int localPort;
   private final int remotePort;
   
-  public SocketRpcConnection(RpcServer server, Container container, Socket socket) {
-    super(server, container, SERIAL.get(), "Socket Rpc Connection - " + SERIAL.get());
+  {
     SERIAL.getAndIncrement();
+  }
+  
+  public SocketRpcConnection(RpcServer server, Container container, Socket socket) {
+    super(server, container, SERIAL.get(), "Socket Rpc Connection - " + Integer.toHexString(SERIAL.get()));
     this.socket = socket;
     localAddr = socket.getLocalAddress();
     remoteAddr = socket.getInetAddress();
@@ -69,14 +70,13 @@ public class SocketRpcConnection extends RpcConnectionImpl {
       initialBaseProtocols(defaultEncodingFactory);
       shakehand(defaultEncodingFactory);
       checkVersion(defaultEncodingFactory, invokeContext);
-      createProcessor(defaultEncodingFactory, invokeContext);
 
       while (!Thread.currentThread().isInterrupted()) {
         methodCall(defaultEncodingFactory, invokeContext, coreCodec);
       }
     } catch (IOException e) {
       if (e instanceof EOFException) {
-        logger.error(String.format(Messages.CLIENT_DISCONNECTED.getMessage(), invokeContext));
+        logger.warn(String.format(Messages.CLIENT_DISCONNECTED.getMessage(), invokeContext));
       } else {
         throw e;
       }

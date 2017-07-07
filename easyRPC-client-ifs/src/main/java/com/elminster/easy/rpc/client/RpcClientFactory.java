@@ -21,7 +21,7 @@ public interface RpcClientFactory {
    *          the context
    * @return a RPC client
    */
-  public RpcClient createRpcClient(ConnectionEndpoint endpoint, RpcContext context);
+  public RpcClient createRpcClient(ConnectionEndpoint endpoint, RpcContext context, boolean stayConnction);
   
   /**
    * Create a RPC client.
@@ -34,6 +34,6 @@ public interface RpcClientFactory {
    *          the context
    * @return a RPC client
    */
-  public RpcClient createRpcClient(ConnectionEndpoint endpoint, RpcEncodingFactory encodingFactory, RpcContext context);
+  public RpcClient createRpcClient(ConnectionEndpoint endpoint, RpcEncodingFactory encodingFactory, RpcContext context, boolean stayConnction);
 
 }

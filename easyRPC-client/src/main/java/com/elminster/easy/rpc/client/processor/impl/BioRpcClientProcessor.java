@@ -7,7 +7,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elminster.common.exception.ObjectInstantiationExcption;
-import com.elminster.easy.rpc.client.context.InvokerContext;
+import com.elminster.easy.rpc.call.ReturnResult;
+import com.elminster.easy.rpc.call.RpcCall;
+import com.elminster.easy.rpc.call.impl.ReturnResultImpl;
+import com.elminster.easy.rpc.client.context.impl.InvokerContextImpl;
 import com.elminster.easy.rpc.client.processor.RpcClientProcessor;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
@@ -29,9 +32,9 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
   private static final Logger logger = LoggerFactory.getLogger(BioRpcClientProcessor.class);
 
   private final RpcEncodingFactory encodingFactory;
-  private final InvokerContext invokerContext;
+  private final InvokerContextImpl invokerContext;
 
-  public BioRpcClientProcessor(RpcEncodingFactory encodingFactory, InvokerContext invokerContext) {
+  public BioRpcClientProcessor(RpcEncodingFactory encodingFactory, InvokerContextImpl invokerContext) {
     this.encodingFactory = encodingFactory;
     this.invokerContext = invokerContext;
   }
@@ -40,80 +43,100 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
    * {@inheritDoc}
    */
   @Override
-  public Object invokeService(String serviceName, String methodName, Object[] args) throws Throwable {
-    long startTs = System.currentTimeMillis();
+  public Object invokeService(RpcCall rpcCall) throws Throwable {
+    rpcCall.setContext(invokerContext); // FIXME it is ugly to set the context here
     if (logger.isDebugEnabled()) {
-      String methodArgs = generMethodArgs(args);
-      logger.debug(String.format("Before calling RPC [%s@%s] with args %s on context [%s]", methodName, serviceName, methodArgs, invokerContext));
+      logger.debug(String.format("Before calling RPC [%s]", rpcCall));
     }
     try {
-      ConfirmFrameProtocol confirmFrameProtocol = (ConfirmFrameProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ConfirmFrameProtocol.class, encodingFactory);
+      ConfirmFrameProtocol confirmFrameProtocol;
+      RequestHeaderProtocol requestHeaderProtocol;
+      try {
+        confirmFrameProtocol = (ConfirmFrameProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ConfirmFrameProtocol.class, encodingFactory);
+        requestHeaderProtocol = (RequestHeaderProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(RequestHeaderProtocol.class, encodingFactory);
+      } catch (ObjectInstantiationExcption e) {
+        encodingFactory.writeIsNotNull(false);
+        throw e;
+      }
       confirmFrameProtocol.nextFrame(Frame.FRAME_HEADER.getFrame());
-      if (!confirmFrameProtocol.expact(Frame.FRAME_HEADER.getFrame())) {
+
+      requestHeaderProtocol.setEncoding(encodingFactory.getEncodingName());
+      requestHeaderProtocol.encode();
+
+      if (!confirmFrameProtocol.expact(Frame.FRAME_REQUEST.getFrame())) {
+        RpcException rpce = (RpcException) encodingFactory.readObjectNullable();
+        throw rpce;
+      }
+
+      RequestProtocol requestProtocol;
+      ResponseProtocol responseProtocol;
+      try {
+        requestProtocol = (RequestProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(RequestProtocol.class, encodingFactory);
+        responseProtocol = (ResponseProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ResponseProtocol.class, encodingFactory);
+      } catch (ObjectInstantiationExcption e) {
+        String msg = "Cannot instantiate RequestProtocol!";
+        logger.error(msg);
+        confirmFrameProtocol.nextFrame(Frame.FRAME_FAIL.getFrame());
+        throw new RpcException(msg, e);
+      }
+
+      rpcCall.setRpcCallStartAt(System.currentTimeMillis());
+      confirmFrameProtocol.nextFrame(Frame.FRAME_OK.getFrame());
+      requestProtocol.setRequestId(rpcCall.getRequestId());
+      requestProtocol.setAsyncCall(rpcCall.isAsyncCall());
+      requestProtocol.setServiceName(rpcCall.getServiceName());
+      requestProtocol.setMethodName(rpcCall.getMethodName());
+      requestProtocol.setMethodArgs(rpcCall.getArgs());
+      try {
+        requestProtocol.encode();
+      } catch (RpcException rpce) {
+        // failed encode
+        throw rpce;
+      }
+      
+      // expect the response
+      if (!confirmFrameProtocol.expact(Frame.FRAME_RESPONSE.getFrame())) {
         RpcException rpce = (RpcException) encodingFactory.readObjectNullable();
         throw rpce;
       }
       
+      Object returnValue = null;
+      ReturnResult result;
+      Long invokeStart = null;
+      Long invokeEnd = null;
       try {
-        RequestHeaderProtocol requestHeaderProtocol = (RequestHeaderProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(RequestHeaderProtocol.class, encodingFactory);
-        requestHeaderProtocol.setEncoding(encodingFactory.getEncodingName());
-        requestHeaderProtocol.encode();
-
-        if (!confirmFrameProtocol.expact(Frame.FRAME_REQUEST.getFrame())) {
-          RpcException rpce = (RpcException) encodingFactory.readObjectNullable();
-          throw rpce;
-        }
-
-      } catch (ObjectInstantiationExcption e) {
-        String msg = "Cannot instantiate RequestHeaderProtocol!";
-        logger.error(msg);
-        throw new RpcException(msg, e);
-      }
-
-      try {
-        RequestProtocol requestProtocol = (RequestProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(RequestProtocol.class, encodingFactory);
-        requestProtocol.setServiceName(serviceName);
-        requestProtocol.setMethodName(methodName);
-        requestProtocol.setMethodArgs(args);
-        requestProtocol.encode();
-
-        if (!confirmFrameProtocol.expact(Frame.FRAME_RESPONSE.getFrame())) {
-          RpcException rpce = (RpcException) encodingFactory.readObjectNullable();
-          throw rpce;
-        }
-      } catch (ObjectInstantiationExcption e) {
-        String msg = "Cannot instantiate RequestProtocol!";
-        logger.error(msg);
-        throw new RpcException(msg, e);
-      }
-
-      try {
-        ResponseProtocol responseProtocol = (ResponseProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ResponseProtocol.class, encodingFactory);
         responseProtocol.decode();
-        Object returnValue = null;
-        if (!responseProtocol.isVoid()) {
+//        String id = responseProtocol.getRequestId(); 
+        boolean isVoid = responseProtocol.isVoid();
+        invokeStart = responseProtocol.getInvokeStart();
+        invokeEnd = responseProtocol.getInvokeEnd();
+        if (!isVoid) {
           returnValue = responseProtocol.getReturnValue();
+          result = new ReturnResultImpl(null == returnValue ? Object.class : returnValue.getClass(), returnValue);
+        } else {
+          result = new ReturnResultImpl(Void.class, returnValue);
         }
-
-        if (logger.isDebugEnabled()) {
-          String methodArgs = generMethodArgs(args);
-          logger.debug(String.format("After calling RPC [%s@%s] with args %s on context [%s] returns [%s] within [%d] ms.", methodName, serviceName, methodArgs, invokerContext, returnValue, System.currentTimeMillis() - startTs));
-        }
-
-        if (returnValue instanceof Throwable) {
-          throw (Throwable) returnValue;
-        }
-
-        return returnValue;
-      } catch (ObjectInstantiationExcption e) {
-        String msg = "Cannot instantiate ResponseProtocol!";
-        logger.error(msg);
-        throw new RpcException(msg, e);
+      } catch (RpcException e) {
+        // decoding error
+        returnValue = e;
+        result = new ReturnResultImpl(null == returnValue ? Exception.class : returnValue.getClass(), returnValue);
       }
+      rpcCall.setResult(result);
+      rpcCall.setRpcCallEndAt(System.currentTimeMillis());
+      rpcCall.setInvokeStartAt(invokeStart);
+      rpcCall.setInvokeEndAt(invokeEnd);
+      if (logger.isDebugEnabled()) {
+        logger.debug(String.format("After calling RPC [%s]", rpcCall));
+      }
+      
+      if (returnValue instanceof Throwable) {
+        throw (Throwable) returnValue;
+      }
+      return returnValue;
 
     } catch (IOException ioe) {
       if (ioe instanceof EOFException) {
-        String msg = String.format("Connection with Rpc Server is broken. Context [%s]", invokerContext);
+        String msg = String.format("Connection with Rpc Server is broken. rpcCall [%s]", rpcCall);
         logger.error(msg);
         throw new RpcException(msg, ioe);
       } else {
@@ -121,23 +144,4 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
       }
     }
   }
-
-  private static String generMethodArgs(Object[] args) {
-    StringBuilder sb = new StringBuilder();
-    sb.append("[");
-    boolean first = true;
-    if (null != args) {
-      for (Object arg : args) {
-        if (first) {
-          first = false;
-        } else {
-          sb.append(", ");
-        }
-        sb.append(arg);
-      }
-    }
-    sb.append("]");
-    return sb.toString();
-  }
-
 }

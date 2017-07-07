@@ -1,5 +1,6 @@
 package com.elminster.easy.rpc.client.processor;
 
+import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.exception.RpcException;
 
 public interface RpcClientProcessor {
@@ -7,15 +8,11 @@ public interface RpcClientProcessor {
   /**
    * Remote Method Call.
    * 
-   * @param serviceName
-   *          the service name
-   * @param methodName
-   *          the method name
-   * @param args
-   *          the args
+   * @param rpcCall
+   *          the rpcCall
    * @return result
    * @throws RpcException
    *           on error
    */
-  public Object invokeService(String serviceName, String methodName, Object[] args) throws Throwable;
+  public Object invokeService(RpcCall rpcCall) throws Throwable;
 }

@@ -3,7 +3,7 @@ package com.elminster.easy.rpc.server.context.impl;
 import java.net.InetAddress;
 
 import com.elminster.easy.rpc.context.impl.InvokeContextImpl;
-import com.elminster.easy.rpc.server.processor.InvokeeContext;
+import com.elminster.easy.rpc.server.context.InvokeeContext;
 
 public class InvokeeContextImpl extends InvokeContextImpl implements InvokeeContext {
 

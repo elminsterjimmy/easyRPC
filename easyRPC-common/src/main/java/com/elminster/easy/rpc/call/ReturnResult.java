@@ -1,4 +1,4 @@
-package com.elminster.easy.rpc.server.processor;
+package com.elminster.easy.rpc.call;
 
 public interface ReturnResult {
 

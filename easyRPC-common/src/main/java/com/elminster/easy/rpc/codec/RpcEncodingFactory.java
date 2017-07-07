@@ -102,6 +102,25 @@ public interface RpcEncodingFactory extends Cloneable {
   public void writeIsNotNull(final boolean isNotNull) throws IOException;
 
   /**
+   * Read a boolean.
+   * 
+   * @return a boolean
+   * @throws IOException
+   *           on error
+   */
+  public boolean readBoolean() throws IOException;
+
+  /**
+   * Write a boolean.
+   * 
+   * @param bool
+   *          the boolean
+   * @throws IOException
+   *           on error
+   */
+  public void writeBoolean(final boolean bool) throws IOException;
+
+  /**
    * Read a nullable object.
    * 
    * @return a nullable object

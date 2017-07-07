@@ -2,6 +2,8 @@ package com.elminster.easy.rpc.codec.impl;
 
 import static com.elminster.easy.rpc.codec.CodecConst.IS_NULL;
 import static com.elminster.easy.rpc.codec.CodecConst.NOT_NULL;
+import static com.elminster.easy.rpc.codec.CodecConst.TRUE;
+import static com.elminster.easy.rpc.codec.CodecConst.FALSE;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -54,7 +56,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   /** class name -> codec instance. */
   protected HashMap<String, RpcCodec> encodingInstanceMap = new HashMap<>();
 
-  private transient CoreCodec rpcUtil;
+  private transient CoreCodec coreCodec;
   
   private DataCompressorFactory compressorFactory;
   
@@ -302,7 +304,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public boolean readIsNotNull() throws IOException {
-    return NOT_NULL == rpcUtil.readByte();
+    return NOT_NULL == coreCodec.readByte();
   }
 
   /**
@@ -311,9 +313,29 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   @Override
   public void writeIsNotNull(final boolean isNotNull) throws IOException {
     if (isNotNull) {
-      rpcUtil.writeByte(NOT_NULL);
+      coreCodec.writeByte(NOT_NULL);
     } else {
-      rpcUtil.writeByte(IS_NULL);
+      coreCodec.writeByte(IS_NULL);
+    }
+  }
+  
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean readBoolean() throws IOException {
+    return TRUE == coreCodec.readByte();
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writeBoolean(boolean bool) throws IOException {
+    if (bool) {
+      coreCodec.writeByte(TRUE);
+    } else {
+      coreCodec.writeByte(FALSE);
     }
   }
 
@@ -324,8 +346,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   public Object readObjectNullable() throws IOException, RpcException {
     Object result = null;
     if (readIsNotNull()) {
-      String aliasName = rpcUtil.readStringAsciiNullable();
-
+      String aliasName = coreCodec.readStringAsciiNullable();
       RpcCodec codec = getEncodingObject(aliasName, TypeCategory.IDL);
       if (null == codec) {
         throw new RpcException("No codec registered for remote type " + aliasName);
@@ -370,7 +391,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   private void encodeClassName(final Class<?> clazz) throws IOException {
     String className = clazz.getName();
     String remoteTypeName = getRemoteNameForClassName(className);
-    rpcUtil.writeStringAsciiNullable(remoteTypeName);
+    coreCodec.writeStringAsciiNullable(remoteTypeName);
   }
 
   /**
@@ -381,7 +402,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     if (!readIsNotNull()) {
       return null;
     }
-    return Long.valueOf(rpcUtil.readLongBigEndian());
+    return Long.valueOf(coreCodec.readLongBigEndian());
   }
 
   /**
@@ -391,7 +412,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   public void writeInt64Nullable(final Long value) throws IOException, RpcException {
     if (null != value) {
       writeIsNotNull(true);
-      rpcUtil.writeLongBigEndian(value.longValue());
+      coreCodec.writeLongBigEndian(value.longValue());
     } else {
       writeIsNotNull(false);
     }
@@ -405,7 +426,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     if (!readIsNotNull()) {
       return null;
     }
-    return Byte.valueOf(rpcUtil.readByte());
+    return Byte.valueOf(coreCodec.readByte());
   }
 
   /**
@@ -415,7 +436,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   public void writeInt8Nullable(final Byte value) throws IOException, RpcException {
     if (null != value) {
       writeIsNotNull(true);
-      rpcUtil.writeByte(value.byteValue());
+      coreCodec.writeByte(value.byteValue());
     } else {
       writeIsNotNull(false);
     }
@@ -429,7 +450,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     if (!readIsNotNull()) {
       return null;
     }
-    return Integer.valueOf(rpcUtil.readIntBigEndian());
+    return Integer.valueOf(coreCodec.readIntBigEndian());
   }
 
   /**
@@ -439,7 +460,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   public void writeInt32Nullable(final Integer data) throws IOException, RpcException {
     if (data != null) {
       writeIsNotNull(true);
-      rpcUtil.writeIntBigEndian(data.intValue());
+      coreCodec.writeIntBigEndian(data.intValue());
     } else {
       writeIsNotNull(false);
     }
@@ -450,7 +471,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public String readStringNullable() throws IOException, RpcException {
-    return rpcUtil.readStringUTF8Nullable();
+    return coreCodec.readStringUTF8Nullable();
   }
 
   /**
@@ -458,7 +479,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public void writeStringNullable(final String value) throws IOException, RpcException {
-    rpcUtil.writeStringUTF8Nullable(value);
+    coreCodec.writeStringUTF8Nullable(value);
   }
 
   /**
@@ -466,7 +487,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public String readAsciiNullable() throws IOException, RpcException {
-    return rpcUtil.readStringAsciiNullable();
+    return coreCodec.readStringAsciiNullable();
   }
 
   /**
@@ -474,7 +495,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public void writeAsciiNullable(String value) throws IOException, RpcException {
-    rpcUtil.writeStringAsciiNullable(value);
+    coreCodec.writeStringAsciiNullable(value);
   }
 
   /**
@@ -485,7 +506,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     if (!readIsNotNull()) {
       return null;
     }
-    long bits = rpcUtil.readLongBigEndian();
+    long bits = coreCodec.readLongBigEndian();
     double curDouble = Double.longBitsToDouble(bits);
     return new Double(curDouble);
   }
@@ -498,7 +519,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     if (value != null) {
       writeIsNotNull(true);
       long bits = Double.doubleToLongBits(value.doubleValue());
-      rpcUtil.writeLongBigEndian(bits);
+      coreCodec.writeLongBigEndian(bits);
     } else {
       writeIsNotNull(false);
     }
@@ -509,7 +530,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public long readInt64() throws IOException, RpcException {
-    return rpcUtil.readLongBigEndian();
+    return coreCodec.readLongBigEndian();
   }
 
   /**
@@ -517,7 +538,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public void writeInt64(long vaue) throws IOException {
-    rpcUtil.writeLongBigEndian(vaue);
+    coreCodec.writeLongBigEndian(vaue);
   }
 
   /**
@@ -525,7 +546,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public int readInt32() throws IOException {
-    return rpcUtil.readIntBigEndian();
+    return coreCodec.readIntBigEndian();
   }
 
   /**
@@ -533,7 +554,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public void writeInt32(int value) throws IOException {
-    rpcUtil.writeIntBigEndian(value);
+    coreCodec.writeIntBigEndian(value);
   }
 
   /**
@@ -541,7 +562,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public byte readInt8() throws IOException {
-    return rpcUtil.readByte();
+    return coreCodec.readByte();
   }
 
   /**
@@ -549,7 +570,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public void writeInt8(byte value) throws IOException {
-    rpcUtil.writeByte(value);
+    coreCodec.writeByte(value);
   }
 
   /**
@@ -557,7 +578,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public double readDouble() throws IOException, RpcException {
-    long bits = rpcUtil.readLongBigEndian();
+    long bits = coreCodec.readLongBigEndian();
     return Double.longBitsToDouble(bits);
   }
 
@@ -567,7 +588,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   @Override
   public void writeDouble(double value) throws IOException, RpcException {
     long bits = Double.doubleToLongBits(value);
-    rpcUtil.writeLongBigEndian(bits);
+    coreCodec.writeLongBigEndian(bits);
   }
 
   /**
@@ -592,7 +613,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   @Override
   public void setCoreCodec(CoreCodec coreCodec) {
     Assert.notNull(coreCodec);
-    this.rpcUtil = coreCodec;
+    this.coreCodec = coreCodec;
   }
 
   /**

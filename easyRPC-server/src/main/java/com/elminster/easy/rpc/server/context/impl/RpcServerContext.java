@@ -14,7 +14,9 @@ public class RpcServerContext implements RpcContext {
   private Integer clientTimeout;
   private Boolean clientTcpNoDelay;
   private ThreadPoolConfiguration workerThreadPoolConfiguration;
-  private Integer readerWorkerCount;
+  private int readerWorkerCount = 10;
+  private int processingQueueSize = 200;
+  private ThreadPoolConfiguration processingThreadPoolConfiguration;
   
   public String getServerContainerClassName() {
     return serverContainerClassName;
@@ -57,11 +59,31 @@ public class RpcServerContext implements RpcContext {
   public void setWorkerThreadPoolConfiguration(ThreadPoolConfiguration workerThreadPoolConfiguration) {
     this.workerThreadPoolConfiguration = workerThreadPoolConfiguration;
   }
-  public Integer getReaderWorkerCount() {
+  public int getReaderWorkerCount() {
     return readerWorkerCount;
   }
   public void setReaderWorkerCount(Integer readerWorkerCount) {
     this.readerWorkerCount = readerWorkerCount;
+  }
+  @Override
+  public int getProcessorQueueSize() {
+    return this.processingQueueSize;
+  }
+  public int getProcessingQueueSize() {
+    return processingQueueSize;
+  }
+  public void setProcessingQueueSize(int processingQueueSize) {
+    this.processingQueueSize = processingQueueSize;
+  }
+  public void setReaderWorkerCount(int readerWorkerCount) {
+    this.readerWorkerCount = readerWorkerCount;
+  }
+  public void setProcessingThreadPoolConfiguration(ThreadPoolConfiguration processingThreadPoolConfiguration) {
+    this.processingThreadPoolConfiguration = processingThreadPoolConfiguration;
+  }
+  @Override
+  public ThreadPoolConfiguration getProcessingThreadPoolConfiguration() {
+    return processingThreadPoolConfiguration;
   }
   public static RpcContext createBioServerContext() {
     RpcServerContext context = new RpcServerContext();
@@ -70,6 +92,8 @@ public class RpcServerContext implements RpcContext {
     context.setSocketFactoryClassName(StreamSocketFactoryImpl.class.getName());
     context.setWorkerThreadPoolConfiguration(new ThreadPoolConfiguration());
     context.setReaderWorkerCount(10);
+    context.setProcessingQueueSize(200);
+    context.setProcessingThreadPoolConfiguration(new ThreadPoolConfiguration());
     return context;
   }
 }

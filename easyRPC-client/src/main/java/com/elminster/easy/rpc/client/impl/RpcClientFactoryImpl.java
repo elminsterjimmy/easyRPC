@@ -18,15 +18,17 @@ public class RpcClientFactoryImpl implements RpcClientFactory {
    * {@inheritDoc}
    */
   @Override
-  public RpcClient createRpcClient(ConnectionEndpoint endpoint, RpcContext context) {
-    return new RpcClientImpl(endpoint, new RpcEncodingFactoryBase("default"), context);
+  public RpcClient createRpcClient(ConnectionEndpoint endpoint, RpcContext context, boolean stayConnection) {
+    // TODO RpcClient is heavy object, cache them?
+    return new RpcClientImpl(endpoint, new RpcEncodingFactoryBase("default"), context, stayConnection);
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public RpcClient createRpcClient(ConnectionEndpoint endpoint, RpcEncodingFactory encodingFactory, RpcContext context) {
-    return new RpcClientImpl(endpoint, encodingFactory, context);
+  public RpcClient createRpcClient(ConnectionEndpoint endpoint, RpcEncodingFactory encodingFactory, RpcContext context, boolean stayConnection) {
+    // TODO RpcClient is heavy object, cache them?
+    return new RpcClientImpl(endpoint, encodingFactory, context, stayConnection);
   }
 }

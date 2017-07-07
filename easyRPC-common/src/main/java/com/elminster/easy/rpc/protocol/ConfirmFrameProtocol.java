@@ -23,10 +23,15 @@ public interface ConfirmFrameProtocol extends Protocol {
   
   public static enum Frame {
     FRAME_NONE((byte)0),
-    FRAME_VERSION((byte)1),
-    FRAME_HEADER((byte)2),
-    FRAME_REQUEST((byte)3),
-    FRAME_RESPONSE((byte)4),
+    FRAME_OK((byte)1),
+    FRAME_VERSION((byte)10),
+    FRAME_HEADER((byte)11),
+    FRAME_REQUEST((byte)12),
+    FRAME_RESPONSE((byte)13),
+    FRAME_NEXT((byte)64),
+    FRAME_GRACE_EXIT((byte)0xA0),
+    FRAME_MISREAD((byte)80),
+    FRAME_ENCODE_ERROR((byte)0),
     FRAME_FAIL((byte)0xF0),
     FRAME_EXCEPTION((byte)0xFF);
     

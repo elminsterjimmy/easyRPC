@@ -23,11 +23,14 @@ public class ContainerReader extends Job implements ContainerWorker {
   private static final Logger logger = LoggerFactory.getLogger(ContainerReader.class);
 
   private final Selector selector;
+  
+  {
+    READER_SERIAL.getAndIncrement();
+  }
 
   public ContainerReader(Selector selector) {
-    super(READER_SERIAL.get(), "Nio Container Reader - " + (READER_SERIAL.get()));
+    super(READER_SERIAL.get(), "Nio Container Reader - " + Integer.toHexString(READER_SERIAL.get()));
     this.selector = selector;
-    READER_SERIAL.incrementAndGet();
   }
 
   @Override
