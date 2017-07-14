@@ -440,8 +440,20 @@ public class SocketFactoryTest {
       return null;
     }
 
+
     @Override
-    public Integer getReaderWorkerCount() {
+    public int getReaderWorkerCount() {
+      return 10;
+    }
+
+    @Override
+    public int getProcessorQueueSize() {
+      // TODO Auto-generated method stub
+      return 0;
+    }
+
+    @Override
+    public ThreadPoolConfiguration getProcessingThreadPoolConfiguration() {
       // TODO Auto-generated method stub
       return null;
     }

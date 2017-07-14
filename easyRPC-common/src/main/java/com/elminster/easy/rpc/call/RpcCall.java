@@ -14,6 +14,10 @@ public interface RpcCall {
   public String getMethodName();
   public Object[] getArgs();
   public boolean isAsyncCall();
+  public boolean isVoidReturn();
+  
+  public void setStatus(Status status);
+  public Status getStatus();
   
   public Long getInvokeStartAt();
   public void setInvokeStartAt(long invokeStartAt);

@@ -25,7 +25,7 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
   }
 
   @Override
-  public RpcCall getResult(RpcCall call, int timeout) {
+  public RpcCall getResult(RpcCall call, long timeout) {
     if (call.isAsyncCall()) {
       return asyncProcessor.getResult(call, timeout);
     } else {
@@ -36,5 +36,23 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
   public void close() {
     syncProcessor.close();
     asyncProcessor.close();
+  }
+
+  @Override
+  public boolean cancelRpcCall(RpcCall call) {
+    if (call.isAsyncCall()) {
+      return asyncProcessor.cancelRpcCall(call);
+    } else {
+      return syncProcessor.cancelRpcCall(call);
+    }
+  }
+
+  @Override
+  public RpcCall getRpcCall(String requestId) {
+    RpcCall rpcCall = asyncProcessor.getRpcCall(requestId);
+    if (null == rpcCall) {
+      rpcCall = syncProcessor.getRpcCall(requestId);
+    }
+    return rpcCall;
   }
 }

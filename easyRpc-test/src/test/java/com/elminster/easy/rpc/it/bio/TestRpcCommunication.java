@@ -2,6 +2,8 @@ package com.elminster.easy.rpc.it.bio;
 
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import org.apache.log4j.xml.DOMConfigurator;
 import org.junit.Assert;
@@ -27,9 +29,9 @@ import com.elminster.easy.rpc.server.listener.RpcServerListenEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListener;
 
 public class TestRpcCommunication {
-  
+
   private static final int CLIENT_COUNT = 10;
-  
+
   @BeforeClass
   public static void initLog4j() {
     DOMConfigurator.configure("log4j.xml");
@@ -44,9 +46,9 @@ public class TestRpcCommunication {
     rpcServer.listen(9100);
 
     waitServerUp(rpcServer);
-    
+
     final CountDownLatch latch = new CountDownLatch(CLIENT_COUNT);
-    
+
     ClientThread[] clients = new ClientThread[CLIENT_COUNT];
     for (int i = 0; i < clients.length; i++) {
       clients[i] = new ClientThread(latch, "client" + i);
@@ -55,24 +57,31 @@ public class TestRpcCommunication {
     for (int i = 0; i < clients.length; i++) {
       clients[i].start();
     }
-    
+
     try {
       latch.await();
     } catch (InterruptedException e) {
       ;
     }
+    
+    for (ClientThread client : clients) {
+      if (null != client.e) {
+        Assert.fail(client.e.getMessage());
+      }
+    }
     rpcServer.shutdown(true);
   }
 
   class ClientThread extends Thread {
-    
+
     CountDownLatch latch;
-    
+    Throwable e;
+
     public ClientThread(CountDownLatch latch, String name) {
       this.latch = latch;
       this.setName(name);
     }
-    
+
     public void run() {
       RpcClient rpcClient = null;
       Random random = new Random();
@@ -80,27 +89,40 @@ public class TestRpcCommunication {
         RpcContext clientContext = createRpcClientContext();
         ConnectionEndpoint endpoint = SimpleConnectionEndpoint.localhostConnectionEndpoint(9100);
         rpcClient = RpcClientFactoryImpl.INSTANCE.createRpcClient(endpoint, clientContext, 0 == random.nextInt(10) % 2);
-        
+
         RpcProxy proxy = new DynamicProxy();
-        RpcTestIf testIf = proxy.makeProxy(RpcTestIf.class, rpcClient);
-        
+        RpcTestIfClient testIf = proxy.makeProxy(RpcTestIfClient.class, rpcClient);
         String helloWord = testIf.testString("world");
         Assert.assertEquals("hello world", helloWord);
-        
         Assert.assertEquals(new Integer(0), (Integer) testIf.testIntegerPlus(null));
         Assert.assertEquals(6, testIf.testIntPlus(5));
         Assert.assertEquals(101, testIf.testLongPlus(100L));
-        
+
         Assert.assertEquals(Integer.MIN_VALUE, testIf.testIntPlus(Integer.MAX_VALUE));
-        
+
+        Future<String> future = testIf.testLongTimeJob();
+        try {
+          String rtn = future.get();
+          Assert.assertEquals("Finish Long Time Job", rtn);
+        } catch (InterruptedException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        } catch (ExecutionException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
         Assert.assertTrue(testIf.now().getTime() - System.currentTimeMillis() < 1000);
-        
-//        try {
-//          testIf.unpublished();
-//          Assert.fail();
-//        } catch (Exception e) {
-//        }
-        
+
+        testIf.testVoid();
+
+        // try {
+        // testIf.unpublished();
+        // Assert.fail();
+        // } catch (Exception e) {
+        // }
+
+      } catch (Throwable e) {
+        this.e = e;
       } finally {
         if (null != rpcClient) {
           rpcClient.disconnect();
@@ -133,7 +155,7 @@ public class TestRpcCommunication {
 
       @Override
       public void preProcess(RpcProcessEvent event) {
-//        System.out.println(event.toString());
+        // System.out.println(event.toString());
       }
 
       @Override
@@ -142,7 +164,7 @@ public class TestRpcCommunication {
 
       @Override
       public void onAccept(RpcServerAcceptEvent event) {
-//        System.out.println(event.getServerEndpoint() + "|" + event.getClientEndpoint());
+        // System.out.println(event.getServerEndpoint() + "|" + event.getClientEndpoint());
       }
     });
     synchronized (rpcServer) {

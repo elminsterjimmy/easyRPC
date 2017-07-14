@@ -10,6 +10,8 @@ import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.easy.rpc.call.ReturnResult;
 import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.call.impl.ReturnResultImpl;
+import com.elminster.easy.rpc.client.async.AsyncFuture;
+import com.elminster.easy.rpc.client.connection.Connection;
 import com.elminster.easy.rpc.client.context.impl.InvokerContextImpl;
 import com.elminster.easy.rpc.client.processor.RpcClientProcessor;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
@@ -33,10 +35,12 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
 
   private final RpcEncodingFactory encodingFactory;
   private final InvokerContextImpl invokerContext;
+  private final Connection conn;
 
-  public BioRpcClientProcessor(RpcEncodingFactory encodingFactory, InvokerContextImpl invokerContext) {
+  public BioRpcClientProcessor(RpcEncodingFactory encodingFactory, InvokerContextImpl invokerContext, Connection conn) {
     this.encodingFactory = encodingFactory;
     this.invokerContext = invokerContext;
+    this.conn = conn;
   }
 
   /**
@@ -93,47 +97,61 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
         // failed encode
         throw rpce;
       }
-      
-      // expect the response
-      if (!confirmFrameProtocol.expact(Frame.FRAME_RESPONSE.getFrame())) {
-        RpcException rpce = (RpcException) encodingFactory.readObjectNullable();
-        throw rpce;
-      }
-      
-      Object returnValue = null;
-      ReturnResult result;
-      Long invokeStart = null;
-      Long invokeEnd = null;
-      try {
-        responseProtocol.decode();
-//        String id = responseProtocol.getRequestId(); 
-        boolean isVoid = responseProtocol.isVoid();
-        invokeStart = responseProtocol.getInvokeStart();
-        invokeEnd = responseProtocol.getInvokeEnd();
-        if (!isVoid) {
-          returnValue = responseProtocol.getReturnValue();
-          result = new ReturnResultImpl(null == returnValue ? Object.class : returnValue.getClass(), returnValue);
-        } else {
-          result = new ReturnResultImpl(Void.class, returnValue);
-        }
-      } catch (RpcException e) {
-        // decoding error
-        returnValue = e;
-        result = new ReturnResultImpl(null == returnValue ? Exception.class : returnValue.getClass(), returnValue);
-      }
-      rpcCall.setResult(result);
-      rpcCall.setRpcCallEndAt(System.currentTimeMillis());
-      rpcCall.setInvokeStartAt(invokeStart);
-      rpcCall.setInvokeEndAt(invokeEnd);
-      if (logger.isDebugEnabled()) {
-        logger.debug(String.format("After calling RPC [%s]", rpcCall));
-      }
-      
-      if (returnValue instanceof Throwable) {
-        throw (Throwable) returnValue;
-      }
-      return returnValue;
 
+      if (rpcCall.isAsyncCall()) {
+        // expect the async response
+        if (!confirmFrameProtocol.expact(Frame.FRAME_ASYNC_RESPONSE.getFrame())) {
+          RpcException rpce = (RpcException) encodingFactory.readObjectNullable();
+          throw rpce;
+        }
+        // check if it is a void return
+        boolean isVoidReturn = rpcCall.isVoidReturn();
+        AsyncFuture future = new AsyncFuture(encodingFactory, rpcCall, conn);
+        if (isVoidReturn) {
+          // TODO return
+        }
+        return future;
+      } else {
+        // expect the response
+        if (!confirmFrameProtocol.expact(Frame.FRAME_RESPONSE.getFrame())) {
+          RpcException rpce = (RpcException) encodingFactory.readObjectNullable();
+          throw rpce;
+        }
+
+        Object returnValue = null;
+        ReturnResult result;
+        Long invokeStart = null;
+        Long invokeEnd = null;
+        try {
+          responseProtocol.decode();
+//          String requestId = responseProtocol.getRequestId();
+          boolean isVoid = responseProtocol.isVoid();
+          invokeStart = responseProtocol.getInvokeStart();
+          invokeEnd = responseProtocol.getInvokeEnd();
+          if (!isVoid) {
+            returnValue = responseProtocol.getReturnValue();
+            result = new ReturnResultImpl(null == returnValue ? Object.class : returnValue.getClass(), returnValue);
+          } else {
+            result = new ReturnResultImpl(Void.class, returnValue);
+          }
+        } catch (RpcException e) {
+          // decoding error
+          returnValue = e;
+          result = new ReturnResultImpl(null == returnValue ? Exception.class : returnValue.getClass(), returnValue);
+        }
+        rpcCall.setResult(result);
+        rpcCall.setRpcCallEndAt(System.currentTimeMillis());
+        rpcCall.setInvokeStartAt(invokeStart);
+        rpcCall.setInvokeEndAt(invokeEnd);
+        if (logger.isDebugEnabled()) {
+          logger.debug(String.format("After calling RPC [%s]", rpcCall));
+        }
+
+        if (returnValue instanceof Throwable) {
+          throw (Throwable) returnValue;
+        }
+        return returnValue;
+      }
     } catch (IOException ioe) {
       if (ioe instanceof EOFException) {
         String msg = String.format("Connection with Rpc Server is broken. rpcCall [%s]", rpcCall);

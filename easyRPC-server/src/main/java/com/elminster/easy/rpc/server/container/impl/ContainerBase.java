@@ -24,9 +24,7 @@ import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.container.exception.StartContainerException;
 import com.elminster.easy.rpc.server.container.exception.StopContainerException;
 import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
-import com.elminster.easy.rpc.server.processor.impl.AsyncRpcServiceProcessor;
 import com.elminster.easy.rpc.server.processor.impl.RpcServiceProcessorDelegate;
-import com.elminster.easy.rpc.server.processor.impl.SyncRpcServiceProcessor;
 
 /**
  * The Container Base.

@@ -3,6 +3,7 @@ package com.elminster.easy.rpc.call.impl;
 import com.elminster.easy.rpc.call.CallNotFinishedException;
 import com.elminster.easy.rpc.call.ReturnResult;
 import com.elminster.easy.rpc.call.RpcCall;
+import com.elminster.easy.rpc.call.Status;
 import com.elminster.easy.rpc.context.InvokeContext;
 
 public class RpcCallImpl implements RpcCall {
@@ -13,11 +14,13 @@ public class RpcCallImpl implements RpcCall {
   private final String methodName;
   private final Object[] args;
   private final boolean isAsync;
+  private boolean isVoidReturn;
   private ReturnResult result;
   private Long invokeStartAt;
   private Long invokeEndAt;
   private Long callStartAt;
   private Long callEndAt;
+  private Status status;
 
   public RpcCallImpl(String requestId, boolean isAsync, String serviceName, String methodName, Object[] args) {
     this.requestId = requestId;
@@ -25,6 +28,7 @@ public class RpcCallImpl implements RpcCall {
     this.serviceName = serviceName;
     this.methodName = methodName;
     this.args = args;
+    this.status = Status.CREATED;
   }
   
   public RpcCallImpl(String requestId, boolean isAsync, String serviceName, String methodName, Object[] args, InvokeContext context) {
@@ -34,6 +38,7 @@ public class RpcCallImpl implements RpcCall {
     this.methodName = methodName;
     this.args = args;
     this.context = context;
+    this.status = Status.CREATED;
   }
 
   public ReturnResult getResult() {
@@ -99,7 +104,7 @@ public class RpcCallImpl implements RpcCall {
   public String toString() {
     StringBuilder sb = new StringBuilder(String.format("RPC Call [%s] [%s@%s] with args %s on context [%s]", requestId, methodName, serviceName, generMethodArgs(args), context));
     if (null != result) {
-      sb.append(String.format(" --> result [%s]", result.getReturnValue().toString()));
+      sb.append(String.format(" --> result [%s %s]", result.getReturnType().getName(), String.valueOf(result.getReturnValue())));
       try {
         long invokeDuration = this.getInvokeDuration();
         sb.append(String.format(" within [%d] ms (Invoke Duration)", invokeDuration));
@@ -157,5 +162,46 @@ public class RpcCallImpl implements RpcCall {
   
   public void setContext(InvokeContext context) {
     this.context = context;
+  }
+
+  public boolean isVoidReturn() {
+    return isVoidReturn;
+  }
+
+  public void setVoidReturn(boolean isVoidReturn) {
+    this.isVoidReturn = isVoidReturn;
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((requestId == null) ? 0 : requestId.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    RpcCallImpl other = (RpcCallImpl) obj;
+    if (requestId == null) {
+      if (other.requestId != null)
+        return false;
+    } else if (!requestId.equals(other.requestId))
+      return false;
+    return true;
+  }
+
+  public Status getStatus() {
+    return status;
+  }
+
+  public void setStatus(Status status) {
+    this.status = status;
   }
 }

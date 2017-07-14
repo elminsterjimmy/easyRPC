@@ -13,5 +13,9 @@ public interface RpcServiceProcessor {
 
   public void invoke(RpcCall call) throws RpcException;
   
-  public RpcCall getResult(RpcCall call, int timeout);
+  public RpcCall getResult(RpcCall call, long timeout);
+  
+  public boolean cancelRpcCall(RpcCall call);
+  
+  public RpcCall getRpcCall(String requestId);
 }

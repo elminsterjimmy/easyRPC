@@ -64,7 +64,7 @@ public class BioConnectionImpl implements Connection {
       out = socket.getOutputStream();
 
       CoreCodec coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
-      RpcEncodingFactory encodingFactory = rpcClient.getEncodingFactory();
+      RpcEncodingFactory encodingFactory = rpcClient.getEncodingFactory().cloneEncodingFactory();
       encodingFactory.setCoreCodec(coreCodec);
 
       // shakehand
@@ -97,7 +97,7 @@ public class BioConnectionImpl implements Connection {
         }
       }
       
-      processor = new BioRpcClientProcessor(encodingFactory, invokerContext); // TODO
+      processor = new BioRpcClientProcessor(encodingFactory, invokerContext, this);
     } catch (IOException | ObjectInstantiationExcption | RpcException e) {
       closeStreams();
       if (e instanceof EOFException) {
@@ -116,6 +116,9 @@ public class BioConnectionImpl implements Connection {
       }
       if (null != out) {
         out.close();
+      }
+      if (null != socket) {
+        socket.close();
       }
     } catch (IOException e) {
       logger.warn("Cannot close streams!", e);
@@ -164,7 +167,7 @@ public class BioConnectionImpl implements Connection {
 
   @Override
   public boolean isConnected() {
-    return socket.isConnected();
+    return !socket.isClosed();
   }
 
 }

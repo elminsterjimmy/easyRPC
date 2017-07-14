@@ -8,6 +8,7 @@ import com.elminster.common.misc.Version;
 import com.elminster.common.util.Assert;
 import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.client.RpcClient;
+import com.elminster.easy.rpc.client.async.AsyncFuture;
 import com.elminster.easy.rpc.client.connection.Connection;
 import com.elminster.easy.rpc.client.container.Container;
 import com.elminster.easy.rpc.client.container.impl.ContainerFactoryImpl;
@@ -32,7 +33,6 @@ public class RpcClientImpl implements RpcClient {
   private Container container;
   private Connection connection;
   private boolean stayConnection = false;
-  private volatile boolean isConnected = false;
 
   public RpcClientImpl(ConnectionEndpoint endpoint, RpcEncodingFactory encodingFactory, RpcContext context, boolean stayConnection) {
     Assert.notNull(endpoint);
@@ -94,7 +94,6 @@ public class RpcClientImpl implements RpcClient {
         throw new ConnectionException(msg, e);
       }
     }
-    isConnected = true;
   }
 
   private synchronized void initContainer() throws ObjectInstantiationExcption {
@@ -114,7 +113,6 @@ public class RpcClientImpl implements RpcClient {
     if (isConnected()) {
       container.disconnect();
     }
-    isConnected = false;
   }
 
   /**
@@ -122,7 +120,7 @@ public class RpcClientImpl implements RpcClient {
    */
   @Override
   public boolean isConnected() {
-    return isConnected;
+    return null != connection && connection.isConnected();
   }
 
   /**
@@ -138,27 +136,25 @@ public class RpcClientImpl implements RpcClient {
    */
   @Override
   public synchronized Object invokeService(RpcCall rpcCall) throws Throwable {
+    if (logger.isDebugEnabled()) {
+      logger.debug("Invoke Service Call {}.", rpcCall.toString());
+    }
     if (rpcCall.isAsyncCall()) {
       // TODO always create new connection for async call
       if (null == container) {
         initContainer();
       }
       Connection asyncConn = null;
-      try {
-        asyncConn = container.connect();
-        return null;
-      } finally {
-        if (null != asyncConn) {
-          asyncConn.disconnect();
-        }
-      }
+      asyncConn = container.connect();
+      AsyncFuture future = (AsyncFuture) asyncConn.invokeService(rpcCall);
+      return future;
     } else {
       if (isConnected()) {
         try {
           return connection.invokeService(rpcCall);
         } finally {
           if (!stayConnection) {
-            disconnect();
+            connection.disconnect();
           }
         }
       } else {

@@ -4,7 +4,6 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.UUID;
 
-import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.call.impl.RpcCallImpl;
 import com.elminster.easy.rpc.client.RpcClient;
 import com.elminster.easy.rpc.idl.Async;
@@ -46,10 +45,21 @@ public class ProxyInvocationHandler implements InvocationHandler {
       rpcClient.connect();
     }
     
-    RpcCall rpcCall = new RpcCallImpl(getRequestId(), isAsyncMethod(method), serviceName, method.getName(), args);
+    boolean isVoidReturn = false;
+    if (Void.class == method.getReturnType() || void.class == method.getReturnType()) {
+      isVoidReturn = true;
+    }
+    
+    RpcCallImpl rpcCall = new RpcCallImpl(getRequestId(), isAsyncMethod(method), serviceName, method.getName(), args);
+    rpcCall.setVoidReturn(isVoidReturn);
     return rpcClient.invokeService(rpcCall);
   }
   
+  /**
+   * Check if is an async method.
+   * @param method the method
+   * @return if is an async method
+   */
   private boolean isAsyncMethod(Method method) {
     boolean isAsync = false;
     if (null != method.getAnnotation(Async.class)) {

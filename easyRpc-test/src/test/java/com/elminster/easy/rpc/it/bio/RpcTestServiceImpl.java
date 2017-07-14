@@ -13,7 +13,9 @@ public class RpcTestServiceImpl implements RpcService, RpcTestIf {
         "testIntPlus",
         "testLongPlus",
         "testString",
-        "now"
+        "now",
+        "testVoid",
+        "testLongTimeJob"
     };
   }
 
@@ -58,5 +60,20 @@ public class RpcTestServiceImpl implements RpcService, RpcTestIf {
   @Override
   public String unpublished() {
     return "unpublished";
+  }
+
+  @Override
+  public void testVoid() {
+    System.out.println("void");
+  }
+
+  @Override
+  public String testLongTimeJob() {
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    return "Finish Long Time Job";
   }
 }
