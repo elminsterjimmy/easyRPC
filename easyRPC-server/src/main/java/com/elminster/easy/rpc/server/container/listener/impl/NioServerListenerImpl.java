@@ -21,8 +21,15 @@ import com.elminster.easy.rpc.server.container.impl.NioContainer;
 import com.elminster.easy.rpc.server.listener.RpcServerAcceptEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListener;
 
+/**
+ * The NIO Server Listener.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class NioServerListenerImpl extends ServerListenerBase {
 
+  /** the logger. */
   private static final Logger logger = LoggerFactory.getLogger(NioServerListenerImpl.class);
 
   private volatile boolean stop;
@@ -39,6 +46,7 @@ public class NioServerListenerImpl extends ServerListenerBase {
     ServerSocketChannel serverChannel = serverSocket.getChannel();
     SocketChannel socketChannel = serverChannel.accept();
     logger.info(String.format("Get connection from socket [%s].", socketChannel));
+    socketChannel.configureBlocking(false);
     Socket socket = socketChannel.socket();
     for (RpcServerListener listener : rpcServer.getServerListeners()) {
       listener.onAccept(new RpcServerAcceptEvent(endpoint, SimpleConnectionEndpoint.createEndpoint(socket.getInetAddress().getHostAddress(), socket.getPort())));
@@ -47,7 +55,10 @@ public class NioServerListenerImpl extends ServerListenerBase {
     RpcConnection connection = new NioRpcConnection(rpcServer, container, socketChannel);
     return connection;
   }
-
+  
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void listen() throws IOException {
     super.listen();

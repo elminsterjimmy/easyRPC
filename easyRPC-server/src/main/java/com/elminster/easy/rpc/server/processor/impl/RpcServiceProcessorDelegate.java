@@ -5,6 +5,12 @@ import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
 
+/**
+ * The RPC service processor delegate.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
   
   private final SyncRpcServiceProcessor syncProcessor;
@@ -15,6 +21,9 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
     asyncProcessor = new AsyncRpcServiceProcessor(rpcServer);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void invoke(RpcCall call) throws RpcException {
     if (call.isAsyncCall()) {
@@ -24,6 +33,9 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public RpcCall getResult(RpcCall call, long timeout) {
     if (call.isAsyncCall()) {
@@ -38,6 +50,9 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
     asyncProcessor.close();
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public boolean cancelRpcCall(RpcCall call) {
     if (call.isAsyncCall()) {
@@ -47,6 +62,9 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public RpcCall getRpcCall(String requestId) {
     RpcCall rpcCall = asyncProcessor.getRpcCall(requestId);

@@ -17,6 +17,12 @@ import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.listener.RpcServerAcceptEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListener;
 
+/**
+ * The BIO server listener.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class BioServerListenerImpl extends ServerListenerBase {
 
   private static final Logger logger = LoggerFactory.getLogger(BioServerListenerImpl.class);
@@ -85,9 +91,11 @@ public class BioServerListenerImpl extends ServerListenerBase {
     return connection;
   }
   
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void interrupt() {
     stop = true;
   }
-
 }

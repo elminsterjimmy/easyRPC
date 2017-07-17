@@ -9,15 +9,18 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.codec.CoreCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
 import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.protocol.ResponseProtocol;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.container.worker.impl.WorkerJobId;
 import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl;
 import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl.InvokeeContextImplBuilder;
+import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
 
 /**
  * NIO RPC Connection.
@@ -68,7 +71,7 @@ public class NioRpcConnection extends RpcConnectionImpl {
   protected void doRun() throws Exception {
     try {
       if (null == shakehandProtocol) {
-        initialBaseProtocols(defaultEncodingFactory);
+        initializeBaseProtocols(defaultEncodingFactory);
         shakehand(defaultEncodingFactory);
       } else if (null == versionProtocol) {
         checkVersion(defaultEncodingFactory, invokeContext);
@@ -82,7 +85,7 @@ public class NioRpcConnection extends RpcConnectionImpl {
       throw ioe;
     } catch (RpcException rpce) {
       logger.error(rpce.getMessage());
-      this.clone();
+      this.close();
       throw rpce;
     }
   }
@@ -128,5 +131,19 @@ public class NioRpcConnection extends RpcConnectionImpl {
   @Override
   public String toString() {
     return String.format("NioRpcConnection [ Server=[ host:%s, port:%d ] | Client=[host:%s, port:%d] ]", localAddr, localPort, remoteAddr, remotePort);
+  }
+
+  @Override
+  protected void handleSyncRpcCall(RpcServiceProcessor proccessor, RpcCall call, RpcEncodingFactory defaultEncodingFactory, ResponseProtocol responseProtocol)
+      throws IOException, RpcException {
+    // TODO Auto-generated method stub
+    
+  }
+
+  @Override
+  protected void handleAsyncRpcCall(RpcServiceProcessor proccessor, RpcCall call, RpcEncodingFactory defaultEncodingFactory, ResponseProtocol responseProtocol)
+      throws IOException, RpcException {
+    // TODO Auto-generated method stub
+    
   }
 }

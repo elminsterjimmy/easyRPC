@@ -11,15 +11,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elminster.common.exception.ObjectInstantiationExcption;
+import com.elminster.easy.rpc.call.RpcCall;
+import com.elminster.easy.rpc.call.Status;
 import com.elminster.easy.rpc.codec.CoreCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
 import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.protocol.AsyncResponseProtocol;
+import com.elminster.easy.rpc.protocol.ResponseProtocol;
+import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol.Frame;
+import com.elminster.easy.rpc.protocol.impl.ProtocolFactoryImpl;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.container.worker.impl.WorkerJobId;
 import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl;
 import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl.InvokeeContextImplBuilder;
+import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
 
 /**
  * The Socket RPC Connection.
@@ -67,7 +75,7 @@ public class SocketRpcConnection extends RpcConnectionImpl {
       
       RpcEncodingFactory defaultEncodingFactory = getEncodingFactory("default", coreCodec);
       
-      initialBaseProtocols(defaultEncodingFactory);
+      initializeBaseProtocols(defaultEncodingFactory);
       shakehand(defaultEncodingFactory);
       checkVersion(defaultEncodingFactory, invokeContext);
 
@@ -85,6 +93,80 @@ public class SocketRpcConnection extends RpcConnectionImpl {
       throw e;
     }
   }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected void handleSyncRpcCall(RpcServiceProcessor proccessor, RpcCall call, RpcEncodingFactory defaultEncodingFactory, ResponseProtocol responseProtocol)
+      throws IOException, RpcException {
+    proccessor.invoke(call);
+    RpcCall result = proccessor.getResult(call, 10);
+    writeResult(result, defaultEncodingFactory, responseProtocol);
+  }
+  
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected void handleAsyncRpcCall(RpcServiceProcessor proccessor, RpcCall call, RpcEncodingFactory defaultEncodingFactory, ResponseProtocol responseProtocol) throws IOException, RpcException {
+    proccessor.invoke(call);
+    AsyncResponseProtocol asyncProtocol;
+    try {
+      asyncProtocol = (AsyncResponseProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(AsyncResponseProtocol.class, defaultEncodingFactory);
+    } catch (ObjectInstantiationExcption e) {
+      // unexpected error
+      confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
+      String message = "Cannot instantiate async response protocols, and this should NOT happened!";
+      writeException(defaultEncodingFactory, e, message);
+      return; // start over
+    }
+    RpcServiceProcessor processor = container.getServiceProcessor();
+    while (true) {
+      // TODO
+      try {
+        asyncProtocol.decode();
+      } catch (RpcException e) {
+        confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
+        writeRpcException(defaultEncodingFactory, e);
+      }
+
+      String requestId = asyncProtocol.getRequestId();
+      if (asyncProtocol.isCancel()) {
+        cancelAsyncRpcCall(processor, requestId);
+        continue;
+      } else if (asyncProtocol.isQueryDone()) {
+        boolean isDone = checkRpcCallIsDone(processor, requestId);
+        asyncProtocol.setRequestId(requestId);
+        asyncProtocol.setDone(isDone);
+        asyncProtocol.setTimeout(0);
+        try {
+          asyncProtocol.encode();
+        } catch (RpcException e) {
+          confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
+          writeRpcException(defaultEncodingFactory, e);
+        }
+      } else if (asyncProtocol.isGet()) {
+        long timeout = asyncProtocol.getTimeout();
+        RpcCall rpcCall = processor.getRpcCall(requestId);
+        if (null == rpcCall) {
+          confirmFrameProtocol.nextFrame(Frame.FRAME_UNAVAILABLE.getFrame());
+        } else {
+          if (Status.CANCELLED == rpcCall.getStatus()) {
+            confirmFrameProtocol.nextFrame(Frame.FRAME_CANCELLED.getFrame());
+          }
+          RpcCall result = processor.getResult(rpcCall, timeout);
+          if (null == result) {
+            // timeout
+            confirmFrameProtocol.nextFrame(Frame.FRAME_TIMEOUT.getFrame());
+          } else {
+            writeResult(result, defaultEncodingFactory, responseProtocol);
+          }
+        }
+      }
+    }
+  }
+
 
   @Override
   public InetAddress getRemoteAddress() {

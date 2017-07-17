@@ -4,9 +4,6 @@ import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.Selector;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.elminster.common.thread.IJobMonitor;
 import com.elminster.common.thread.Job;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
@@ -17,7 +14,7 @@ import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.container.listener.ServerListener;
 import com.elminster.easy.rpc.server.container.listener.impl.NioServerListenerImpl;
 import com.elminster.easy.rpc.server.container.worker.ContainerWorker;
-import com.elminster.easy.rpc.server.container.worker.impl.ContainerReader;
+import com.elminster.easy.rpc.server.container.worker.impl.NioContainerReader;
 import com.elminster.easy.rpc.server.container.worker.impl.WorkerJobId;
 
 /**
@@ -29,9 +26,9 @@ import com.elminster.easy.rpc.server.container.worker.impl.WorkerJobId;
 public class NioContainer extends ContainerBase implements Container {
 
   /** the logger. */
-  private static final Logger logger = LoggerFactory.getLogger(NioContainer.class);
+//  private static final Logger logger = LoggerFactory.getLogger(NioContainer.class);
 
-  protected ContainerReader[] readers;
+  protected NioContainerReader[] readers;
   protected ListenWorker listenWorker;
   private int currentReader = 0;
 
@@ -51,10 +48,10 @@ public class NioContainer extends ContainerBase implements Container {
       ServerListener listener = new NioServerListenerImpl(rpcServer, this, endpoint);
       listenWorker = new ListenWorker(listener);
 
-      readers = new ContainerReader[readerWorkerCount];
+      readers = new NioContainerReader[readerWorkerCount];
       for (int i = 0; i < readerWorkerCount; i++) {
         Selector readerSelector = Selector.open();
-        readers[i] = new ContainerReader(readerSelector);
+        readers[i] = new NioContainerReader(readerSelector);
       }
 
     } catch (IOException e) {
@@ -82,7 +79,7 @@ public class NioContainer extends ContainerBase implements Container {
       listenWorker.cancel();
     }
     if (null != readers) {
-      for (ContainerReader reader : readers) {
+      for (NioContainerReader reader : readers) {
         reader.cancel();
       }
     }
@@ -97,7 +94,7 @@ public class NioContainer extends ContainerBase implements Container {
    *           on error
    */
   public void assign2Reader(NioRpcConnection connection) throws ClosedChannelException {
-    ContainerReader reader = selectReader();
+    NioContainerReader reader = selectReader();
     reader.registerChannel(connection.getSocketChannel(), connection);
     reader.awakeSelector();
   }
@@ -107,7 +104,7 @@ public class NioContainer extends ContainerBase implements Container {
    * 
    * @return a reader
    */
-  private ContainerReader selectReader() {
+  private NioContainerReader selectReader() {
     currentReader = ((currentReader + 1) % readers.length);
     return this.readers[currentReader];
   }

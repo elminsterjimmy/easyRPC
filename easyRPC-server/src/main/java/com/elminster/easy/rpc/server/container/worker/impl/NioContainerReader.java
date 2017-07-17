@@ -16,11 +16,17 @@ import com.elminster.common.thread.Job;
 import com.elminster.easy.rpc.server.connection.impl.NioRpcConnection;
 import com.elminster.easy.rpc.server.container.worker.ContainerWorker;
 
-public class ContainerReader extends Job implements ContainerWorker {
+/**
+ * The NIO container reader.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
+public class NioContainerReader extends Job implements ContainerWorker {
 
   private static final AtomicInteger READER_SERIAL = new AtomicInteger(WorkerJobId.NIO_READ_WORKER.getJobId());
 
-  private static final Logger logger = LoggerFactory.getLogger(ContainerReader.class);
+  private static final Logger logger = LoggerFactory.getLogger(NioContainerReader.class);
 
   private final Selector selector;
   
@@ -28,11 +34,14 @@ public class ContainerReader extends Job implements ContainerWorker {
     READER_SERIAL.getAndIncrement();
   }
 
-  public ContainerReader(Selector selector) {
+  public NioContainerReader(Selector selector) {
     super(READER_SERIAL.get(), "Nio Container Reader - " + Integer.toHexString(READER_SERIAL.get()));
     this.selector = selector;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected JobStatus doWork(IJobMonitor monitor) throws Throwable {
     try {
@@ -85,5 +94,4 @@ public class ContainerReader extends Job implements ContainerWorker {
   public void awakeSelector() {
     selector.wakeup();
   }
-
 }

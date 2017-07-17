@@ -142,6 +142,9 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
       super(WorkerJobId.PROCESS_JOB.getJobId(), "Process Job");
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected JobStatus doWork(IJobMonitor monitor) throws Throwable {
       while (!Thread.currentThread().isInterrupted() && !monitor.isCancelled()) {
@@ -162,6 +165,9 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
       this.rpcCall = rpcCall;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected JobStatus doWork(IJobMonitor monitor) throws Throwable {
       RpcService rpcService = null;
@@ -184,6 +190,10 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
     threadPool.shutdown();
   }
   
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public RpcCall getRpcCall(String requestId) {
     RpcCall rpcCall = unproccessedRpcCalls.get(requestId);
     if (null == rpcCall) {
@@ -192,6 +202,10 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
     return rpcCall;
   }
   
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public boolean cancelRpcCall(RpcCall rpcCall) {
     logger.debug(String.format("Cancel RPC Call [%s].", rpcCall.getRequestId()));
     boolean removed = processingQueue.remove(rpcCall);

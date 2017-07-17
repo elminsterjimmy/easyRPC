@@ -8,6 +8,12 @@ import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
 
+/**
+ * RPC async service processor.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class AsyncRpcServiceProcessor extends RpcServiceProcessorBase implements RpcServiceProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncRpcServiceProcessor.class);
@@ -18,6 +24,9 @@ public class AsyncRpcServiceProcessor extends RpcServiceProcessorBase implements
     super(rpcServer);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void invoke(RpcCall rpcCall) throws RpcException {
     try {
@@ -28,6 +37,9 @@ public class AsyncRpcServiceProcessor extends RpcServiceProcessorBase implements
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public RpcCall getResult(RpcCall rpcCall, long timeout) {
     String requestId = rpcCall.getRequestId();
@@ -58,6 +70,9 @@ public class AsyncRpcServiceProcessor extends RpcServiceProcessorBase implements
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public boolean cancelRpcCall(RpcCall rpcCall) {
     super.cancelRpcCall(rpcCall);

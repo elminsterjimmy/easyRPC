@@ -1,5 +1,11 @@
 package com.elminster.easy.rpc.server.container.worker.impl;
 
+/**
+ * An enum of workers' job id.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public enum WorkerJobId {
 
   BIO_LISTEN_WORKER(0x10000),
