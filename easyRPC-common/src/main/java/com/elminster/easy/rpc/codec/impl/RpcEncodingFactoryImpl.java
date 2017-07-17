@@ -595,6 +595,22 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    * {@inheritDoc}
    */
   @Override
+  public void flush() throws IOException {
+    // TODO Auto-generated method stub
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected Object clone() throws CloneNotSupportedException {
+    return super.clone();
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public void addCompressor(final int type, final Class<? extends DataCompressor> compressor) {
     compressorFactory.addCompressor(type, compressor);
   }

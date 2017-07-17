@@ -41,4 +41,11 @@ public class ByteBufferIoImpl implements IoUtil {
       throw new IOException("Buffer Overflow!", e);
     }
   }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void flush() throws IOException {
+  }
 }

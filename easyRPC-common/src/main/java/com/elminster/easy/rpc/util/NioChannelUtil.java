@@ -1,9 +1,16 @@
 package com.elminster.easy.rpc.util;
 
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
+/**
+ * NIO channel utilities.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class NioChannelUtil implements IoUtil {
   
   private SocketChannel socketChannel;
@@ -22,19 +29,19 @@ public class NioChannelUtil implements IoUtil {
     }
   };
   
-  private ByteBufferIoImpl readIo = new ByteBufferIoImpl(readByteBuffer.get());
-  private ByteBufferIoImpl writeIo = new ByteBufferIoImpl(writeByteBuffer.get());
-  
   public NioChannelUtil(SocketChannel socketChannel) {
     this.socketChannel = socketChannel;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void write(byte[] bytes, int off, int len) throws IOException {
     int curLen = len;
     while (curLen > 0) {
       int size = Math.min(writeByteBuffer.get().capacity(), curLen);
-      writeIo.write(bytes, 0, size);
+      writeByteBuffer.get().put(bytes, off, size);
       writeByteBuffer.get().flip();
       socketChannel.write(writeByteBuffer.get());
       writeByteBuffer.get().clear();
@@ -42,12 +49,38 @@ public class NioChannelUtil implements IoUtil {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public int read(byte[] bytes, int off, int len) throws IOException {
     int readBytes = socketChannel.read(readByteBuffer.get());
-    readByteBuffer.get().rewind();
-    readBytes = readIo.read(bytes, off, len);
-    readByteBuffer.get().compact();
+    readByteBuffer.get().flip();
+    readBytes = Math.min(readByteBuffer.get().remaining(), len);
+    if (readBytes > 0) {
+      try {
+        // debug read byte buffer.
+        readByteBuffer.get().rewind();
+        byte[] debug = readByteBuffer.get().array();
+        String bufferValue = "";
+        for (int i = 0; i < debug.length; i++) {
+          bufferValue += "" + debug[i] + "|";
+        }
+        System.err.println(bufferValue);
+        readByteBuffer.get().rewind();
+        readByteBuffer.get().get(bytes, off, readBytes);
+        readByteBuffer.get().compact();
+      } catch (BufferUnderflowException e) {
+        throw new IOException("Buffer Underflow!", e);
+      }
+    }
     return readBytes;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void flush() throws IOException {
   }
 }

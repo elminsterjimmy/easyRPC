@@ -4,6 +4,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.InputStream;
 
+/**
+ * Stream IO Utilities.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class StreamIOUitlImpl implements IoUtil {
 
   private final InputStream in;
@@ -29,6 +35,12 @@ public class StreamIOUitlImpl implements IoUtil {
   public int read(byte[] bytes, int off, int len) throws IOException {
     return in.read(bytes, off, len);
   }
-  
-  
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void flush() throws IOException {
+    out.flush();
+  }
 }

@@ -248,4 +248,12 @@ public class CoreCodecImpl implements CoreCodec {
     CharBuffer cb = cs.decode(ByteBuffer.wrap(encodingBytes));
     return cb.toString();
   }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void flush() throws IOException {
+    ioUtil.flush();
+  }
 }

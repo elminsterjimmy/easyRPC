@@ -364,6 +364,14 @@ public interface RpcEncodingFactory extends Cloneable {
   public void writeDouble(final double value) throws IOException, RpcException;
 
   /**
+   * Flush to underlayer stream.
+   * 
+   * @throws IOException
+   *           on error
+   */
+  public void flush() throws IOException;
+
+  /**
    * Add a data compressor.
    * 
    * @param type

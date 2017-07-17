@@ -2,9 +2,6 @@ package com.elminster.easy.rpc.codec.impl;
 
 import java.util.Collection;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.elminster.easy.rpc.codec.CodecRepository;
 import com.elminster.easy.rpc.codec.CodecRepositoryElement;
 import com.elminster.easy.rpc.codec.RpcCodec;
@@ -21,7 +18,7 @@ import com.elminster.easy.rpc.idl.impl.IDLBasicTypes;
 public class RpcEncodingFactoryBase extends RpcEncodingFactoryImpl {
 
   /** the logger. */
-  private static final Logger logger = LoggerFactory.getLogger(RpcEncodingFactoryBase.class);
+//  private static final Logger logger = LoggerFactory.getLogger(RpcEncodingFactoryBase.class);
 
   /** the default array codec. */
   private ArrayCodec theArrayCodec = new ArrayCodec();

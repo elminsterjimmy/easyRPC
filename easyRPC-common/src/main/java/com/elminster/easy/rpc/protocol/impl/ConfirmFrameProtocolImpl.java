@@ -17,6 +17,7 @@ public class ConfirmFrameProtocolImpl extends ProtocolImpl implements ConfirmFra
   @Override
   public void encode() throws IOException, RpcException {
     encodingFactory.writeInt8(frame);
+    encodingFactory.flush();
   }
 
   @Override

@@ -118,4 +118,12 @@ public interface CoreCodec {
    *           on error
    */
   public String readStringUTF8Nullable() throws IOException;
+
+  /**
+   * Flush to underlayer stream.
+   * 
+   * @throws IOException
+   *           on error
+   */
+  public void flush() throws IOException;
 }

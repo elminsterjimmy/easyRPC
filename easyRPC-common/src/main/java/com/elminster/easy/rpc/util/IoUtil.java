@@ -38,4 +38,12 @@ public interface IoUtil {
    *           on error
    */
   public int read(byte[] bytes, int off, int len) throws IOException;
+
+  /**
+   * Flush to underlayer stream.
+   * 
+   * @throws IOException
+   *           on error
+   */
+  public void flush() throws IOException;
 }

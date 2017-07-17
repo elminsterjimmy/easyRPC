@@ -29,6 +29,7 @@ public class RequestProtocolImpl extends ProtocolImpl implements RequestProtocol
     for (Object arg : args) {
       encodingFactory.writeObjectNullable(arg); // could happen encoding problem
     }
+    encodingFactory.flush();
   }
 
   @Override
