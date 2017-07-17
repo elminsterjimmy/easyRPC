@@ -1,15 +1,21 @@
 package com.elminster.easy.rpc.server.context.impl;
 
 import com.elminster.common.threadpool.ThreadPoolConfiguration;
+import com.elminster.easy.rpc.connection.impl.NIOSocketFactoryImpl;
 import com.elminster.easy.rpc.connection.impl.StreamSocketFactoryImpl;
 import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.server.container.impl.BioContainer;
-import com.elminster.easy.rpc.server.processor.impl.SyncRpcServiceProcessor;
+import com.elminster.easy.rpc.server.container.impl.NioContainer;
 
+/**
+ * The RPC server context.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class RpcServerContext implements RpcContext {
 
   private String serverContainerClassName;
-  private String serviceProcessorClassName;
   private String socketFactoryClassName;
   private Integer clientTimeout;
   private Boolean clientTcpNoDelay;
@@ -23,12 +29,6 @@ public class RpcServerContext implements RpcContext {
   }
   public void setServerContainerClassName(String serverContainerClassName) {
     this.serverContainerClassName = serverContainerClassName;
-  }
-  public String getServiceProcessorClassName() {
-    return serviceProcessorClassName;
-  }
-  public void setServiceProcessorClassName(String serviceProcessorClassName) {
-    this.serviceProcessorClassName = serviceProcessorClassName;
   }
   public String getSocketFactoryClassName() {
     return socketFactoryClassName;
@@ -88,8 +88,17 @@ public class RpcServerContext implements RpcContext {
   public static RpcContext createBioServerContext() {
     RpcServerContext context = new RpcServerContext();
     context.setServerContainerClassName(BioContainer.class.getName());
-    context.setServiceProcessorClassName(SyncRpcServiceProcessor.class.getName());
     context.setSocketFactoryClassName(StreamSocketFactoryImpl.class.getName());
+    context.setWorkerThreadPoolConfiguration(new ThreadPoolConfiguration());
+    context.setReaderWorkerCount(10);
+    context.setProcessingQueueSize(200);
+    context.setProcessingThreadPoolConfiguration(new ThreadPoolConfiguration());
+    return context;
+  }
+  public static RpcContext createNioServerContext() {
+    RpcServerContext context = new RpcServerContext();
+    context.setServerContainerClassName(NioContainer.class.getName());
+    context.setSocketFactoryClassName(NIOSocketFactoryImpl.class.getName());
     context.setWorkerThreadPoolConfiguration(new ThreadPoolConfiguration());
     context.setReaderWorkerCount(10);
     context.setProcessingQueueSize(200);

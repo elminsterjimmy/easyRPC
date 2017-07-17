@@ -1,4 +1,4 @@
-package com.elminster.easy.rpc.it.bio;
+package com.elminster.easy.rpc.it.nio;
 
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
@@ -30,7 +30,7 @@ import com.elminster.easy.rpc.server.listener.RpcServerAcceptEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListenEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListener;
 
-public class TestBioRpcCommunication {
+public class TestNioRpcCommunication {
 
   private static final int CLIENT_COUNT = 1;
 
@@ -40,12 +40,12 @@ public class TestBioRpcCommunication {
   }
 
   @Test
-  public void testBioRpcCommunication() throws ServerException, RpcException {
+  public void testNioRpcCommunication() throws ServerException, RpcException {
     RpcContext serverContext = createRpcServerContext();
 
     final RpcServer rpcServer = RpcServerFactoryImpl.INSTANCE.createRpcServer(serverContext);
     rpcServer.addService(new RpcTestServiceImpl());
-    rpcServer.listen(9100);
+    rpcServer.listen(9200);
 
     waitServerUp(rpcServer);
 
@@ -89,7 +89,7 @@ public class TestBioRpcCommunication {
       Random random = new Random();
       try {
         RpcContext clientContext = createRpcClientContext();
-        ConnectionEndpoint endpoint = SimpleConnectionEndpoint.localhostConnectionEndpoint(9100);
+        ConnectionEndpoint endpoint = SimpleConnectionEndpoint.localhostConnectionEndpoint(9200);
         rpcClient = RpcClientFactoryImpl.INSTANCE.createRpcClient(endpoint, clientContext, 0 == random.nextInt(10) % 2);
 
         RpcProxy proxy = new DynamicProxy();
@@ -183,6 +183,6 @@ public class TestBioRpcCommunication {
   }
 
   private RpcContext createRpcServerContext() {
-    return RpcServerContext.createBioServerContext();
+    return RpcServerContext.createNioServerContext();
   }
 }

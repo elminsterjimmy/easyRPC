@@ -213,7 +213,6 @@ public class SocketFactoryTest {
   }
 
   @Ignore
-  @SuppressWarnings("restriction")
   @Test
   public void testNIOSocketFactory() throws IOException, ObjectInstantiationExcption {
     SocketFactory socketFactory = setupNIOSocketFactory();
@@ -420,11 +419,6 @@ public class SocketFactoryTest {
 
     @Override
     public Boolean getClientTcpNoDelay() {
-      return null;
-    }
-
-    @Override
-    public String getServiceProcessorClassName() {
       return null;
     }
 

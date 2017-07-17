@@ -5,6 +5,12 @@ import java.net.InetAddress;
 import com.elminster.easy.rpc.context.impl.InvokeContextImpl;
 import com.elminster.easy.rpc.server.context.InvokeeContext;
 
+/**
+ * The Invokee context.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class InvokeeContextImpl extends InvokeContextImpl implements InvokeeContext {
 
   public InvokeeContextImpl(InetAddress InvokeeHost, InetAddress clientHost, String InvokeeVersion, int InvokeePort, int clientPort, String clientVersion) {

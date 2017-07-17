@@ -1,4 +1,4 @@
-package com.elminster.easy.rpc.it.bio;
+package com.elminster.easy.rpc.it;
 
 import java.sql.Timestamp;
 import java.util.concurrent.Future;
