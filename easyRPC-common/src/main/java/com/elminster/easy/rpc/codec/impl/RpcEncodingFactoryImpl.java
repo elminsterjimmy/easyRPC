@@ -596,7 +596,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    */
   @Override
   public void flush() throws IOException {
-    // TODO Auto-generated method stub
+    coreCodec.flush();
   }
 
   /**
@@ -630,6 +630,14 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   public void setCoreCodec(CoreCodec coreCodec) {
     Assert.notNull(coreCodec);
     this.coreCodec = coreCodec;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writen(byte[] bytes, int off, int len) throws IOException {
+    this.coreCodec.writen(bytes, off, len);
   }
 
   /**

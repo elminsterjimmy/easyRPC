@@ -70,10 +70,14 @@ public class RpcTestServiceImpl implements RpcService, RpcTestIf {
   @Override
   public String testLongTimeJob() {
     try {
-      Thread.sleep(2000);
+      Thread.sleep(2000L);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    return "Finish Long Time Job";
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < 500; i++) {
+      sb.append(String.valueOf(i));
+    }
+    return sb.toString();
   }
 }

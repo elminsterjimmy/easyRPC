@@ -20,7 +20,7 @@ public class RpcServerContext implements RpcContext {
   private Integer clientTimeout;
   private Boolean clientTcpNoDelay;
   private ThreadPoolConfiguration workerThreadPoolConfiguration;
-  private int readerWorkerCount = 10;
+  private int readerWorkerCount = 8;
   private int processingQueueSize = 200;
   private ThreadPoolConfiguration processingThreadPoolConfiguration;
   
@@ -89,10 +89,12 @@ public class RpcServerContext implements RpcContext {
     RpcServerContext context = new RpcServerContext();
     context.setServerContainerClassName(BioContainer.class.getName());
     context.setSocketFactoryClassName(StreamSocketFactoryImpl.class.getName());
-    context.setWorkerThreadPoolConfiguration(new ThreadPoolConfiguration());
-    context.setReaderWorkerCount(10);
+    ThreadPoolConfiguration threadpoolConfig = new ThreadPoolConfiguration();
+    threadpoolConfig.setProperty(ThreadPoolConfiguration.MAX_POOL_SIZE.getKey(), 200);
+    context.setWorkerThreadPoolConfiguration(threadpoolConfig);
+    context.setReaderWorkerCount(8);
     context.setProcessingQueueSize(200);
-    context.setProcessingThreadPoolConfiguration(new ThreadPoolConfiguration());
+    context.setProcessingThreadPoolConfiguration(threadpoolConfig);
     return context;
   }
   public static RpcContext createNioServerContext() {
@@ -100,7 +102,7 @@ public class RpcServerContext implements RpcContext {
     context.setServerContainerClassName(NioContainer.class.getName());
     context.setSocketFactoryClassName(NIOSocketFactoryImpl.class.getName());
     context.setWorkerThreadPoolConfiguration(new ThreadPoolConfiguration());
-    context.setReaderWorkerCount(10);
+    context.setReaderWorkerCount(8);
     context.setProcessingQueueSize(200);
     context.setProcessingThreadPoolConfiguration(new ThreadPoolConfiguration());
     return context;

@@ -4,6 +4,7 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.xml.DOMConfigurator;
 import org.junit.Assert;
@@ -32,7 +33,7 @@ import com.elminster.easy.rpc.server.listener.RpcServerListener;
 
 public class TestBioRpcCommunication {
 
-  private static final int CLIENT_COUNT = 1;
+  private static final int CLIENT_COUNT = 100;
 
   @BeforeClass
   public static void initLog4j() {
@@ -61,13 +62,18 @@ public class TestBioRpcCommunication {
     }
 
     try {
-      latch.await();
+      latch.await(60, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       ;
+    }
+    if (latch.getCount() > 0) {
+      System.out.println("Latch count: " + latch.getCount());
+      Assert.fail("timeout!");
     }
     
     for (ClientThread client : clients) {
       if (null != client.e) {
+        client.e.printStackTrace();
         Assert.fail(client.e.getMessage());
       }
     }
@@ -103,9 +109,19 @@ public class TestBioRpcCommunication {
         Assert.assertEquals(Integer.MIN_VALUE, testIf.testIntPlus(Integer.MAX_VALUE));
 
         Future<String> future = testIf.testLongTimeJob();
+        Assert.assertEquals(false, future.isDone());
+        Assert.assertEquals(false, future.isCancelled());
+        Assert.assertTrue(testIf.now().getTime() - System.currentTimeMillis() < 1000);
+
+        testIf.testVoid();
+        
         try {
           String rtn = future.get();
-          Assert.assertEquals("Finish Long Time Job", rtn);
+          StringBuilder sb = new StringBuilder();
+          for (int i = 0; i < 500; i++) {
+            sb.append(String.valueOf(i));
+          }
+          Assert.assertEquals(sb.toString(), rtn);
         } catch (InterruptedException e) {
           // TODO Auto-generated catch block
           e.printStackTrace();
@@ -113,9 +129,6 @@ public class TestBioRpcCommunication {
           // TODO Auto-generated catch block
           e.printStackTrace();
         }
-        Assert.assertTrue(testIf.now().getTime() - System.currentTimeMillis() < 1000);
-
-        testIf.testVoid();
 
         // try {
         // testIf.unpublished();
@@ -171,7 +184,7 @@ public class TestBioRpcCommunication {
     });
     synchronized (rpcServer) {
       try {
-        rpcServer.wait(10 * 1000l);
+        rpcServer.wait(10 * 1000L);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

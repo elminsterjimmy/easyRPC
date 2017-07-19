@@ -19,7 +19,7 @@ public class ResponseProtocolImpl extends ProtocolImpl implements ResponseProtoc
   }
 
   @Override
-  public void encode() throws IOException, RpcException {
+  public void writeData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
     encodingFactory.writeAsciiNullable(requestId);
     encodingFactory.writeInt64Nullable(invokeStart);
     encodingFactory.writeInt64Nullable(invokeEnd);
@@ -28,7 +28,7 @@ public class ResponseProtocolImpl extends ProtocolImpl implements ResponseProtoc
   }
 
   @Override
-  public void decode() throws IOException, RpcException {
+  public void readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
     requestId = encodingFactory.readAsciiNullable();
     invokeStart = encodingFactory.readInt64Nullable();
     invokeEnd = encodingFactory.readInt64Nullable();

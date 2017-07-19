@@ -1,5 +1,6 @@
 package com.elminster.easy.rpc.server.container.listener.impl;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.channels.SelectionKey;
@@ -11,9 +12,12 @@ import java.util.Iterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elminster.common.thread.Job;
+import com.elminster.common.thread.UncatchedExceptionHandler;
 import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.impl.SimpleConnectionEndpoint;
+import com.elminster.easy.rpc.exception.ZeroReadException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.connection.impl.NioRpcConnection;
 import com.elminster.easy.rpc.server.container.Container;
@@ -44,6 +48,7 @@ public class NioServerListenerImpl extends ServerListenerBase {
   @Override
   public RpcConnection accept() throws IOException {
     ServerSocketChannel serverChannel = serverSocket.getChannel();
+    serverChannel.configureBlocking(false);
     SocketChannel socketChannel = serverChannel.accept();
     logger.info(String.format("Get connection from socket [%s].", socketChannel));
     socketChannel.configureBlocking(false);
@@ -52,7 +57,20 @@ public class NioServerListenerImpl extends ServerListenerBase {
       listener.onAccept(new RpcServerAcceptEvent(endpoint, SimpleConnectionEndpoint.createEndpoint(socket.getInetAddress().getHostAddress(), socket.getPort())));
     }
     setupClientSocket(socket);
-    RpcConnection connection = new NioRpcConnection(rpcServer, container, socketChannel);
+    NioRpcConnection connection = new NioRpcConnection(rpcServer, container, socketChannel);
+    ((Job)connection).setUncatchedExceptionHandler(new UncatchedExceptionHandler() {
+      
+      @Override
+      public void handleUncatchedException(Throwable t) {
+        if (t instanceof ZeroReadException) {
+          logger.warn(t.getMessage());
+        } else if (t instanceof EOFException) {
+          logger.warn(t.getMessage());
+        } else {
+          logger.error(t.getMessage(), t);
+        }
+      }
+    });
     return connection;
   }
   
@@ -87,10 +105,11 @@ public class NioServerListenerImpl extends ServerListenerBase {
               container.addOpenConnection(connection);
               NioContainer nioContainer = (NioContainer) container;
               nioContainer.assign2Reader((NioRpcConnection) connection);
+              nioContainer.assign2Writer((NioRpcConnection) connection);
             }
           }
         } catch (IOException ioe) {
-          ;
+          logger.error(ioe.getMessage(), ioe);
         }
       }
     }

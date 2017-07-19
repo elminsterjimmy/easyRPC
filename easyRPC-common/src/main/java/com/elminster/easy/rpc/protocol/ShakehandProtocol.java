@@ -7,4 +7,5 @@ package com.elminster.easy.rpc.protocol;
  * @version 1.0
  */
 public interface ShakehandProtocol extends Protocol {
+  
 }

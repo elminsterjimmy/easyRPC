@@ -15,6 +15,7 @@ import com.elminster.easy.rpc.server.container.listener.ServerListener;
 import com.elminster.easy.rpc.server.container.listener.impl.NioServerListenerImpl;
 import com.elminster.easy.rpc.server.container.worker.ContainerWorker;
 import com.elminster.easy.rpc.server.container.worker.impl.NioContainerReader;
+import com.elminster.easy.rpc.server.container.worker.impl.NioContainerWriter;
 import com.elminster.easy.rpc.server.container.worker.impl.WorkerJobId;
 
 /**
@@ -29,6 +30,7 @@ public class NioContainer extends ContainerBase implements Container {
 //  private static final Logger logger = LoggerFactory.getLogger(NioContainer.class);
 
   protected NioContainerReader[] readers;
+  protected NioContainerWriter writer;
   protected ListenWorker listenWorker;
   private int currentReader = 0;
 
@@ -51,9 +53,11 @@ public class NioContainer extends ContainerBase implements Container {
       readers = new NioContainerReader[readerWorkerCount];
       for (int i = 0; i < readerWorkerCount; i++) {
         Selector readerSelector = Selector.open();
-        readers[i] = new NioContainerReader(readerSelector);
+        readers[i] = new NioContainerReader(readerSelector, this);
       }
 
+      Selector writerSelector = Selector.open();
+      writer = new NioContainerWriter(writerSelector, this);
     } catch (IOException e) {
       throw e;
     }
@@ -65,6 +69,7 @@ public class NioContainer extends ContainerBase implements Container {
   @Override
   protected void serve() throws Exception {
     this.getAsyncWorkerThreadPool().execute(listenWorker);
+    this.getAsyncWorkerThreadPool().execute(writer);
     for (int i = 0; i < readers.length; i++) {
       this.getAsyncWorkerThreadPool().execute(readers[i]);
     }
@@ -96,7 +101,11 @@ public class NioContainer extends ContainerBase implements Container {
   public void assign2Reader(NioRpcConnection connection) throws ClosedChannelException {
     NioContainerReader reader = selectReader();
     reader.registerChannel(connection.getSocketChannel(), connection);
-    reader.awakeSelector();
+  }
+  
+  public void assign2Writer(NioRpcConnection connection) throws ClosedChannelException {
+    writer.registerChannel(connection.getSocketChannel());
+    writer.awakeSelector();
   }
 
   /**
@@ -129,6 +138,7 @@ public class NioContainer extends ContainerBase implements Container {
      */
     @Override
     protected JobStatus doWork(IJobMonitor monitor) throws Throwable {
+      monitor.beginJob(this.getName(), 1);
       try {
         setServing(true);
         listener.listen();

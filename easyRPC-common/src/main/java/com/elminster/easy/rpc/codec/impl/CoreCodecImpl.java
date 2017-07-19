@@ -10,6 +10,7 @@ import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 
 import com.elminster.easy.rpc.codec.CoreCodec;
+import com.elminster.easy.rpc.exception.ZeroReadException;
 import com.elminster.easy.rpc.util.IoUtil;
 
 /**
@@ -130,7 +131,9 @@ public class CoreCodecImpl implements CoreCodec {
       int curByteRead = 0;
       curByteRead = ioUtil.read(b, curOff, byteToRead);
       if (curByteRead < 0) {
-        throw new EOFException("Could not read data from closed stream");
+        throw new EOFException("Could not read data from closed stream.");
+      } else if (0 == curByteRead) {
+        throw new ZeroReadException("Read 0 byte from stream.");
       }
       byteToRead -= curByteRead;
       curOff += curByteRead;
@@ -247,6 +250,14 @@ public class CoreCodecImpl implements CoreCodec {
     Charset cs = Charset.forName(encoding);
     CharBuffer cb = cs.decode(ByteBuffer.wrap(encodingBytes));
     return cb.toString();
+  }
+  
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writen(byte[] bytes, int off, int len) throws IOException {
+    ioUtil.write(bytes, off, len);
   }
 
   /**

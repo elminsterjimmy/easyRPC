@@ -21,12 +21,12 @@ public class VersionProtocolImpl extends ProtocolImpl implements VersionProtocol
   }
 
   @Override
-  public void encode() throws IOException, RpcException {
+  public void writeData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
     encodingFactory.writeAsciiNullable(version);
   }
 
   @Override
-  public void decode() throws IOException, RpcException {
+  public void readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
     version = encodingFactory.readAsciiNullable();
   }
 

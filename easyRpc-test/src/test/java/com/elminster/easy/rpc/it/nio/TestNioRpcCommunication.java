@@ -1,9 +1,11 @@
 package com.elminster.easy.rpc.it.nio;
 
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.xml.DOMConfigurator;
 import org.junit.Assert;
@@ -61,13 +63,18 @@ public class TestNioRpcCommunication {
     }
 
     try {
-      latch.await();
+      latch.await(360, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       ;
+    }
+    if (latch.getCount() > 0) {
+      System.out.println("Latch count: " + latch.getCount());
+      Assert.fail("timeout!");
     }
     
     for (ClientThread client : clients) {
       if (null != client.e) {
+        client.e.printStackTrace();
         Assert.fail(client.e.getMessage());
       }
     }
@@ -90,12 +97,13 @@ public class TestNioRpcCommunication {
       try {
         RpcContext clientContext = createRpcClientContext();
         ConnectionEndpoint endpoint = SimpleConnectionEndpoint.localhostConnectionEndpoint(9200);
-        rpcClient = RpcClientFactoryImpl.INSTANCE.createRpcClient(endpoint, clientContext, 0 == random.nextInt(10) % 2);
+        rpcClient = RpcClientFactoryImpl.INSTANCE.createRpcClient(endpoint, clientContext, false);//0 == random.nextInt(10) % 2);
 
         RpcProxy proxy = new DynamicProxy();
         RpcTestIfClient testIf = proxy.makeProxy(RpcTestIfClient.class, rpcClient);
-        String helloWord = testIf.testString("world");
-        Assert.assertEquals("hello world", helloWord);
+        String uuid = UUID.randomUUID().toString();
+        String helloWord = testIf.testString("world: " + uuid);
+        Assert.assertEquals("hello world: " + uuid, helloWord);
         Assert.assertEquals(new Integer(0), (Integer) testIf.testIntegerPlus(null));
         Assert.assertEquals(6, testIf.testIntPlus(5));
         Assert.assertEquals(101, testIf.testLongPlus(100L));
@@ -103,9 +111,21 @@ public class TestNioRpcCommunication {
         Assert.assertEquals(Integer.MIN_VALUE, testIf.testIntPlus(Integer.MAX_VALUE));
 
         Future<String> future = testIf.testLongTimeJob();
+        Assert.assertEquals(false, future.isDone());
+        Assert.assertEquals(false, future.isCancelled());
+        
+        Assert.assertTrue(testIf.now().getTime() - System.currentTimeMillis() < 1000);
+        testIf.testVoid();
         try {
           String rtn = future.get();
-          Assert.assertEquals("Finish Long Time Job", rtn);
+          StringBuilder sb = new StringBuilder();
+          for (int i = 0; i < 500; i++) {
+            sb.append(String.valueOf(i));
+          }
+          String expect = sb.toString();
+          
+          Assert.assertEquals(expect.length(), rtn.length());
+          Assert.assertArrayEquals(expect.toCharArray(), rtn.toCharArray());
         } catch (InterruptedException e) {
           // TODO Auto-generated catch block
           e.printStackTrace();
@@ -113,19 +133,17 @@ public class TestNioRpcCommunication {
           // TODO Auto-generated catch block
           e.printStackTrace();
         }
-        Assert.assertTrue(testIf.now().getTime() - System.currentTimeMillis() < 1000);
 
-        testIf.testVoid();
-
-        // try {
-        // testIf.unpublished();
-        // Assert.fail();
-        // } catch (Exception e) {
-        // }
+        try {
+          testIf.unpublished();
+          Assert.fail();
+        } catch (Exception e) {
+        }
 
       } catch (Throwable e) {
         this.e = e;
       } finally {
+        System.err.println("==================ALL DONE================");
         if (null != rpcClient) {
           rpcClient.disconnect();
         }
@@ -171,7 +189,7 @@ public class TestNioRpcCommunication {
     });
     synchronized (rpcServer) {
       try {
-        rpcServer.wait(10 * 1000l);
+        rpcServer.wait(5 * 1000L);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

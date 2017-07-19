@@ -68,6 +68,20 @@ public interface CoreCodec {
   public long readLongBigEndian() throws IOException;
 
   /**
+   * Write a byte array.
+   * 
+   * @param b
+   *          the byte array
+   * @param offset
+   *          the offset
+   * @param len
+   *          the length to write
+   * @throws IOException
+   *           on error
+   */
+  public void writen(byte[] bytes, int off, int len) throws IOException;
+  
+  /**
    * Read into a byte array.
    * 
    * @param b
@@ -79,7 +93,7 @@ public interface CoreCodec {
    * @throws IOException
    *           on error
    */
-  public void readn(byte[] b, int off, int len) throws IOException;
+  public void readn(byte[] b, int offset, int len) throws IOException;
 
   /**
    * Write an ASCII String.
@@ -94,7 +108,7 @@ public interface CoreCodec {
   /**
    * Write an UTF8 String.
    * 
-   * @param asciiString
+   * @param utf8String
    *          the UTF8 String
    * @throws IOException
    *           on error

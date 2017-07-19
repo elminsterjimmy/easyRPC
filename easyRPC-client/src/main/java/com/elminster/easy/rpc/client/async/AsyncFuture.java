@@ -41,8 +41,8 @@ public class AsyncFuture implements Future<Object> {
   protected ConfirmFrameProtocol confirmFrameProtocol;
   protected Object result;
   protected Throwable exception;
-  protected volatile boolean done;
-  protected volatile boolean cancelled;
+  protected volatile boolean done = false;
+  protected volatile boolean cancelled = false;
 
   public AsyncFuture(RpcEncodingFactory encodingFactory, RpcCall rpcCall, Connection conn) {
     this.rpcCall = rpcCall;
@@ -62,6 +62,11 @@ public class AsyncFuture implements Future<Object> {
   public boolean cancel(boolean mayInterruptIfRunning) {
     this.cancelled = true;
     if (!this.done) {
+      try {
+        confirmFrameProtocol.nextFrame(Frame.FRAME_ASYNC_REQUEST.getFrame());
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
       asyncProtocol.setRequestId(requestId);
       asyncProtocol.cancel();
 
@@ -94,6 +99,11 @@ public class AsyncFuture implements Future<Object> {
   @Override
   public boolean isDone() {
     if (!this.done) {
+      try {
+        confirmFrameProtocol.nextFrame(Frame.FRAME_ASYNC_REQUEST.getFrame());
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
       asyncProtocol.setRequestId(requestId);
       asyncProtocol.queryIsDone();
       try {
@@ -142,6 +152,7 @@ public class AsyncFuture implements Future<Object> {
       throw new ExecutionException(this.exception);
     }
     try {
+      confirmFrameProtocol.nextFrame(Frame.FRAME_ASYNC_REQUEST.getFrame());
       asyncProtocol.setRequestId(requestId);
       asyncProtocol.setGet();
       asyncProtocol.setTimeout(unit.toMillis(timeout));

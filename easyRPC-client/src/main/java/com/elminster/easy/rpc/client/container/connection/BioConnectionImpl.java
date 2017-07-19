@@ -1,5 +1,6 @@
 package com.elminster.easy.rpc.client.container.connection;
 
+import java.io.BufferedOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -61,7 +62,7 @@ public class BioConnectionImpl implements Connection {
       invokerContext = generateInvokerContext(socket);
 
       in = socket.getInputStream();
-      out = socket.getOutputStream();
+      out = new BufferedOutputStream(socket.getOutputStream());
 
       CoreCodec coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
       RpcEncodingFactory encodingFactory = rpcClient.getEncodingFactory().cloneEncodingFactory();
@@ -70,6 +71,7 @@ public class BioConnectionImpl implements Connection {
       // shakehand
       ShakehandProtocol shakehandProtocol = (ShakehandProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ShakehandProtocol.class, encodingFactory);
       ConfirmFrameProtocol confirmFrameProtocol = (ConfirmFrameProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ConfirmFrameProtocol.class, encodingFactory);
+      confirmFrameProtocol.nextFrame(Frame.FRAME_SHAKEHAND.getFrame());
       shakehandProtocol.encode();
 
       if (!confirmFrameProtocol.expact(Frame.FRAME_VERSION.getFrame())) {
@@ -79,6 +81,7 @@ public class BioConnectionImpl implements Connection {
       // compare version
       VersionProtocol versionProtocol = (VersionProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(VersionProtocol.class, encodingFactory);
 
+      confirmFrameProtocol.nextFrame(Frame.FRAME_VERSION.getFrame());
       String clientVersion = rpcClient.getVersion();
       invokerContext.setInvokerVersion(clientVersion);
       versionProtocol.setVersion(clientVersion);
@@ -91,7 +94,7 @@ public class BioConnectionImpl implements Connection {
       if (!VersionChecker.compatible(serverVersion, clientVersion)) {
         String msg = String.format("Incompatible versions! Server version is [%s] but Client version is [%s].", serverVersion, clientVersion);
         logger.warn(msg);
-        if (confirmFrameProtocol.expact(Frame.FRAME_FAIL.getFrame())) {
+        if (confirmFrameProtocol.expact(Frame.FRAME_VERSION_INCOMPATIBLE.getFrame())) {
           // server force version check throw exception
           throw new VersionCompatibleException(msg);
         }

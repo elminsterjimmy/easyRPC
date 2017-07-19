@@ -33,6 +33,13 @@ public interface RpcServiceProcessor {
   public RpcCall getResult(RpcCall call, long timeout);
 
   /**
+   * Get a RPC call result from the processed queue. This would be blocked if the queue is empty.
+   * 
+   * @return the result
+   */
+  public RpcCall getResult();
+
+  /**
    * Cancel a RPC call.
    * 
    * @param call

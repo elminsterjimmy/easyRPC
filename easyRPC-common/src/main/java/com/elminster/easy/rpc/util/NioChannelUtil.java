@@ -39,13 +39,15 @@ public class NioChannelUtil implements IoUtil {
   @Override
   public void write(byte[] bytes, int off, int len) throws IOException {
     int curLen = len;
+    int curOff = off;
     while (curLen > 0) {
       int size = Math.min(writeByteBuffer.get().capacity(), curLen);
-      writeByteBuffer.get().put(bytes, off, size);
+      writeByteBuffer.get().put(bytes, curOff, size);
       writeByteBuffer.get().flip();
       socketChannel.write(writeByteBuffer.get());
       writeByteBuffer.get().clear();
       curLen -= writeByteBuffer.get().capacity();
+      curOff += writeByteBuffer.get().capacity();
     }
   }
 
@@ -59,20 +61,21 @@ public class NioChannelUtil implements IoUtil {
     readBytes = Math.min(readByteBuffer.get().remaining(), len);
     if (readBytes > 0) {
       try {
-        // debug read byte buffer.
-        readByteBuffer.get().rewind();
-        byte[] debug = readByteBuffer.get().array();
-        String bufferValue = "";
-        for (int i = 0; i < debug.length; i++) {
-          bufferValue += "" + debug[i] + "|";
-        }
-        System.err.println(bufferValue);
+//        // debug read byte buffer.
+//        readByteBuffer.get().rewind();
+//        byte[] debug = readByteBuffer.get().array();
+//        String bufferValue = "";
+//        for (int i = 0; i < debug.length; i++) {
+//          bufferValue += String.format("%3d", debug[i]) + "|";
+//        }
+//        System.err.println(bufferValue);
         readByteBuffer.get().rewind();
         readByteBuffer.get().get(bytes, off, readBytes);
         readByteBuffer.get().compact();
       } catch (BufferUnderflowException e) {
         throw new IOException("Buffer Underflow!", e);
       }
+    } else {
     }
     return readBytes;
   }

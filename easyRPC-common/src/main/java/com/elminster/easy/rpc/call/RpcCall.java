@@ -31,4 +31,7 @@ public interface RpcCall {
   
   public long getInvokeDuration() throws CallNotFinishedException;
   public long getRpcCallDuration() throws CallNotFinishedException;
+  
+  public Long getTimeout();
+  public int getPriority();
 }

@@ -30,7 +30,6 @@ public class SyncRpcServiceProcessor extends RpcServiceProcessorBase implements 
    */
   @Override
   public void invoke(RpcCall call) throws RpcException {
-    unproccessedRpcCalls.put(call.getRequestId(), call);
     call = invokeServiceMethod(call);
     putProcessedCall(call);
   }

@@ -81,8 +81,6 @@ public interface RpcEncodingFactory extends Cloneable {
   /**
    * Read next object is not null from input stream.
    * 
-   * @param in
-   *          the input stream
    * @return if the next object is not
    * @throws IOException
    *           on error
@@ -92,8 +90,6 @@ public interface RpcEncodingFactory extends Cloneable {
   /**
    * Write next object is not null or not.
    * 
-   * @param out
-   *          the output stream
    * @param isNotNull
    *          is not null?
    * @throws IOException
@@ -362,6 +358,8 @@ public interface RpcEncodingFactory extends Cloneable {
    *           on error
    */
   public void writeDouble(final double value) throws IOException, RpcException;
+  
+  public void writen(final byte[] bytes, int off, int len) throws IOException;
 
   /**
    * Flush to underlayer stream.

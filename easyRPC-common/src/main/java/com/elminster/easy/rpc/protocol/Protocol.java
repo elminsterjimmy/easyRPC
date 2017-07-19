@@ -14,4 +14,6 @@ public interface Protocol {
   public void encode() throws IOException, RpcException;
   
   public void decode() throws IOException, RpcException;
+  
+  public int getDataSize() throws IOException;
 }
