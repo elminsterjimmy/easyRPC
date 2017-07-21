@@ -453,6 +453,12 @@ public interface RpcEncodingFactory extends Cloneable {
    *          the core codec
    */
   public void setCoreCodec(CoreCodec coreCodec);
+  
+  /**
+   * Get the core codec.
+   * @return the core codec
+   */
+  public CoreCodec getCoreCodec();
 
   /**
    * Clone the encoding factory.

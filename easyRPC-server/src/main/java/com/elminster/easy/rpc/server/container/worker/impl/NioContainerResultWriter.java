@@ -17,14 +17,14 @@ import com.elminster.easy.rpc.server.connection.impl.NioRpcCall;
 import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.container.worker.ContainerWorker;
 
-public class NioContainerWriter extends Job implements ContainerWorker {
+public class NioContainerResultWriter extends Job implements ContainerWorker {
   
-  private static final Logger logger = LoggerFactory.getLogger(NioContainerWriter.class);
+  private static final Logger logger = LoggerFactory.getLogger(NioContainerResultWriter.class);
 
   private final Selector selector;
   private final Container container;
 
-  public NioContainerWriter(Selector selector, Container container) {
+  public NioContainerResultWriter(Selector selector, Container container) {
     super(WorkerJobId.NIO_WRITE_WORKER.getJobId(), "Nio Container Writer");
     this.selector = selector;
     this.container = container;

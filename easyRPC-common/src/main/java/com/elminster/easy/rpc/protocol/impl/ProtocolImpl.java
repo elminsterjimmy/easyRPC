@@ -36,7 +36,7 @@ abstract public class ProtocolImpl implements Protocol {
 
   abstract void readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException;
 
-  public byte[] prepareWriteData() throws IOException, RpcException {
+  private byte[] prepareWriteData() throws IOException, RpcException {
     try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
       CoreCodec coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(null, out);
       sizeCalc.setCoreCodec(coreCodec);

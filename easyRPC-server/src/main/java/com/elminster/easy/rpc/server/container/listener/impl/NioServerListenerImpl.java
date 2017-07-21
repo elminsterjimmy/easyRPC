@@ -17,6 +17,7 @@ import com.elminster.common.thread.UncatchedExceptionHandler;
 import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.impl.SimpleConnectionEndpoint;
+import com.elminster.easy.rpc.exception.IoTimeoutException;
 import com.elminster.easy.rpc.exception.ZeroReadException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.connection.impl.NioRpcConnection;
@@ -62,8 +63,9 @@ public class NioServerListenerImpl extends ServerListenerBase {
       
       @Override
       public void handleUncatchedException(Throwable t) {
-        if (t instanceof ZeroReadException) {
-          logger.warn(t.getMessage());
+        if (t instanceof ZeroReadException || t instanceof IoTimeoutException) {
+          ; // ignore
+          System.err.println(t);
         } else if (t instanceof EOFException) {
           logger.warn(t.getMessage());
         } else {
@@ -102,6 +104,7 @@ public class NioServerListenerImpl extends ServerListenerBase {
             
             if (key.isAcceptable()) {
               RpcConnection connection = accept();
+              container.getAsyncWorkerThreadPool().execute(connection);
               container.addOpenConnection(connection);
               NioContainer nioContainer = (NioContainer) container;
               nioContainer.assign2Reader((NioRpcConnection) connection);

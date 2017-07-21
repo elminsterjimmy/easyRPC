@@ -71,6 +71,9 @@ public class BioConnectionImpl implements Connection {
       // shakehand
       ShakehandProtocol shakehandProtocol = (ShakehandProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ShakehandProtocol.class, encodingFactory);
       ConfirmFrameProtocol confirmFrameProtocol = (ConfirmFrameProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ConfirmFrameProtocol.class, encodingFactory);
+      if (!confirmFrameProtocol.expact(Frame.FRAME_OK.getFrame())) {
+        throw new RpcException("Unexpect retrun from Shakehand Protocol.");
+      }
       confirmFrameProtocol.nextFrame(Frame.FRAME_SHAKEHAND.getFrame());
       shakehandProtocol.encode();
 
@@ -99,7 +102,7 @@ public class BioConnectionImpl implements Connection {
           throw new VersionCompatibleException(msg);
         }
       }
-      
+
       processor = new BioRpcClientProcessor(encodingFactory, invokerContext, this);
     } catch (IOException | ObjectInstantiationExcption | RpcException e) {
       closeStreams();
@@ -172,5 +175,4 @@ public class BioConnectionImpl implements Connection {
   public boolean isConnected() {
     return !socket.isClosed();
   }
-
 }

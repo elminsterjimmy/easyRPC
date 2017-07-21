@@ -156,21 +156,16 @@ public class TestBioRpcCommunication {
       }
 
       @Override
-      public void beforeClose(RpcServerListenEvent event) {
-
+      public void beforeUnserve(RpcServerListenEvent event) {
       }
 
       @Override
       public void afterListened(RpcServerListenEvent event) {
         System.out.println("Server's up and listened on " + event.getHost() + ":" + event.getPort());
-        synchronized (rpcServer) {
-          rpcServer.notify();
-        }
       }
 
       @Override
       public void preProcess(RpcProcessEvent event) {
-        // System.out.println(event.toString());
       }
 
       @Override
@@ -179,15 +174,13 @@ public class TestBioRpcCommunication {
 
       @Override
       public void onAccept(RpcServerAcceptEvent event) {
-        // System.out.println(event.getServerEndpoint() + "|" + event.getClientEndpoint());
       }
     });
-    synchronized (rpcServer) {
-      try {
-        rpcServer.wait(10 * 1000L);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
     }
   }
 

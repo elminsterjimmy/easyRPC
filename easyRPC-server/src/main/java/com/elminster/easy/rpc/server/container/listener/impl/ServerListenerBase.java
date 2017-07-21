@@ -109,7 +109,7 @@ abstract public class ServerListenerBase implements ServerListener {
     logger.info(String.format("RPC server stop at endpoint: %s.", endpoint.toString()));
     List<RpcServerListener> listeners = rpcServer.getServerListeners();
     for (RpcServerListener listener : listeners) {
-      listener.beforeClose(new RpcServerListenEvent(endpoint));
+      listener.beforeUnserve(new RpcServerListenEvent(endpoint));
     }
     if (null != serverSocket) {
       serverSocket.close();

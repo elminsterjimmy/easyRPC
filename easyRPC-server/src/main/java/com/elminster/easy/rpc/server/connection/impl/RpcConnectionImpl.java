@@ -22,12 +22,12 @@ import com.elminster.easy.rpc.exception.VersionCompatibleException;
 import com.elminster.easy.rpc.protocol.AsyncResponseProtocol;
 import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol;
 import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol.Frame;
-import com.elminster.easy.rpc.protocol.exception.UnexpectedFrameException;
 import com.elminster.easy.rpc.protocol.RequestHeaderProtocol;
 import com.elminster.easy.rpc.protocol.RequestProtocol;
 import com.elminster.easy.rpc.protocol.ResponseProtocol;
 import com.elminster.easy.rpc.protocol.ShakehandProtocol;
 import com.elminster.easy.rpc.protocol.VersionProtocol;
+import com.elminster.easy.rpc.protocol.exception.UnexpectedFrameException;
 import com.elminster.easy.rpc.protocol.impl.ProtocolFactoryImpl;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
@@ -250,7 +250,7 @@ abstract public class RpcConnectionImpl extends Job implements RpcConnection {
     return rpcEncodingFactory;
   }
 
-  protected RpcCall handleRequest(RpcEncodingFactory rpcEncodingFactory, InvokeeContextImpl invokeContext, CoreCodec coreCodec) throws IOException, RpcException {
+  protected RpcCall handleRequest(RpcEncodingFactory rpcEncodingFactory, InvokeeContextImpl invokeContext) throws IOException, RpcException {
     RequestProtocol requestProtocol = null;
     try {
       requestProtocol = (RequestProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(RequestProtocol.class, rpcEncodingFactory);

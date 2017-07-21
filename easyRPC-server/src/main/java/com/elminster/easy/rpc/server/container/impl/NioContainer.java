@@ -3,9 +3,16 @@ package com.elminster.easy.rpc.server.container.impl;
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.elminster.common.thread.IJobMonitor;
 import com.elminster.common.thread.Job;
+import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.server.RpcServer;
@@ -15,7 +22,7 @@ import com.elminster.easy.rpc.server.container.listener.ServerListener;
 import com.elminster.easy.rpc.server.container.listener.impl.NioServerListenerImpl;
 import com.elminster.easy.rpc.server.container.worker.ContainerWorker;
 import com.elminster.easy.rpc.server.container.worker.impl.NioContainerReader;
-import com.elminster.easy.rpc.server.container.worker.impl.NioContainerWriter;
+import com.elminster.easy.rpc.server.container.worker.impl.NioContainerResultWriter;
 import com.elminster.easy.rpc.server.container.worker.impl.WorkerJobId;
 
 /**
@@ -27,13 +34,15 @@ import com.elminster.easy.rpc.server.container.worker.impl.WorkerJobId;
 public class NioContainer extends ContainerBase implements Container {
 
   /** the logger. */
-//  private static final Logger logger = LoggerFactory.getLogger(NioContainer.class);
+  private static final Logger logger = LoggerFactory.getLogger(NioContainer.class);
 
   protected NioContainerReader[] readers;
-  protected NioContainerWriter writer;
+  protected NioContainerResultWriter resultWriter;
   protected ListenWorker listenWorker;
   private int currentReader = 0;
-
+  private Map<SocketChannel, NioRpcConnection> channel2ConnMap = new ConcurrentHashMap<>();
+  
+  
   public NioContainer(RpcServer rpcServer, ConnectionEndpoint endpoint) {
     super(rpcServer, endpoint);
   }
@@ -45,7 +54,6 @@ public class NioContainer extends ContainerBase implements Container {
   protected void startWorkerThreads() throws Exception {
     RpcContext context = rpcServer.getContext();
     int readerWorkerCount = context.getReaderWorkerCount();
-
     try {
       ServerListener listener = new NioServerListenerImpl(rpcServer, this, endpoint);
       listenWorker = new ListenWorker(listener);
@@ -57,7 +65,7 @@ public class NioContainer extends ContainerBase implements Container {
       }
 
       Selector writerSelector = Selector.open();
-      writer = new NioContainerWriter(writerSelector, this);
+      resultWriter = new NioContainerResultWriter(writerSelector, this);
     } catch (IOException e) {
       throw e;
     }
@@ -69,9 +77,9 @@ public class NioContainer extends ContainerBase implements Container {
   @Override
   protected void serve() throws Exception {
     this.getAsyncWorkerThreadPool().execute(listenWorker);
-    this.getAsyncWorkerThreadPool().execute(writer);
-    for (int i = 0; i < readers.length; i++) {
-      this.getAsyncWorkerThreadPool().execute(readers[i]);
+    this.getAsyncWorkerThreadPool().execute(resultWriter);
+    for (NioContainerReader reader : readers) {
+      this.getAsyncWorkerThreadPool().execute(reader);
     }
   }
 
@@ -100,22 +108,41 @@ public class NioContainer extends ContainerBase implements Container {
    */
   public void assign2Reader(NioRpcConnection connection) throws ClosedChannelException {
     NioContainerReader reader = selectReader();
-    reader.registerChannel(connection.getSocketChannel(), connection);
+    logger.debug("Assign connection [{} : {}] to Reader [{}].", connection.getName(), connection.getSocketChannel(), reader.getName());
+    reader.registerChannel(connection.getSocketChannel());
   }
   
   public void assign2Writer(NioRpcConnection connection) throws ClosedChannelException {
-    writer.registerChannel(connection.getSocketChannel());
-    writer.awakeSelector();
+    resultWriter.registerChannel(connection.getSocketChannel());
+    resultWriter.awakeSelector();
   }
-
+  
   /**
    * select a reader.
    * 
    * @return a reader
    */
   private NioContainerReader selectReader() {
-    currentReader = ((currentReader + 1) % readers.length);
+    currentReader = ((currentReader++) % readers.length);
     return this.readers[currentReader];
+  }
+  
+  public NioRpcConnection getConnection(SocketChannel socketChannel) {
+    return this.channel2ConnMap.get(socketChannel);
+  }
+  
+  @Override
+  public void removeOpenConnection(RpcConnection connection) {
+    super.removeOpenConnection(connection);
+    NioRpcConnection nioConn = (NioRpcConnection) connection;
+    channel2ConnMap.remove(nioConn.getSocketChannel());
+  }
+
+  @Override
+  public void addOpenConnection(RpcConnection connection) {
+    super.addOpenConnection(connection);
+    NioRpcConnection nioConn = (NioRpcConnection) connection;
+    channel2ConnMap.put(nioConn.getSocketChannel(), nioConn);
   }
 
   /**

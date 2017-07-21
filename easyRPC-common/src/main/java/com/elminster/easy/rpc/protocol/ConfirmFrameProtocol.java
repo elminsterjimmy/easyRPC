@@ -34,6 +34,7 @@ public interface ConfirmFrameProtocol extends Protocol {
     FRAME_RESPONSE((byte)13),
     FRAME_ASYNC_REQUEST((byte)14),
     FRAME_ASYNC_RESPONSE((byte)15),
+    FRAME_HEARTBEAT((byte)32),
     FRAME_VERSION_INCOMPATIBLE((byte)0x50),
     FRAME_MISREAD((byte)80),
     FRAME_CANCELLED((byte)90),

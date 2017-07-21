@@ -1,4 +1,4 @@
-package com.elminster.easy.rpc.server.buffer;
+package com.elminster.easy.rpc.buffer;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;

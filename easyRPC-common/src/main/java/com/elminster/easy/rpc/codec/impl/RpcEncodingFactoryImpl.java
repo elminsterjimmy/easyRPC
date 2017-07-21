@@ -631,6 +631,14 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     Assert.notNull(coreCodec);
     this.coreCodec = coreCodec;
   }
+  
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public CoreCodec getCoreCodec() {
+    return this.coreCodec;
+  }
 
   /**
    * {@inheritDoc}

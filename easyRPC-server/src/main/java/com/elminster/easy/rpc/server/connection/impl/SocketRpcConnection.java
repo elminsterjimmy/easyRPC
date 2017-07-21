@@ -67,8 +67,9 @@ public class SocketRpcConnection extends RpcConnectionImpl {
   protected void doRun() throws Exception {
     // init the core codec
     InvokeeContextImpl invokeContext = null;
+    CoreCodec coreCodec = null;
     try (InputStream in = socket.getInputStream(); OutputStream out = socket.getOutputStream()) {
-      CoreCodec coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+      coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
 
       InvokeeContextImplBuilder builder = new InvokeeContextImplBuilder();
       invokeContext = builder.withServerHost(localAddr).withClientHost(remoteAddr).withClientPort(remotePort).withServerPort(localPort).build();
@@ -77,6 +78,7 @@ public class SocketRpcConnection extends RpcConnectionImpl {
 
       initializeBaseProtocols(defaultEncodingFactory);
       
+      confirmFrameProtocol.nextFrame(Frame.FRAME_OK.getFrame());
       shakehand(defaultEncodingFactory);
       
       checkVersion(defaultEncodingFactory, invokeContext);
@@ -99,6 +101,10 @@ public class SocketRpcConnection extends RpcConnectionImpl {
     } catch (RpcException e) {
       logger.error(e.getMessage());
       throw e;
+    } finally {
+      if (null != coreCodec) {
+        coreCodec.close();
+      }
     }
   }
 
@@ -133,11 +139,17 @@ public class SocketRpcConnection extends RpcConnectionImpl {
   protected void methodCall(RpcEncodingFactory defaultEncodingFactory, InvokeeContextImpl invokeContext, CoreCodec coreCodec) throws IOException, RpcException {
     // start serve RPC calls
     if (!confirmFrameProtocol.expact(Frame.FRAME_HEADER.getFrame())) {
-      throw new UnexpectedFrameException(Frame.FRAME_HEADER.getFrame(), confirmFrameProtocol.getFrame());
+      if (Frame.FRAME_HEARTBEAT.getFrame() == confirmFrameProtocol.getFrame()) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("received heartbeat from [{}]", invokeContext);
+        }
+      } else {
+        throw new UnexpectedFrameException(Frame.FRAME_HEADER.getFrame(), confirmFrameProtocol.getFrame());
+      }
     }
 
     RpcEncodingFactory rpcEncodingFactory = handleRequestHeader(defaultEncodingFactory, invokeContext, coreCodec);
-    RpcCall rpcCall = handleRequest(rpcEncodingFactory, invokeContext, coreCodec);
+    RpcCall rpcCall = handleRequest(rpcEncodingFactory, invokeContext);
     ResponseProtocol responseProtocol;
     try {
       responseProtocol = (ResponseProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ResponseProtocol.class, rpcEncodingFactory);
@@ -203,7 +215,13 @@ public class SocketRpcConnection extends RpcConnectionImpl {
     RpcServiceProcessor processor = container.getServiceProcessor();
     while (true) {
       if (!confirmFrameProtocol.expact(Frame.FRAME_ASYNC_REQUEST.getFrame())) {
-        throw new UnexpectedFrameException(Frame.FRAME_ASYNC_REQUEST.getFrame(), confirmFrameProtocol.getFrame());
+        if (Frame.FRAME_HEARTBEAT.getFrame() == confirmFrameProtocol.getFrame()) {
+          if (logger.isDebugEnabled()) {
+            logger.debug("received heartbeat from [{}]", call.getContext());
+          }
+        } else {
+          throw new UnexpectedFrameException(Frame.FRAME_ASYNC_REQUEST.getFrame(), confirmFrameProtocol.getFrame());
+        }
       }
       asyncProtocol.decode();
 

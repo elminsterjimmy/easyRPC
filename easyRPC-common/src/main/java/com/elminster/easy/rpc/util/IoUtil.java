@@ -22,7 +22,7 @@ public interface IoUtil {
    * @throws IOException
    *           on error
    */
-  public void write(byte[] bytes, int off, int len) throws IOException;
+  public int write(byte[] bytes, int off, int len) throws IOException;
 
   /**
    * read bytes.
@@ -46,4 +46,9 @@ public interface IoUtil {
    *           on error
    */
   public void flush() throws IOException;
+  
+  /**
+   * Clean up the resources.
+   */
+  public void close();
 }

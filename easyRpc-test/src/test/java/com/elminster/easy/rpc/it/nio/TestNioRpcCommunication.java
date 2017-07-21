@@ -6,6 +6,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.xml.DOMConfigurator;
 import org.junit.Assert;
@@ -34,7 +35,8 @@ import com.elminster.easy.rpc.server.listener.RpcServerListener;
 
 public class TestNioRpcCommunication {
 
-  private static final int CLIENT_COUNT = 1;
+  private static final int CLIENT_COUNT = 100;
+  private AtomicInteger accepted = new AtomicInteger(0);
 
   @BeforeClass
   public static void initLog4j() {
@@ -72,6 +74,7 @@ public class TestNioRpcCommunication {
       Assert.fail("timeout!");
     }
     
+    System.out.println(accepted.get());
     for (ClientThread client : clients) {
       if (null != client.e) {
         client.e.printStackTrace();
@@ -97,7 +100,7 @@ public class TestNioRpcCommunication {
       try {
         RpcContext clientContext = createRpcClientContext();
         ConnectionEndpoint endpoint = SimpleConnectionEndpoint.localhostConnectionEndpoint(9200);
-        rpcClient = RpcClientFactoryImpl.INSTANCE.createRpcClient(endpoint, clientContext, false);//0 == random.nextInt(10) % 2);
+        rpcClient = RpcClientFactoryImpl.INSTANCE.createRpcClient(endpoint, clientContext, 0 == random.nextInt(10) % 2);
 
         RpcProxy proxy = new DynamicProxy();
         RpcTestIfClient testIf = proxy.makeProxy(RpcTestIfClient.class, rpcClient);
@@ -107,7 +110,6 @@ public class TestNioRpcCommunication {
         Assert.assertEquals(new Integer(0), (Integer) testIf.testIntegerPlus(null));
         Assert.assertEquals(6, testIf.testIntPlus(5));
         Assert.assertEquals(101, testIf.testLongPlus(100L));
-
         Assert.assertEquals(Integer.MIN_VALUE, testIf.testIntPlus(Integer.MAX_VALUE));
 
         Future<String> future = testIf.testLongTimeJob();
@@ -143,7 +145,6 @@ public class TestNioRpcCommunication {
       } catch (Throwable e) {
         this.e = e;
       } finally {
-        System.err.println("==================ALL DONE================");
         if (null != rpcClient) {
           rpcClient.disconnect();
         }
@@ -154,6 +155,7 @@ public class TestNioRpcCommunication {
   }
 
   private void waitServerUp(final RpcServer rpcServer) {
+    
     rpcServer.addServerListener(new RpcServerListener() {
 
       @Override
@@ -161,21 +163,17 @@ public class TestNioRpcCommunication {
       }
 
       @Override
-      public void beforeClose(RpcServerListenEvent event) {
+      public void beforeUnserve(RpcServerListenEvent event) {
 
       }
 
       @Override
       public void afterListened(RpcServerListenEvent event) {
         System.out.println("Server's up and listened on " + event.getHost() + ":" + event.getPort());
-        synchronized (rpcServer) {
-          rpcServer.notify();
-        }
       }
 
       @Override
       public void preProcess(RpcProcessEvent event) {
-        // System.out.println(event.toString());
       }
 
       @Override
@@ -184,15 +182,15 @@ public class TestNioRpcCommunication {
 
       @Override
       public void onAccept(RpcServerAcceptEvent event) {
-        // System.out.println(event.getServerEndpoint() + "|" + event.getClientEndpoint());
+        accepted.getAndIncrement();
       }
     });
-    synchronized (rpcServer) {
-      try {
-        rpcServer.wait(5 * 1000L);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
+    
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
     }
   }
 

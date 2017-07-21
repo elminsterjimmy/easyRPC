@@ -4,7 +4,10 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -20,6 +23,7 @@ import com.elminster.easy.rpc.call.Status;
 import com.elminster.easy.rpc.codec.CoreCodec;
 import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
+import com.elminster.easy.rpc.exception.IoTimeoutException;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.exception.ZeroReadException;
 import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol.Frame;
@@ -47,16 +51,17 @@ public class NioRpcConnection extends RpcConnectionImpl {
   private final ThreadPool threadPool = new ThreadPool(ThreadPoolConfiguration.INSTANCE);
 
   private final SocketChannel socketChannel;
-
   private final InetAddress localAddr;
   private final InetAddress remoteAddr;
   private final int localPort;
   private final int remotePort;
-
   private final CoreCodec coreCodec;
   private final RpcEncodingFactory defaultEncodingFactory;
   private final InvokeeContextImpl invokeContext;
-  
+
+  private final Semaphore readSemaphore;
+  private SelectionKey key;
+
   {
     SERIAL.getAndIncrement();
   }
@@ -69,6 +74,7 @@ public class NioRpcConnection extends RpcConnectionImpl {
     remoteAddr = socket.getInetAddress();
     localPort = socket.getLocalPort();
     remotePort = socket.getPort();
+    readSemaphore = new Semaphore(0);
 
     coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(socketChannel);
     defaultEncodingFactory = server.getDefaultEncodingFactory(coreCodec);
@@ -86,29 +92,56 @@ public class NioRpcConnection extends RpcConnectionImpl {
    */
   @Override
   protected void doRun() throws Exception {
-    try {
-      handleRequests(defaultEncodingFactory, invokeContext, coreCodec);
-    } catch (IOException ioe) {
-      if (ioe instanceof EOFException) {
-        logger.debug("EOF from client, close connection [{}].", this.getName());
-        this.close();
-      } else if (ioe instanceof ZeroReadException) {
-        logger.warn("{} in {}.", ioe.getMessage(), this.getName());
-      } else {
-        logger.error(String.format(Messages.CLIENT_DISCONNECTED.getMessage(), invokeContext));
-        this.close();
-        throw ioe;
+    confirmFrameProtocol.nextFrame(Frame.FRAME_OK.getFrame());
+    int retry = 0;
+    while (!Thread.currentThread().isInterrupted()) {
+      try {
+        if (readSemaphore.tryAcquire(30, TimeUnit.SECONDS)) { // wait for reading
+          handleRequests(defaultEncodingFactory, invokeContext);
+          key.interestOps(SelectionKey.OP_READ);
+          retry = 0;
+        } else {
+          throw new IoTimeoutException("Acquire read semaphore timeout with 30 sec!");
+        }
+      } catch (IOException ioe) {
+        if (ioe instanceof EOFException) { // FIXME why cannot read -1 from disconnected socket????
+          logger.debug("EOF from client, close connection [{}].", this.getName());
+          this.close();
+        } else if (ioe instanceof ZeroReadException) {
+//          logger.warn("{} in {}.", ioe.getMessage(), this.getName());
+          key.interestOps(SelectionKey.OP_READ);
+          if (++retry > 30) {
+            String message = "Zero Read exceed retry threshold! Seems connection borken, [CLOSE] connection!";
+            this.close();
+            throw new IoTimeoutException(message);
+          } else {
+            continue;
+          }
+        } else if (ioe instanceof IoTimeoutException) {
+          logger.warn("{} in {}.", ioe.getMessage(), this.getName());
+          this.close();
+        } else {
+          logger.error(String.format(Messages.CLIENT_DISCONNECTED.getMessage(), invokeContext));
+          this.close();
+          throw ioe;
+        }
       }
     }
   }
 
-  private void handleRequests(RpcEncodingFactory defaultEncodingFactory, InvokeeContextImpl invokeContext, CoreCodec coreCodec) throws IOException {
+  private void handleRequests(RpcEncodingFactory defaultEncodingFactory, InvokeeContextImpl invokeContext) throws IOException {
     try {
       confirmFrameProtocol.decode();
     } catch (RpcException e) {
       ;
     }
     try {
+      if (Frame.FRAME_HEARTBEAT.getFrame() == confirmFrameProtocol.getFrame()) {
+        // do nothing just let the underlayer core codec reset the retries count.
+        if (logger.isDebugEnabled()) {
+          logger.debug("received heartbeat from [{}]", invokeContext);
+        }
+      }
       if (Frame.FRAME_SHAKEHAND.getFrame() == confirmFrameProtocol.getFrame()) {
         shakehand(defaultEncodingFactory);
       } else if (Frame.FRAME_VERSION.getFrame() == confirmFrameProtocol.getFrame()) {
@@ -116,7 +149,7 @@ public class NioRpcConnection extends RpcConnectionImpl {
       }
       if (Frame.FRAME_HEADER.getFrame() == confirmFrameProtocol.getFrame()) {
         // handle method calls
-        methodCall(defaultEncodingFactory, invokeContext, coreCodec);
+        methodCall(defaultEncodingFactory, invokeContext);
       } else if (Frame.FRAME_ASYNC_REQUEST.getFrame() == confirmFrameProtocol.getFrame()) {
         // handle async request
         handleAsyncRequest();
@@ -181,9 +214,9 @@ public class NioRpcConnection extends RpcConnectionImpl {
    * @throws IOException
    *           on error
    */
-  protected void methodCall(RpcEncodingFactory defaultEncodingFactory, InvokeeContextImpl invokeContext, CoreCodec coreCodec) throws IOException, RpcException {
-    RpcEncodingFactory rpcEncodingFactory = handleRequestHeader(defaultEncodingFactory, invokeContext, coreCodec);
-    RpcCall rpcCall = handleRequest(rpcEncodingFactory, invokeContext, coreCodec);
+  protected void methodCall(RpcEncodingFactory defaultEncodingFactory, InvokeeContextImpl invokeContext) throws IOException, RpcException {
+    RpcEncodingFactory rpcEncodingFactory = handleRequestHeader(defaultEncodingFactory, invokeContext, defaultEncodingFactory.getCoreCodec());
+    RpcCall rpcCall = handleRequest(rpcEncodingFactory, invokeContext);
     ResponseProtocol responseProtocol;
     try {
       responseProtocol = (ResponseProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ResponseProtocol.class, rpcEncodingFactory);
@@ -259,6 +292,7 @@ public class NioRpcConnection extends RpcConnectionImpl {
 
   @Override
   public void close() {
+    super.close();
     if (null != socketChannel) {
       if (socketChannel.isOpen()) {
         try {
@@ -268,6 +302,7 @@ public class NioRpcConnection extends RpcConnectionImpl {
         }
       }
     }
+    coreCodec.close();
   }
 
   public void shakehand() throws IOException, RpcException {
@@ -281,5 +316,15 @@ public class NioRpcConnection extends RpcConnectionImpl {
   @Override
   public String toString() {
     return String.format("NioRpcConnection [ Server=[ host:%s, port:%d ] | Client=[host:%s, port:%d] ]", localAddr, localPort, remoteAddr, remotePort);
+  }
+
+  public void fireReadable(SelectionKey key) {
+    this.key = key;
+    if (JobStatus.RUNNING == this.getJobStatus()) {
+      key.interestOps(0);
+      readSemaphore.release();
+    } else if (JobStatus.CREATED == this.getJobStatus()) {
+      key.interestOps(SelectionKey.OP_READ);
+    }
   }
 }

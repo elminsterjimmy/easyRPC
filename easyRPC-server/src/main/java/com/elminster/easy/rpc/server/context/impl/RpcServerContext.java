@@ -90,21 +90,35 @@ public class RpcServerContext implements RpcContext {
     context.setServerContainerClassName(BioContainer.class.getName());
     context.setSocketFactoryClassName(StreamSocketFactoryImpl.class.getName());
     ThreadPoolConfiguration threadpoolConfig = new ThreadPoolConfiguration();
-    threadpoolConfig.setProperty(ThreadPoolConfiguration.MAX_POOL_SIZE.getKey(), 200);
+    threadpoolConfig.setProperty(ThreadPoolConfiguration.CORE_POOL_SIZE.getKey(), 100);
+    threadpoolConfig.setProperty(ThreadPoolConfiguration.MAX_POOL_SIZE.getKey(), 100);
+    threadpoolConfig.setProperty(ThreadPoolConfiguration.BLOCKING_QUEUE_SIZE.getKey(), 200);
     context.setWorkerThreadPoolConfiguration(threadpoolConfig);
     context.setReaderWorkerCount(8);
     context.setProcessingQueueSize(200);
-    context.setProcessingThreadPoolConfiguration(threadpoolConfig);
+    ThreadPoolConfiguration processingThreadPoolConfig = new ThreadPoolConfiguration();
+    processingThreadPoolConfig.setProperty(ThreadPoolConfiguration.CORE_POOL_SIZE.getKey(), 10);
+    processingThreadPoolConfig.setProperty(ThreadPoolConfiguration.MAX_POOL_SIZE.getKey(), 100);
+    processingThreadPoolConfig.setProperty(ThreadPoolConfiguration.BLOCKING_QUEUE_SIZE.getKey(), 200);
+    context.setProcessingThreadPoolConfiguration(processingThreadPoolConfig);
     return context;
   }
   public static RpcContext createNioServerContext() {
     RpcServerContext context = new RpcServerContext();
     context.setServerContainerClassName(NioContainer.class.getName());
     context.setSocketFactoryClassName(NIOSocketFactoryImpl.class.getName());
-    context.setWorkerThreadPoolConfiguration(new ThreadPoolConfiguration());
-    context.setReaderWorkerCount(8);
     context.setProcessingQueueSize(200);
-    context.setProcessingThreadPoolConfiguration(new ThreadPoolConfiguration());
+    ThreadPoolConfiguration threadpoolConfig = new ThreadPoolConfiguration();
+    threadpoolConfig.setProperty(ThreadPoolConfiguration.CORE_POOL_SIZE.getKey(), 100);
+    threadpoolConfig.setProperty(ThreadPoolConfiguration.MAX_POOL_SIZE.getKey(), 100);
+    threadpoolConfig.setProperty(ThreadPoolConfiguration.BLOCKING_QUEUE_SIZE.getKey(), 200);
+    context.setWorkerThreadPoolConfiguration(threadpoolConfig);
+    context.setReaderWorkerCount(5);
+    ThreadPoolConfiguration processingThreadPoolConfig = new ThreadPoolConfiguration();
+    processingThreadPoolConfig.setProperty(ThreadPoolConfiguration.CORE_POOL_SIZE.getKey(), 10);
+    processingThreadPoolConfig.setProperty(ThreadPoolConfiguration.MAX_POOL_SIZE.getKey(), 100);
+    processingThreadPoolConfig.setProperty(ThreadPoolConfiguration.BLOCKING_QUEUE_SIZE.getKey(), 200);
+    context.setProcessingThreadPoolConfiguration(processingThreadPoolConfig);
     return context;
   }
 }

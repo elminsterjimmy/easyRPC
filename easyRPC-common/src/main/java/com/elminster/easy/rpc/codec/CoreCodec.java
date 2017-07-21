@@ -1,5 +1,6 @@
 package com.elminster.easy.rpc.codec;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 /**
@@ -8,7 +9,7 @@ import java.io.IOException;
  * @author jinggu
  * @version 1.0
  */
-public interface CoreCodec {
+public interface CoreCodec extends Closeable {
 
   /**
    * Write a byte value.
@@ -140,4 +141,9 @@ public interface CoreCodec {
    *           on error
    */
   public void flush() throws IOException;
+  
+  /**
+   * Clean up resources.
+   */
+  public void close();
 }
