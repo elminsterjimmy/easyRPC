@@ -3,7 +3,7 @@ package com.elminster.easy.rpc.server.listener;
 import com.elminster.common.listener.Listener;
 
 public interface RpcServerListener extends Listener {
-
+  
   public void beforeServe(RpcServerListenEvent event);
   
   public void afterListened(RpcServerListenEvent event);
@@ -14,5 +14,5 @@ public interface RpcServerListener extends Listener {
   
   public void postProcess(RpcProcessEvent event);
   
-  public void beforeClose(RpcServerListenEvent event);
+  public void beforeUnserve(RpcServerListenEvent event);
 }

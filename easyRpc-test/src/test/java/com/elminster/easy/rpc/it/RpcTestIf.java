@@ -1,13 +1,12 @@
-package com.elminster.easy.rpc.it.bio;
+package com.elminster.easy.rpc.it;
 
 import java.sql.Timestamp;
-import java.util.concurrent.Future;
 
 import com.elminster.easy.rpc.idl.Async;
 import com.elminster.easy.rpc.service.Rpc;
 
 @Rpc("Test")
-public interface RpcTestIfClient {
+public interface RpcTestIf {
 
   public String testString(String world);
   
@@ -24,5 +23,5 @@ public interface RpcTestIfClient {
   public void testVoid();
   
   @Async
-  public Future<String> testLongTimeJob();
+  public String testLongTimeJob();
 }

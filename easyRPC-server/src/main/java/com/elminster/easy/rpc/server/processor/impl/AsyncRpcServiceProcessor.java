@@ -6,8 +6,15 @@ import org.slf4j.LoggerFactory;
 import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
+import com.elminster.easy.rpc.server.connection.impl.NioRpcCall;
 import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
 
+/**
+ * RPC async service processor.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class AsyncRpcServiceProcessor extends RpcServiceProcessorBase implements RpcServiceProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncRpcServiceProcessor.class);
@@ -18,16 +25,22 @@ public class AsyncRpcServiceProcessor extends RpcServiceProcessorBase implements
     super(rpcServer);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void invoke(RpcCall rpcCall) throws RpcException {
     try {
       processingQueue.put(rpcCall);
       unproccessedRpcCalls.put(rpcCall.getRequestId(), rpcCall);
     } catch (InterruptedException e) {
-      logger.error("Put Rpc call [" + rpcCall + "] to processing queue is interrupted!");
+      logger.error("Put Rpc call [{}] to processing queue is interrupted!", rpcCall);
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public RpcCall getResult(RpcCall rpcCall, long timeout) {
     String requestId = rpcCall.getRequestId();
@@ -44,24 +57,41 @@ public class AsyncRpcServiceProcessor extends RpcServiceProcessorBase implements
             Thread.currentThread().interrupt();
           }
         }
-      } else {
+      } else if (timeout > 10) {
         try {
           Thread.sleep(timeout);
         } catch (InterruptedException e) {
           return null;
         }
         result = processedRpcCalls.remove(requestId);
+        if (null == result) {
+          cancelRpcCall(rpcCall); // cancel the call if it timed out
+        }
       }
-      return result;
-    } else {
-      return result;
     }
+    if (null != result) {
+      if (result instanceof NioRpcCall) {
+        while (!Thread.interrupted()) {
+          if (processedQueue.offerFirst(result)) {
+            break;
+          }
+        }
+      }
+    }
+    return result;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public boolean cancelRpcCall(RpcCall rpcCall) {
     super.cancelRpcCall(rpcCall);
     this.cancel = true;
     return true;
+  }
+  
+  public void offerResult(RpcCall rpcCallResult) {
+    this.processedQueue.offerFirst(rpcCallResult);
   }
 }

@@ -6,7 +6,6 @@ public interface RpcContext {
   
   /////// server side context
   public String getServerContainerClassName();
-  public String getServiceProcessorClassName();
   public ThreadPoolConfiguration getWorkerThreadPoolConfiguration();
   public int getReaderWorkerCount();
   public int getProcessorQueueSize();

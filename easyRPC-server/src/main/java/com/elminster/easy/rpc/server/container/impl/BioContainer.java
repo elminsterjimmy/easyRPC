@@ -69,6 +69,7 @@ public class BioContainer extends ContainerBase implements Container {
      */
     @Override
     protected JobStatus doWork(IJobMonitor monitor) throws Throwable {
+      monitor.beginJob(this.getName(), 1);
       try {
         setServing(true);
         listener.listen();

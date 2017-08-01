@@ -11,6 +11,12 @@ import com.elminster.easy.rpc.util.IoUtil;
 import com.elminster.easy.rpc.util.NioChannelUtil;
 import com.elminster.easy.rpc.util.StreamIOUitlImpl;
 
+/**
+ * The core codec factory.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class CoreCodecFactory {
   
   public static final CoreCodecFactory INSTANCE = new CoreCodecFactory();

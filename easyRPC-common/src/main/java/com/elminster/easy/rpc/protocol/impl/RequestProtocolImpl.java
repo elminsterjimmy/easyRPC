@@ -20,7 +20,7 @@ public class RequestProtocolImpl extends ProtocolImpl implements RequestProtocol
   }
 
   @Override
-  public void encode() throws IOException, RpcException {
+  public void writeData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
     encodingFactory.writeAsciiNullable(requestId);
     encodingFactory.writeBoolean(isAsyncCall);
     encodingFactory.writeAsciiNullable(serviceName);
@@ -32,7 +32,7 @@ public class RequestProtocolImpl extends ProtocolImpl implements RequestProtocol
   }
 
   @Override
-  public void decode() throws IOException, RpcException {
+  public void readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
     this.requestId = encodingFactory.readAsciiNullable();
     this.isAsyncCall = encodingFactory.readBoolean();
     this.serviceName = encodingFactory.readAsciiNullable();

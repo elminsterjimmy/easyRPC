@@ -6,35 +6,33 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elminster.common.thread.IJobMonitor;
 import com.elminster.common.thread.Job;
-import com.elminster.easy.rpc.server.connection.impl.NioRpcConnection;
+import com.elminster.easy.rpc.call.RpcCall;
+import com.elminster.easy.rpc.server.connection.impl.NioRpcCall;
+import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.container.worker.ContainerWorker;
 
-public class ContainerReader extends Job implements ContainerWorker {
-
-  private static final AtomicInteger READER_SERIAL = new AtomicInteger(WorkerJobId.NIO_READ_WORKER.getJobId());
-
-  private static final Logger logger = LoggerFactory.getLogger(ContainerReader.class);
+public class NioContainerResultWriter extends Job implements ContainerWorker {
+  
+  private static final Logger logger = LoggerFactory.getLogger(NioContainerResultWriter.class);
 
   private final Selector selector;
-  
-  {
-    READER_SERIAL.getAndIncrement();
-  }
+  private final Container container;
 
-  public ContainerReader(Selector selector) {
-    super(READER_SERIAL.get(), "Nio Container Reader - " + Integer.toHexString(READER_SERIAL.get()));
+  public NioContainerResultWriter(Selector selector, Container container) {
+    super(WorkerJobId.NIO_WRITE_WORKER.getJobId(), "Nio Container Writer");
     this.selector = selector;
+    this.container = container;
   }
 
   @Override
   protected JobStatus doWork(IJobMonitor monitor) throws Throwable {
+    monitor.beginJob(this.getName(), 1);
     try {
       while (!monitor.isCancelled()) {
         try {
@@ -51,12 +49,11 @@ public class ContainerReader extends Job implements ContainerWorker {
               continue;
             }
 
-            if (key.isReadable()) {
-              NioRpcConnection connection = (NioRpcConnection) key.attachment();
-              connection.run();
-              JobStatus jobStatus = connection.getJobStatus();
-              if (JobStatus.ERROR == jobStatus) {
-                ////// error happened
+            if (key.isWritable()) {
+              RpcCall rpcCall = container.getServiceProcessor().getResult();
+              if (rpcCall instanceof NioRpcCall) {
+                NioRpcCall nioRpcCall = (NioRpcCall) rpcCall;
+                nioRpcCall.getConnection().writeResponse(nioRpcCall);
               }
             }
           }
@@ -69,21 +66,21 @@ public class ContainerReader extends Job implements ContainerWorker {
       cleanup();
     }
   }
+  
+  public void registerChannel(SocketChannel socketChannel) throws ClosedChannelException {
+    socketChannel.register(selector, SelectionKey.OP_WRITE);
+  }
+  
+  public void awakeSelector() {
+    selector.wakeup();
+  }
 
   private void cleanup() {
+    logger.debug("Cleanup container writer [{}].", this.getName());
     try {
       selector.close();
     } catch (IOException e) {
       logger.warn(String.format("Failed to cleanup the selector[%s]", selector.toString(), e));
     }
   }
-
-  public void registerChannel(SocketChannel socketChannel, NioRpcConnection connection) throws ClosedChannelException {
-    socketChannel.register(selector, SelectionKey.OP_READ, connection);
-  }
-
-  public void awakeSelector() {
-    selector.wakeup();
-  }
-
 }

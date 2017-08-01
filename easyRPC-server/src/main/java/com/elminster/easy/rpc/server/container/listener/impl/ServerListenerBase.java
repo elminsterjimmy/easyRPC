@@ -40,6 +40,7 @@ abstract public class ServerListenerBase implements ServerListener {
   protected final ConnectionEndpoint endpoint;
   /** the socket factory. */
   protected SocketFactory socketFactory;
+  /** the server socket. */
   protected ServerSocket serverSocket;
 
   public ServerListenerBase(RpcServer rpcServer, Container container, ConnectionEndpoint endpoint) {
@@ -53,6 +54,9 @@ abstract public class ServerListenerBase implements ServerListener {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void listen() throws IOException {
     serverSocket = socketFactory.createServerSocket(endpoint.getPort(), endpoint.useSecureSocket());
@@ -62,6 +66,12 @@ abstract public class ServerListenerBase implements ServerListener {
     }
   }
 
+  /**
+   * Setup the server socket.
+   * 
+   * @param serverSocket
+   *          the server socket
+   */
   protected void setupServerSocket(ServerSocket serverSocket) {
     try {
       serverSocket.setSoTimeout(0);
@@ -71,6 +81,12 @@ abstract public class ServerListenerBase implements ServerListener {
     }
   }
 
+  /**
+   * Setup the client socket.
+   * 
+   * @param socket
+   *          the client socket
+   */
   protected void setupClientSocket(Socket socket) {
     RpcContext context = rpcServer.getContext();
     try {
@@ -85,20 +101,25 @@ abstract public class ServerListenerBase implements ServerListener {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void close() throws IOException {
     logger.info(String.format("RPC server stop at endpoint: %s.", endpoint.toString()));
     List<RpcServerListener> listeners = rpcServer.getServerListeners();
     for (RpcServerListener listener : listeners) {
-      listener.beforeClose(new RpcServerListenEvent(endpoint));
+      listener.beforeUnserve(new RpcServerListenEvent(endpoint));
     }
     if (null != serverSocket) {
       serverSocket.close();
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void interrupt() {
   }
-
 }

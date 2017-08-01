@@ -1,53 +1,93 @@
 package com.elminster.easy.rpc.util;
 
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
+import com.elminster.easy.rpc.buffer.BufferPool;
+
+/**
+ * NIO channel utilities.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class NioChannelUtil implements IoUtil {
   
-  private SocketChannel socketChannel;
+  private final SocketChannel socketChannel;
   
-  /** shared byte buffer. */
-  private static ThreadLocal<ByteBuffer> writeByteBuffer = new ThreadLocal<ByteBuffer>() {
+  private static ThreadLocal<BufferPool> bufferPool = new ThreadLocal<BufferPool>() {
 
-    protected ByteBuffer initialValue() {
-      return ByteBuffer.allocate(1024);
-    }
-  };
-  private static ThreadLocal<ByteBuffer> readByteBuffer = new ThreadLocal<ByteBuffer>() {
-    
-    protected ByteBuffer initialValue() {
-      return ByteBuffer.allocate(1024);
+    @Override
+    protected BufferPool initialValue() {
+      return new BufferPool();
     }
   };
   
-  private ByteBufferIoImpl readIo = new ByteBufferIoImpl(readByteBuffer.get());
-  private ByteBufferIoImpl writeIo = new ByteBufferIoImpl(writeByteBuffer.get());
+  private final ByteBuffer writeByteBuffer;
+  private final ByteBuffer readByteBuffer;
   
   public NioChannelUtil(SocketChannel socketChannel) {
     this.socketChannel = socketChannel;
+    writeByteBuffer = bufferPool.get().borrow(4096);
+    readByteBuffer = bufferPool.get().borrow(1024);
   }
-
+  
+  /**
+   * {@inheritDoc}
+   */
   @Override
-  public void write(byte[] bytes, int off, int len) throws IOException {
-    int curLen = len;
-    while (curLen > 0) {
-      int size = Math.min(writeByteBuffer.get().capacity(), curLen);
-      writeIo.write(bytes, 0, size);
-      writeByteBuffer.get().flip();
-      socketChannel.write(writeByteBuffer.get());
-      writeByteBuffer.get().clear();
-      curLen -= writeByteBuffer.get().capacity();
-    }
+  public int write(byte[] bytes, int off, int len) throws IOException {
+    int size = Math.min(writeByteBuffer.capacity(), len);
+    writeByteBuffer.put(bytes, off, size);
+    writeByteBuffer.flip();
+    int written = socketChannel.write(writeByteBuffer);
+    writeByteBuffer.clear();
+    return written;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public int read(byte[] bytes, int off, int len) throws IOException {
-    int readBytes = socketChannel.read(readByteBuffer.get());
-    readByteBuffer.get().rewind();
-    readBytes = readIo.read(bytes, off, len);
-    readByteBuffer.get().compact();
+    int readBytes = socketChannel.read(readByteBuffer);
+    readByteBuffer.flip();
+    if (readBytes >= 0) {
+      readBytes = Math.min(readByteBuffer.remaining(), len);
+      try {
+//        // debug read byte buffer.
+//        readByteBuffer.rewind();
+//        byte[] debug = readByteBuffer.array();
+//        String bufferValue = "";
+//        for (int i = 0; i < debug.length; i++) {
+//          bufferValue += String.format("%3d", debug[i]) + "|";
+//        }
+//        System.err.println(bufferValue);
+        readByteBuffer.rewind();
+        readByteBuffer.get(bytes, off, readBytes);
+      } catch (BufferUnderflowException e) {
+        throw new IOException("Buffer Underflow!", e);
+      }
+    }
+    readByteBuffer.compact();
     return readBytes;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void flush() throws IOException {
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void close() {
+    bufferPool.get().release(readByteBuffer);
+    bufferPool.get().release(writeByteBuffer);
   }
 }

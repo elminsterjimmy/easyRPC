@@ -8,12 +8,15 @@ import com.elminster.easy.rpc.context.InvokeContext;
 
 public class RpcCallImpl implements RpcCall {
 
+  private static final int PRIORITY_MID = 50;
   private InvokeContext context;
   private final String requestId;
   private final String serviceName;
   private final String methodName;
   private final Object[] args;
   private final boolean isAsync;
+  private final long timeout;
+  private final int priority;
   private boolean isVoidReturn;
   private ReturnResult result;
   private Long invokeStartAt;
@@ -23,15 +26,14 @@ public class RpcCallImpl implements RpcCall {
   private Status status;
 
   public RpcCallImpl(String requestId, boolean isAsync, String serviceName, String methodName, Object[] args) {
-    this.requestId = requestId;
-    this.isAsync = isAsync;
-    this.serviceName = serviceName;
-    this.methodName = methodName;
-    this.args = args;
-    this.status = Status.CREATED;
+    this(requestId, isAsync, serviceName, methodName, args, null);
   }
   
   public RpcCallImpl(String requestId, boolean isAsync, String serviceName, String methodName, Object[] args, InvokeContext context) {
+    this(requestId, isAsync, serviceName, methodName, args, context, PRIORITY_MID, 0L);
+  }
+  
+  public RpcCallImpl(String requestId, boolean isAsync, String serviceName, String methodName, Object[] args, InvokeContext context, int priority, long timeout) {
     this.requestId = requestId;
     this.isAsync = isAsync;
     this.serviceName = serviceName;
@@ -39,6 +41,8 @@ public class RpcCallImpl implements RpcCall {
     this.args = args;
     this.context = context;
     this.status = Status.CREATED;
+    this.priority = priority;
+    this.timeout = timeout;
   }
 
   public ReturnResult getResult() {
@@ -203,5 +207,15 @@ public class RpcCallImpl implements RpcCall {
 
   public void setStatus(Status status) {
     this.status = status;
+  }
+
+  @Override
+  public Long getTimeout() {
+    return this.timeout;
+  }
+
+  @Override
+  public int getPriority() {
+    return priority;
   }
 }

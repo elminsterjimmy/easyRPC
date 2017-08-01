@@ -64,13 +64,9 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
       }
       confirmFrameProtocol.nextFrame(Frame.FRAME_HEADER.getFrame());
 
+      requestHeaderProtocol.setRequestId(rpcCall.getRequestId());
       requestHeaderProtocol.setEncoding(encodingFactory.getEncodingName());
       requestHeaderProtocol.encode();
-
-      if (!confirmFrameProtocol.expact(Frame.FRAME_REQUEST.getFrame())) {
-        RpcException rpce = (RpcException) encodingFactory.readObjectNullable();
-        throw rpce;
-      }
 
       RequestProtocol requestProtocol;
       ResponseProtocol responseProtocol;
@@ -80,12 +76,12 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
       } catch (ObjectInstantiationExcption e) {
         String msg = "Cannot instantiate RequestProtocol!";
         logger.error(msg);
-        confirmFrameProtocol.nextFrame(Frame.FRAME_FAIL.getFrame());
         throw new RpcException(msg, e);
       }
 
       rpcCall.setRpcCallStartAt(System.currentTimeMillis());
-      confirmFrameProtocol.nextFrame(Frame.FRAME_OK.getFrame());
+      confirmFrameProtocol.nextFrame(Frame.FRAME_REQUEST.getFrame());
+      
       requestProtocol.setRequestId(rpcCall.getRequestId());
       requestProtocol.setAsyncCall(rpcCall.isAsyncCall());
       requestProtocol.setServiceName(rpcCall.getServiceName());

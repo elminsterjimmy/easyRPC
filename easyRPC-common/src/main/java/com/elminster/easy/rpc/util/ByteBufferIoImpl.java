@@ -34,11 +34,27 @@ public class ByteBufferIoImpl implements IoUtil {
    * {@inheritDoc}
    */
   @Override
-  public void write(byte[] buf, int off, int len) throws IOException {
+  public int write(byte[] buf, int off, int len) throws IOException {
     try {
       byteBuffer.put(buf, off, len);
+      return len;
     } catch (BufferOverflowException e) {
       throw new IOException("Buffer Overflow!", e);
     }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void flush() throws IOException {
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void close() {
+    
   }
 }

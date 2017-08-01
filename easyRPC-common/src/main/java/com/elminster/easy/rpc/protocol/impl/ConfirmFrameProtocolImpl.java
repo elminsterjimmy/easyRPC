@@ -7,7 +7,7 @@ import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol;
 
 public class ConfirmFrameProtocolImpl extends ProtocolImpl implements ConfirmFrameProtocol {
-  
+
   public ConfirmFrameProtocolImpl(RpcEncodingFactory encodingFactory) {
     super(encodingFactory);
   }
@@ -47,5 +47,20 @@ public class ConfirmFrameProtocolImpl extends ProtocolImpl implements ConfirmFra
   @Override
   public byte getFrame() {
     return this.frame;
+  }
+
+  @Override
+  void writeData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
+    this.encode();
+  }
+
+  @Override
+  void readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
+    this.decode();
+  }
+
+  @Override
+  public int getDataSize() throws IOException {
+    return 1;
   }
 }

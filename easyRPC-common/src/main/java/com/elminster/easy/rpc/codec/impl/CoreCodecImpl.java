@@ -3,6 +3,7 @@ package com.elminster.easy.rpc.codec.impl;
 import static com.elminster.common.constants.Constants.EncodingConstants.ASCII;
 import static com.elminster.common.constants.Constants.EncodingConstants.UTF8;
 
+import java.io.Closeable;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -10,6 +11,8 @@ import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 
 import com.elminster.easy.rpc.codec.CoreCodec;
+import com.elminster.easy.rpc.exception.IoTimeoutException;
+import com.elminster.easy.rpc.exception.ZeroReadException;
 import com.elminster.easy.rpc.util.IoUtil;
 
 /**
@@ -18,7 +21,10 @@ import com.elminster.easy.rpc.util.IoUtil;
  * @author jinggu
  * @version 1.0
  */
-public class CoreCodecImpl implements CoreCodec {
+public class CoreCodecImpl implements CoreCodec, Closeable {
+  
+  private static long IO_RETRY_INTERVAL = 100; // 100 ms
+  private static int IO_RETRY_COUNT_THRESHOLD = 10; // total 30 sec
 
   /** shared byte buffer. */
   private static ThreadLocal<ByteBuffer> byteBuffer = new ThreadLocal<ByteBuffer>() {
@@ -63,7 +69,7 @@ public class CoreCodecImpl implements CoreCodec {
   public void writeByte(byte value) throws IOException {
     byteBuffer.get().rewind();
     byteBuffer.get().put(value);
-    ioUtil.write(byteBuffer.get().array(), 0, 1);
+    writen(byteBuffer.get().array(), 0, 1);
   }
 
   /**
@@ -83,7 +89,7 @@ public class CoreCodecImpl implements CoreCodec {
   public void writeIntBigEndian(int value) throws IOException {
     intBuffer.get().rewind();
     intBuffer.get().putInt(value);
-    ioUtil.write(intBuffer.get().array(), 0, 4);
+    writen(intBuffer.get().array(), 0, 4);
   }
   
   /**
@@ -103,7 +109,7 @@ public class CoreCodecImpl implements CoreCodec {
   public void writeLongBigEndian(long longValue) throws IOException {
     longBuffer.get().rewind();
     longBuffer.get().putLong(longValue);
-    ioUtil.write(longBuffer.get().array(), 0, 8);
+    writen(longBuffer.get().array(), 0, 8);
   }
 
   /**
@@ -126,11 +132,23 @@ public class CoreCodecImpl implements CoreCodec {
     }
     int byteToRead = len;
     int curOff = off;
+    int retry = 0;
     while (byteToRead > 0) {
       int curByteRead = 0;
       curByteRead = ioUtil.read(b, curOff, byteToRead);
       if (curByteRead < 0) {
-        throw new EOFException("Could not read data from closed stream");
+        throw new EOFException("Could not read data from closed stream.");
+      } else if (0 == curByteRead) {
+        try {
+          if (retry++ > IO_RETRY_COUNT_THRESHOLD) {
+            throw new ZeroReadException(String.format("Zero Read exceed retry threshold [%d] in [%s] ms, seems commnunication's broken!", IO_RETRY_COUNT_THRESHOLD, IO_RETRY_INTERVAL * IO_RETRY_COUNT_THRESHOLD));
+          }
+          Thread.sleep(IO_RETRY_INTERVAL);
+        } catch (InterruptedException e) {
+          continue;
+        }
+      } else {
+        retry = 0;
       }
       byteToRead -= curByteRead;
       curOff += curByteRead;
@@ -190,7 +208,7 @@ public class CoreCodecImpl implements CoreCodec {
     byte[] encBytes = stringValue.getBytes(encoding);
     int encSize = encBytes.length;
     writeIntBigEndian(encSize);
-    ioUtil.write(encBytes, 0, encSize);
+    writen(encBytes, 0, encSize);
   }
 
   /**
@@ -247,5 +265,49 @@ public class CoreCodecImpl implements CoreCodec {
     Charset cs = Charset.forName(encoding);
     CharBuffer cb = cs.decode(ByteBuffer.wrap(encodingBytes));
     return cb.toString();
+  }
+  
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writen(byte[] bytes, int off, int len) throws IOException {
+    int byteToWrite = len;
+    int curOff = off;
+    int retry = 0;
+    while (byteToWrite > 0) {
+      int curByteWritten = 0;
+      curByteWritten = ioUtil.write(bytes, curOff, byteToWrite);
+      if (curByteWritten < 0) {
+        throw new EOFException("Could not write data to closed stream.");
+      } else if (0 == curByteWritten) {
+        try {
+          if (retry++ > IO_RETRY_COUNT_THRESHOLD) {
+            throw new IoTimeoutException(String.format("Write exceed retry threshold [%d] in [%s] ms, seems commnunication's broken!", IO_RETRY_COUNT_THRESHOLD, IO_RETRY_INTERVAL * IO_RETRY_COUNT_THRESHOLD));
+          }
+          Thread.sleep(IO_RETRY_INTERVAL);
+        } catch (InterruptedException e) {
+          continue;
+        }
+      }
+      byteToWrite -= curByteWritten;
+      curOff += curByteWritten;
+    }
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void flush() throws IOException {
+    ioUtil.flush();
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void close() {
+    this.ioUtil.close();
   }
 }

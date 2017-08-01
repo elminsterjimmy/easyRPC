@@ -17,13 +17,18 @@ import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.listener.RpcServerAcceptEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListener;
 
+/**
+ * The BIO server listener.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class BioServerListenerImpl extends ServerListenerBase {
 
   private static final Logger logger = LoggerFactory.getLogger(BioServerListenerImpl.class);
 
-  private static final int RETRY_THRESHOLD = 10;
-
-  private static final long RETRY_INTERVAL = 100;
+  private static final int RETRY_THRESHOLD = 15;
+  private static final long RETRY_INTERVAL = 1000;
   
   private volatile boolean stop = false;
 
@@ -85,9 +90,11 @@ public class BioServerListenerImpl extends ServerListenerBase {
     return connection;
   }
   
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void interrupt() {
     stop = true;
   }
-
 }

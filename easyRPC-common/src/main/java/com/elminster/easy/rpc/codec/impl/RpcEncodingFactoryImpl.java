@@ -595,6 +595,22 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    * {@inheritDoc}
    */
   @Override
+  public void flush() throws IOException {
+    coreCodec.flush();
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  protected Object clone() throws CloneNotSupportedException {
+    return super.clone();
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public void addCompressor(final int type, final Class<? extends DataCompressor> compressor) {
     compressorFactory.addCompressor(type, compressor);
   }
@@ -614,6 +630,22 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   public void setCoreCodec(CoreCodec coreCodec) {
     Assert.notNull(coreCodec);
     this.coreCodec = coreCodec;
+  }
+  
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public CoreCodec getCoreCodec() {
+    return this.coreCodec;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writen(byte[] bytes, int off, int len) throws IOException {
+    this.coreCodec.writen(bytes, off, len);
   }
 
   /**

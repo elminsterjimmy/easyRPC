@@ -13,16 +13,20 @@ public class RequestHeaderProtocalImpl extends ProtocolImpl implements RequestHe
     super(encodingFactory);
   }
 
+  private String requestId;
   private String encodingName;
 
   @Override
-  public void encode() throws IOException, RpcException {
+  public void writeData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
+    Assert.notNull(requestId);
     Assert.notNull(encodingName);
+    encodingFactory.writeAsciiNullable(requestId);
     encodingFactory.writeAsciiNullable(encodingName);
   }
 
   @Override
-  public void decode() throws IOException, RpcException {
+  public void readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
+    this.requestId = encodingFactory.readAsciiNullable();
     this.encodingName = encodingFactory.readAsciiNullable();
   }
 
@@ -34,5 +38,15 @@ public class RequestHeaderProtocalImpl extends ProtocolImpl implements RequestHe
   @Override
   public String getEncoding() {
     return encodingName;
+  }
+
+  @Override
+  public void setRequestId(String requestId) {
+    this.requestId = requestId;
+  }
+
+  @Override
+  public String getRequestId() {
+    return this.requestId;
   }
 }

@@ -16,14 +16,14 @@ public class ShakehandProtocolImpl extends ProtocolImpl implements ShakehandProt
   }
 
   @Override
-  public void encode() throws IOException, RpcException {
+  public void writeData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
     for (long l : MAGIC_NUMBER) {
       encodingFactory.writeInt64(l);
     }
   }
 
   @Override
-  public void decode() throws IOException, RpcException {
+  public void readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
     for (long l : MAGIC_NUMBER) {
       long lNum = encodingFactory.readInt64();
       if (lNum != l) {

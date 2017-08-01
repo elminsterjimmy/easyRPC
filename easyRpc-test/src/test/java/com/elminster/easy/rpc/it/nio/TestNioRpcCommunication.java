@@ -1,9 +1,12 @@
-package com.elminster.easy.rpc.it.bio;
+package com.elminster.easy.rpc.it.nio;
 
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.xml.DOMConfigurator;
 import org.junit.Assert;
@@ -19,6 +22,8 @@ import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.context.impl.SimpleConnectionEndpoint;
 import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.it.RpcTestIfClient;
+import com.elminster.easy.rpc.it.RpcTestServiceImpl;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.context.impl.RpcServerContext;
 import com.elminster.easy.rpc.server.exception.ServerException;
@@ -28,9 +33,10 @@ import com.elminster.easy.rpc.server.listener.RpcServerAcceptEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListenEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListener;
 
-public class TestRpcCommunication {
+public class TestNioRpcCommunication {
 
-  private static final int CLIENT_COUNT = 10;
+  private static final int CLIENT_COUNT = 100;
+  private AtomicInteger accepted = new AtomicInteger(0);
 
   @BeforeClass
   public static void initLog4j() {
@@ -38,12 +44,12 @@ public class TestRpcCommunication {
   }
 
   @Test
-  public void testBioRpcCommunication() throws ServerException, RpcException {
+  public void testNioRpcCommunication() throws ServerException, RpcException {
     RpcContext serverContext = createRpcServerContext();
 
     final RpcServer rpcServer = RpcServerFactoryImpl.INSTANCE.createRpcServer(serverContext);
     rpcServer.addService(new RpcTestServiceImpl());
-    rpcServer.listen(9100);
+    rpcServer.listen(9200);
 
     waitServerUp(rpcServer);
 
@@ -59,13 +65,19 @@ public class TestRpcCommunication {
     }
 
     try {
-      latch.await();
+      latch.await(360, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       ;
     }
+    if (latch.getCount() > 0) {
+      System.out.println("Latch count: " + latch.getCount());
+      Assert.fail("timeout!");
+    }
     
+    System.out.println(accepted.get());
     for (ClientThread client : clients) {
       if (null != client.e) {
+        client.e.printStackTrace();
         Assert.fail(client.e.getMessage());
       }
     }
@@ -87,23 +99,35 @@ public class TestRpcCommunication {
       Random random = new Random();
       try {
         RpcContext clientContext = createRpcClientContext();
-        ConnectionEndpoint endpoint = SimpleConnectionEndpoint.localhostConnectionEndpoint(9100);
+        ConnectionEndpoint endpoint = SimpleConnectionEndpoint.localhostConnectionEndpoint(9200);
         rpcClient = RpcClientFactoryImpl.INSTANCE.createRpcClient(endpoint, clientContext, 0 == random.nextInt(10) % 2);
 
         RpcProxy proxy = new DynamicProxy();
         RpcTestIfClient testIf = proxy.makeProxy(RpcTestIfClient.class, rpcClient);
-        String helloWord = testIf.testString("world");
-        Assert.assertEquals("hello world", helloWord);
+        String uuid = UUID.randomUUID().toString();
+        String helloWord = testIf.testString("world: " + uuid);
+        Assert.assertEquals("hello world: " + uuid, helloWord);
         Assert.assertEquals(new Integer(0), (Integer) testIf.testIntegerPlus(null));
         Assert.assertEquals(6, testIf.testIntPlus(5));
         Assert.assertEquals(101, testIf.testLongPlus(100L));
-
         Assert.assertEquals(Integer.MIN_VALUE, testIf.testIntPlus(Integer.MAX_VALUE));
 
         Future<String> future = testIf.testLongTimeJob();
+        Assert.assertEquals(false, future.isDone());
+        Assert.assertEquals(false, future.isCancelled());
+        
+        Assert.assertTrue(testIf.now().getTime() - System.currentTimeMillis() < 1000);
+        testIf.testVoid();
         try {
           String rtn = future.get();
-          Assert.assertEquals("Finish Long Time Job", rtn);
+          StringBuilder sb = new StringBuilder();
+          for (int i = 0; i < 500; i++) {
+            sb.append(String.valueOf(i));
+          }
+          String expect = sb.toString();
+          
+          Assert.assertEquals(expect.length(), rtn.length());
+          Assert.assertArrayEquals(expect.toCharArray(), rtn.toCharArray());
         } catch (InterruptedException e) {
           // TODO Auto-generated catch block
           e.printStackTrace();
@@ -111,15 +135,12 @@ public class TestRpcCommunication {
           // TODO Auto-generated catch block
           e.printStackTrace();
         }
-        Assert.assertTrue(testIf.now().getTime() - System.currentTimeMillis() < 1000);
 
-        testIf.testVoid();
-
-        // try {
-        // testIf.unpublished();
-        // Assert.fail();
-        // } catch (Exception e) {
-        // }
+        try {
+          testIf.unpublished();
+          Assert.fail();
+        } catch (Exception e) {
+        }
 
       } catch (Throwable e) {
         this.e = e;
@@ -134,6 +155,7 @@ public class TestRpcCommunication {
   }
 
   private void waitServerUp(final RpcServer rpcServer) {
+    
     rpcServer.addServerListener(new RpcServerListener() {
 
       @Override
@@ -141,21 +163,17 @@ public class TestRpcCommunication {
       }
 
       @Override
-      public void beforeClose(RpcServerListenEvent event) {
+      public void beforeUnserve(RpcServerListenEvent event) {
 
       }
 
       @Override
       public void afterListened(RpcServerListenEvent event) {
         System.out.println("Server's up and listened on " + event.getHost() + ":" + event.getPort());
-        synchronized (rpcServer) {
-          rpcServer.notify();
-        }
       }
 
       @Override
       public void preProcess(RpcProcessEvent event) {
-        // System.out.println(event.toString());
       }
 
       @Override
@@ -164,15 +182,15 @@ public class TestRpcCommunication {
 
       @Override
       public void onAccept(RpcServerAcceptEvent event) {
-        // System.out.println(event.getServerEndpoint() + "|" + event.getClientEndpoint());
+        accepted.getAndIncrement();
       }
     });
-    synchronized (rpcServer) {
-      try {
-        rpcServer.wait(10 * 1000l);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
+    
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
     }
   }
 
@@ -181,6 +199,6 @@ public class TestRpcCommunication {
   }
 
   private RpcContext createRpcServerContext() {
-    return RpcServerContext.createBioServerContext();
+    return RpcServerContext.createNioServerContext();
   }
 }

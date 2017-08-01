@@ -10,6 +10,7 @@ public class AsyncResponseProtocolImpl extends ProtocolImpl implements AsyncResp
   
   private static final byte QUERY_DONE = 10;
   private static final byte DONE = 15;
+  private static final byte NOT_DONE = 16;
   private static final byte CANCEL = 20;
   private static final byte GET = 30;
   private String requestId;
@@ -21,14 +22,15 @@ public class AsyncResponseProtocolImpl extends ProtocolImpl implements AsyncResp
   }
 
   @Override
-  public void encode() throws IOException, RpcException {
+  public void writeData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
     encodingFactory.writeAsciiNullable(requestId);
     encodingFactory.writeInt8(action);
     encodingFactory.writeInt64(timeout);
+    encodingFactory.flush();
   }
 
   @Override
-  public void decode() throws IOException, RpcException {
+  public void readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
     this.requestId = encodingFactory.readAsciiNullable();
     this.action = encodingFactory.readInt8();
     this.timeout = encodingFactory.readInt64();
@@ -71,7 +73,11 @@ public class AsyncResponseProtocolImpl extends ProtocolImpl implements AsyncResp
 
   @Override
   public void setDone(boolean isDone) {
-    this.action = DONE;
+    if (isDone) {
+      this.action = DONE;
+    } else {
+      this.action = NOT_DONE;
+    }
   }
 
   @Override
