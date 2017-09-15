@@ -28,6 +28,7 @@ import com.elminster.easy.rpc.idl.IDL;
 public enum IDLBasicTypes implements IDL {
 
   // @formatter:off
+  V(Void.TYPE.getCanonicalName(), "v", Void.TYPE, null),
   B(Byte.TYPE.getCanonicalName(), "b", Byte.TYPE, ByteCodec.class),
   I(Integer.TYPE.getCanonicalName(), "i", Integer.TYPE, IntegerCodec.class),
   J(Long.TYPE.getCanonicalName(), "j", Long.TYPE, LongCodec.class),

@@ -1,0 +1,17 @@
+////// struct
+struct Test {
+  byte byteA
+  short shortB
+	int intC
+  long longD
+  double doubleE
+  float floatF
+  
+}
+
+
+
+////// service
+
+
+////// calls
