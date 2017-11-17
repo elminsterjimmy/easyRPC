@@ -2,102 +2,33 @@ package com.elminster.easy.rpc.protocol.impl;
 
 import java.io.IOException;
 
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.protocol.AsyncResponseProtocol;
+import com.elminster.easy.rpc.request.AsyncQueryResponse;
+import com.elminster.easy.rpc.request.impl.AsyncQueryResponseImpl;
 
-public class AsyncResponseProtocolImpl extends ProtocolImpl implements AsyncResponseProtocol {
+public class AsyncResponseProtocolImpl extends ProtocolImpl<AsyncQueryResponse> implements AsyncResponseProtocol {
   
-  private static final byte QUERY_DONE = 10;
-  private static final byte DONE = 15;
-  private static final byte NOT_DONE = 16;
-  private static final byte CANCEL = 20;
-  private static final byte GET = 30;
-  private String requestId;
-  private byte action;
-  private long timeout;
-
-  public AsyncResponseProtocolImpl(RpcEncodingFactory encodingFactory) {
-    super(encodingFactory);
+  public AsyncResponseProtocolImpl() {
   }
 
   @Override
-  public void writeData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
-    encodingFactory.writeAsciiNullable(requestId);
-    encodingFactory.writeInt8(action);
-    encodingFactory.writeInt64(timeout);
+  public void writeData(AsyncQueryResponse aResponse, RpcEncodingFactory encodingFactory) throws IOException, RpcException {
+    encodingFactory.writeAsciiNullable(aResponse.getRequestId());
+    encodingFactory.writeAsciiNullable(aResponse.getId2Request());
+    encodingFactory.writeInt8(aResponse.getAction());
+    encodingFactory.writeInt64(aResponse.getTimeout());
     encodingFactory.flush();
   }
 
   @Override
-  public void readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
-    this.requestId = encodingFactory.readAsciiNullable();
-    this.action = encodingFactory.readInt8();
-    this.timeout = encodingFactory.readInt64();
+  public AsyncQueryResponse readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
+    AsyncQueryResponseImpl aResponse = new AsyncQueryResponseImpl();
+    aResponse.setRequestId(encodingFactory.readAsciiNullable());
+    aResponse.setId2Request(encodingFactory.readAsciiNullable());
+    aResponse.setAction(encodingFactory.readInt8());
+    aResponse.setTimeout(encodingFactory.readInt64());
+    return aResponse;
   }
-
-  @Override
-  public long getTimeout() {
-    return timeout;
-  }
-
-  @Override
-  public void setTimeout(long timeout) {
-    this.timeout = timeout;
-  }
-
-  @Override
-  public String getRequestId() {
-    return requestId;
-  }
-
-  @Override
-  public void setRequestId(String requestId) {
-    this.requestId = requestId;
-  }
-
-  @Override
-  public void queryIsDone() {
-    this.action = QUERY_DONE;
-  }
-
-  @Override
-  public boolean isQueryDone() {
-    return QUERY_DONE == this.action;
-  }
-
-  @Override
-  public boolean isDone() {
-    return DONE == action;
-  }
-
-  @Override
-  public void setDone(boolean isDone) {
-    if (isDone) {
-      this.action = DONE;
-    } else {
-      this.action = NOT_DONE;
-    }
-  }
-
-  @Override
-  public void cancel() {
-    this.action = CANCEL;
-  }
-
-  @Override
-  public boolean isCancel() {
-    return CANCEL == this.action;
-  }
-
-  @Override
-  public void setGet() {
-    this.action = GET;
-  }
-
-  @Override
-  public boolean isGet() {
-    return GET == this.action;
-  }
-
 }

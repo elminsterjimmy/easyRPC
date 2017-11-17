@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.common.util.ReflectUtil;
 import com.elminster.easy.rpc.codec.RpcCodec;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.idl.IDL;
 import com.elminster.easy.rpc.idl.impl.IDLBasicTypes;

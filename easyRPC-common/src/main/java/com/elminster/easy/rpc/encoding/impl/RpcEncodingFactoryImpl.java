@@ -1,4 +1,4 @@
-package com.elminster.easy.rpc.codec.impl;
+package com.elminster.easy.rpc.encoding.impl;
 
 import static com.elminster.easy.rpc.codec.CodecConst.IS_NULL;
 import static com.elminster.easy.rpc.codec.CodecConst.NOT_NULL;
@@ -19,11 +19,12 @@ import com.elminster.common.constants.Constants.StringConstants;
 import com.elminster.common.util.Assert;
 import com.elminster.common.util.StringUtil;
 import com.elminster.easy.rpc.codec.CodecRepository;
-import com.elminster.easy.rpc.codec.CoreCodec;
+import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.codec.RpcCodec;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.codec.impl.TypeCategory;
 import com.elminster.easy.rpc.compressor.DataCompressor;
 import com.elminster.easy.rpc.compressor.DataCompressorFactory;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.idl.IDL;
 import com.elminster.easy.rpc.idl.impl.IDLBasicTypes;
@@ -46,7 +47,8 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   /** {@literal ; } */
   private static final Pattern REPLACE_CLASS_SUFFIX_PATTERN = Pattern.compile(";");
 
-  private final String encodingName;
+  /** the encoding factory name. */
+  private final String name;
   /** class name -> remote type name. */
   protected HashMap<String, String> classNameToRemoteTypeNameMap = new HashMap<>();
   /** remote type name -> class name. */
@@ -56,20 +58,20 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
   /** class name -> codec instance. */
   protected HashMap<String, RpcCodec> encodingInstanceMap = new HashMap<>();
 
-  private transient CoreCodec coreCodec;
+  private transient Codec coreCodec;
   
   private DataCompressorFactory compressorFactory;
   
   public RpcEncodingFactoryImpl(String encodingName) {
-    this.encodingName = encodingName;
+    this.name = encodingName;
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public String getEncodingName() {
-    return this.encodingName;
+  public String getName() {
+    return this.name;
   }
 
   /**
@@ -627,7 +629,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    * {@inheritDoc}
    */
   @Override
-  public void setCoreCodec(CoreCodec coreCodec) {
+  public void setCodec(Codec coreCodec) {
     Assert.notNull(coreCodec);
     this.coreCodec = coreCodec;
   }
@@ -636,7 +638,7 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
    * {@inheritDoc}
    */
   @Override
-  public CoreCodec getCoreCodec() {
+  public Codec getCodec() {
     return this.coreCodec;
   }
 

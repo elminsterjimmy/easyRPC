@@ -8,7 +8,7 @@ import java.util.Random;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.elminster.easy.rpc.codec.CoreCodec;
+import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
 
 public class CoreCodecTest {
@@ -80,8 +80,7 @@ public class CoreCodecTest {
   @Test
   public void testWriteAndReadByte() throws IOException {
     try (PipedOutputStream out = new PipedOutputStream(); PipedInputStream in = new PipedInputStream(out)) {
-
-      CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+      Codec util = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
       byte zero = 0;
       util.writeByte(zero);
       Assert.assertEquals(zero, util.readByte());
@@ -99,7 +98,7 @@ public class CoreCodecTest {
   @Test
   public void testWriteAndReadInt() throws IOException {
     try (PipedOutputStream out = new PipedOutputStream(); PipedInputStream in = new PipedInputStream(out)) {
-      CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+      Codec util = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
 
       int zero = 0;
       util.writeIntBigEndian(zero);
@@ -119,7 +118,7 @@ public class CoreCodecTest {
   public void testWriteAndReadLong() throws IOException {
     try (PipedOutputStream out = new PipedOutputStream(); PipedInputStream in = new PipedInputStream(out)) {
 
-      CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+      Codec util = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
       long zero = 0L;
       util.writeLongBigEndian(zero);
       Assert.assertEquals(zero, util.readLongBigEndian());
@@ -138,7 +137,7 @@ public class CoreCodecTest {
   public void testWriteAndReadString() throws IOException {
     try (PipedOutputStream out = new PipedOutputStream(); PipedInputStream in = new PipedInputStream(out)) {
 
-      CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+      Codec util = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
       String nullStr = null;
       util.writeStringAsciiNullable(nullStr);
       Assert.assertEquals(nullStr, util.readStringAsciiNullable());

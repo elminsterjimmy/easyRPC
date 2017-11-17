@@ -7,6 +7,7 @@ public class RpcException extends Exception {
    */
   private static final long serialVersionUID = 1L;
   
+  private String requestId;
   private String causedByClassName;
   private String causedByStackTrace;
 
@@ -16,6 +17,14 @@ public class RpcException extends Exception {
 
   public RpcException(String msg, Throwable cause) {
     super(msg, cause);
+  }
+
+  public String getRequestId() {
+    return requestId;
+  }
+
+  public void setRequestId(String requestId) {
+    this.requestId = requestId;
   }
 
   public String getCausedByClassName() {

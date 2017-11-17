@@ -7,11 +7,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketException;
+import java.nio.ByteBuffer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elminster.common.exception.ObjectInstantiationExcption;
+import com.elminster.common.util.BinaryUtil;
 import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.client.RpcClient;
 import com.elminster.easy.rpc.client.connection.Connection;
@@ -20,21 +22,26 @@ import com.elminster.easy.rpc.client.context.impl.InvokerContextImpl;
 import com.elminster.easy.rpc.client.context.impl.InvokerContextImpl.InvokerContextImplBuilder;
 import com.elminster.easy.rpc.client.processor.RpcClientProcessor;
 import com.elminster.easy.rpc.client.processor.impl.BioRpcClientProcessor;
-import com.elminster.easy.rpc.codec.CoreCodec;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactoryNotFoundException;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactoryRepository;
+import com.elminster.easy.rpc.encoding.impl.DefaultRpcEncodingFactory;
 import com.elminster.easy.rpc.exception.ConnectionException;
 import com.elminster.easy.rpc.exception.RpcException;
-import com.elminster.easy.rpc.exception.VersionCompatibleException;
-import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol;
-import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol.Frame;
-import com.elminster.easy.rpc.protocol.ShakehandProtocol;
-import com.elminster.easy.rpc.protocol.VersionProtocol;
-import com.elminster.easy.rpc.protocol.impl.ProtocolFactoryImpl;
 import com.elminster.easy.rpc.registery.SocketFactoryRegsitery;
-import com.elminster.easy.rpc.version.VersionChecker;
+import com.elminster.easy.rpc.request.Header;
+import com.elminster.easy.rpc.request.Response;
+import com.elminster.easy.rpc.request.RpcRequest;
+import com.elminster.easy.rpc.request.impl.HeaderImpl;
+import com.elminster.easy.rpc.request.impl.RpcRequestImpl;
+import com.elminster.easy.rpc.serializer.Serializer;
+import com.elminster.easy.rpc.serializer.impl.HeaderSerializer;
+import com.elminster.easy.rpc.serializer.impl.ResponseSerializer;
+import com.elminster.easy.rpc.serializer.impl.RpcRequestSerializer;
 
 public class BioConnectionImpl implements Connection {
   
@@ -64,46 +71,56 @@ public class BioConnectionImpl implements Connection {
       in = socket.getInputStream();
       out = new BufferedOutputStream(socket.getOutputStream());
 
-      CoreCodec coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
-      RpcEncodingFactory encodingFactory = rpcClient.getEncodingFactory().cloneEncodingFactory();
-      encodingFactory.setCoreCodec(coreCodec);
-
-      // shakehand
-      ShakehandProtocol shakehandProtocol = (ShakehandProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ShakehandProtocol.class, encodingFactory);
-      ConfirmFrameProtocol confirmFrameProtocol = (ConfirmFrameProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ConfirmFrameProtocol.class, encodingFactory);
-      if (!confirmFrameProtocol.expact(Frame.FRAME_OK.getFrame())) {
-        throw new RpcException("Unexpect retrun from Shakehand Protocol.");
-      }
-      confirmFrameProtocol.nextFrame(Frame.FRAME_SHAKEHAND.getFrame());
-      shakehandProtocol.encode();
-
-      if (!confirmFrameProtocol.expact(Frame.FRAME_VERSION.getFrame())) {
-        throw new RpcException("Unexpect retrun from Shakehand Protocol.");
-      }
-
-      // compare version
-      VersionProtocol versionProtocol = (VersionProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(VersionProtocol.class, encodingFactory);
-
-      confirmFrameProtocol.nextFrame(Frame.FRAME_VERSION.getFrame());
-      String clientVersion = rpcClient.getVersion();
-      invokerContext.setInvokerVersion(clientVersion);
-      versionProtocol.setVersion(clientVersion);
-      versionProtocol.encode();
+      Codec codec = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+      final RpcEncodingFactory encodingFactory = rpcClient.getEncodingFactory().cloneEncodingFactory();
+      encodingFactory.setCodec(codec);
       
-      versionProtocol.decode();
-      String serverVersion = versionProtocol.getVersion();
-      invokerContext.setInvokeeVersion(serverVersion);
-      
-      if (!VersionChecker.compatible(serverVersion, clientVersion)) {
-        String msg = String.format("Incompatible versions! Server version is [%s] but Client version is [%s].", serverVersion, clientVersion);
-        logger.warn(msg);
-        if (confirmFrameProtocol.expact(Frame.FRAME_VERSION_INCOMPATIBLE.getFrame())) {
-          // server force version check throw exception
-          throw new VersionCompatibleException(msg);
+      RpcEncodingFactoryRepository repository = new RpcEncodingFactoryRepository() {
+
+        @Override
+        public RpcEncodingFactory getRpcEncodingFactory(String encodingFactoryName, Codec codec) throws RpcEncodingFactoryNotFoundException {
+          return encodingFactory;
         }
-      }
 
-      processor = new BioRpcClientProcessor(encodingFactory, invokerContext, this);
+        @Override
+        public void addRpcEncodingFactory(RpcEncodingFactory encodingFactory) {
+        }
+
+        @Override
+        public void removeRpcEncodingFactory(String encodingFactoryName) {
+        }
+      };
+      Serializer<Header> headerSerializer = new HeaderSerializer(repository, codec);
+      HeaderImpl header = new HeaderImpl();
+      header.setVersion(this.rpcClient.getVersion());
+      header.setRequestType(Header.SYNC_REQUEST);
+      byte[] mHeader = headerSerializer.serialize(header);
+      
+      RpcRequestImpl request = new RpcRequestImpl();
+      request.setEncoding(DefaultRpcEncodingFactory.ENCODING_FACTORY_NAME);
+      request.setMethodName("ping");
+      request.setServiceName("ping");
+      request.setServiceVersion("1.0.0");
+      request.setRequestId("PING");
+      
+      Serializer<RpcRequest> reqSerializer = new RpcRequestSerializer(repository, codec);
+      byte[] mReq = reqSerializer.serialize(request);
+      encodingFactory.writeObjectNullable(BinaryUtil.concatBytes(mHeader, mReq));
+      encodingFactory.flush();
+      
+      byte[] resMsg = (byte[]) encodingFactory.readObjectNullable();
+      ByteBuffer byteBuffer = ByteBuffer.wrap(resMsg);
+      Serializer<Response> resSerializer = new ResponseSerializer(repository, codec);
+      Response res = resSerializer.deserialize(byteBuffer);
+      Object rtn = res.getReturnValue();
+      if (rtn instanceof Boolean) {
+        processor = new BioRpcClientProcessor(encodingFactory, invokerContext, this);
+      } else if (rtn instanceof RpcException) {
+        throw (RpcException) rtn;
+      } else {
+        throw new RpcException("Server is not pingable!");
+      }
+      
     } catch (IOException | ObjectInstantiationExcption | RpcException e) {
       closeStreams();
       if (e instanceof EOFException) {
@@ -174,5 +191,9 @@ public class BioConnectionImpl implements Connection {
   @Override
   public boolean isConnected() {
     return !socket.isClosed();
+  }
+  
+  public RpcClient getRpcClient() {
+    return this.rpcClient;
   }
 }

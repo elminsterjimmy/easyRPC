@@ -5,7 +5,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
-import com.elminster.easy.rpc.codec.CoreCodec;
+import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.util.ByteBufferIoImpl;
 import com.elminster.easy.rpc.util.IoUtil;
 import com.elminster.easy.rpc.util.NioChannelUtil;
@@ -23,17 +23,17 @@ public class CoreCodecFactory {
   
   private CoreCodecFactory() {}
 
-  public CoreCodec getCoreCodec(InputStream in, OutputStream out) {
+  public Codec getCoreCodec(InputStream in, OutputStream out) {
     IoUtil ioUtil = new StreamIOUitlImpl(in, out);
     return new CoreCodecImpl(ioUtil);
   }
 
-  public CoreCodec getCoreCodec(ByteBuffer byteBuffer) {
+  public Codec getCoreCodec(ByteBuffer byteBuffer) {
     IoUtil ioUtil = new ByteBufferIoImpl(byteBuffer);
     return new CoreCodecImpl(ioUtil);
   }
   
-  public CoreCodec getCoreCodec(SocketChannel socketChannel) {
+  public Codec getCoreCodec(SocketChannel socketChannel) {
     IoUtil ioUtil = new NioChannelUtil(socketChannel);
     return new CoreCodecImpl(ioUtil);
   }

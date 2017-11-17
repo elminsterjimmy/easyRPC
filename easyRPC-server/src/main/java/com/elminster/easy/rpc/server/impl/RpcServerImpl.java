@@ -16,12 +16,12 @@ import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.common.misc.Version;
 import com.elminster.common.thread.ThreadUncatchedExceptionEvent;
 import com.elminster.common.util.Assert;
-import com.elminster.easy.rpc.codec.CoreCodec;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
-import com.elminster.easy.rpc.codec.impl.RpcEncodingFactoryBase;
+import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.context.impl.SimpleConnectionEndpoint;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
+import com.elminster.easy.rpc.encoding.impl.DefaultRpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
@@ -31,6 +31,7 @@ import com.elminster.easy.rpc.server.container.impl.ContainerFactoryImpl;
 import com.elminster.easy.rpc.server.exception.ServerException;
 import com.elminster.easy.rpc.server.listener.RpcServerListenEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListener;
+import com.elminster.easy.rpc.server.service.impl.PingServiceImpl;
 import com.elminster.easy.rpc.service.RpcService;
 
 /**
@@ -63,11 +64,22 @@ public class RpcServerImpl implements RpcServer, Observer {
   public RpcServerImpl(RpcContext context) {
     this.context = context;
     addDefaultEncodingFactory();
+    addDefaultServices();
 
   }
 
+  private void addDefaultServices() {
+    RpcService pingService = new PingServiceImpl();
+    try {
+      this.addService(pingService);
+    } catch (RpcException e) {
+      // should not happend
+      e = null;
+    }
+  }
+
   private void addDefaultEncodingFactory() {
-    RpcEncodingFactory defaultEncodingFactory = new RpcEncodingFactoryBase(DEFAULT_ENCODING_FACTORY_NAME);
+    RpcEncodingFactory defaultEncodingFactory = new DefaultRpcEncodingFactory();
     this.addEncodingFactory(defaultEncodingFactory);
   }
 
@@ -77,7 +89,7 @@ public class RpcServerImpl implements RpcServer, Observer {
   @Override
   public void addEncodingFactory(final RpcEncodingFactory encodingFactory) {
     Assert.notNull(encodingFactory);
-    String encodingName = encodingFactory.getEncodingName();
+    String encodingName = encodingFactory.getName();
     logger.info(String.format("Register encoding: [%s]", encodingName));
     this.encodingFactories.put(encodingName, encodingFactory);
   }
@@ -160,12 +172,12 @@ public class RpcServerImpl implements RpcServer, Observer {
    * {@inheritDoc}
    */
   @Override
-  public RpcEncodingFactory getEncodingFactory(String encodingName, CoreCodec coreCodec) {
+  public RpcEncodingFactory getEncodingFactory(String encodingName, Codec coreCodec) {
     RpcEncodingFactory rtn = null;
     RpcEncodingFactory factory = encodingFactories.get(encodingName);
     if (null != factory) {
       rtn = factory.cloneEncodingFactory();
-      rtn.setCoreCodec(coreCodec);
+      rtn.setCodec(coreCodec);
     }
     return rtn;
   }
@@ -174,7 +186,7 @@ public class RpcServerImpl implements RpcServer, Observer {
    * {@inheritDoc}
    */
   @Override
-  public RpcEncodingFactory getDefaultEncodingFactory(CoreCodec coreCodec) {
+  public RpcEncodingFactory getDefaultEncodingFactory(Codec coreCodec) {
     return getEncodingFactory(DEFAULT_ENCODING_FACTORY_NAME, coreCodec);
   }
 

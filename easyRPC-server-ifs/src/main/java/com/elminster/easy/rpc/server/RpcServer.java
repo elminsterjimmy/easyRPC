@@ -2,9 +2,9 @@ package com.elminster.easy.rpc.server;
 
 import java.util.List;
 
-import com.elminster.easy.rpc.codec.CoreCodec;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.context.RpcContext;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.exception.ServerException;
 import com.elminster.easy.rpc.server.listener.RpcServerListener;
@@ -26,7 +26,7 @@ public interface RpcServer {
    */
   public void addEncodingFactory(final RpcEncodingFactory encodingFactory);
 
-  /**
+  /**z
    * Add a RPC service.
    * 
    * @param rpcService
@@ -91,7 +91,7 @@ public interface RpcServer {
    *          the core codec
    * @return the encoding factory
    */
-  public RpcEncodingFactory getEncodingFactory(String encodingName, CoreCodec coreCodec);
+  public RpcEncodingFactory getEncodingFactory(String encodingName, Codec coreCodec);
   
   /**
    * Get default encoding factory.
@@ -100,7 +100,7 @@ public interface RpcServer {
    *          the core codec
    * @return the encoding factory
    */
-  public RpcEncodingFactory getDefaultEncodingFactory(CoreCodec coreCodec);
+  public RpcEncodingFactory getDefaultEncodingFactory(Codec coreCodec);
 
   /**
    * Check the server uses secure connection?

@@ -1,5 +1,6 @@
 package com.elminster.easy.rpc.codec;
 
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 
 /**

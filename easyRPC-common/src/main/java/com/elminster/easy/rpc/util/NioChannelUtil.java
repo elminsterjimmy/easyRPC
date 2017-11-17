@@ -14,9 +14,12 @@ import com.elminster.easy.rpc.buffer.BufferPool;
  * @version 1.0
  */
 public class NioChannelUtil implements IoUtil {
-  
+
   private final SocketChannel socketChannel;
-  
+
+  /**
+   * The shared buffer pool.
+   */
   private static ThreadLocal<BufferPool> bufferPool = new ThreadLocal<BufferPool>() {
 
     @Override
@@ -24,16 +27,16 @@ public class NioChannelUtil implements IoUtil {
       return new BufferPool();
     }
   };
-  
+
   private final ByteBuffer writeByteBuffer;
   private final ByteBuffer readByteBuffer;
-  
+
   public NioChannelUtil(SocketChannel socketChannel) {
     this.socketChannel = socketChannel;
     writeByteBuffer = bufferPool.get().borrow(4096);
     readByteBuffer = bufferPool.get().borrow(1024);
   }
-  
+
   /**
    * {@inheritDoc}
    */
@@ -57,14 +60,14 @@ public class NioChannelUtil implements IoUtil {
     if (readBytes >= 0) {
       readBytes = Math.min(readByteBuffer.remaining(), len);
       try {
-//        // debug read byte buffer.
-//        readByteBuffer.rewind();
-//        byte[] debug = readByteBuffer.array();
-//        String bufferValue = "";
-//        for (int i = 0; i < debug.length; i++) {
-//          bufferValue += String.format("%3d", debug[i]) + "|";
-//        }
-//        System.err.println(bufferValue);
+        // // debug read byte buffer.
+        // readByteBuffer.rewind();
+        // byte[] debug = readByteBuffer.array();
+        // String bufferValue = "";
+        // for (int i = 0; i < debug.length; i++) {
+        // bufferValue += String.format("%3d", debug[i]) + "|";
+        // }
+        // System.err.println(bufferValue);
         readByteBuffer.rewind();
         readByteBuffer.get(bytes, off, readBytes);
       } catch (BufferUnderflowException e) {

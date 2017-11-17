@@ -2,6 +2,7 @@ package com.elminster.easy.rpc.codec;
 
 import java.util.Collection;
 
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.idl.IDL;
 
 /**

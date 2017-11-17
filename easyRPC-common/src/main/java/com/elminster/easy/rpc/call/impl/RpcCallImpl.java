@@ -5,16 +5,13 @@ import com.elminster.easy.rpc.call.ReturnResult;
 import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.call.Status;
 import com.elminster.easy.rpc.context.InvokeContext;
+import com.elminster.easy.rpc.request.RpcRequest;
 
 public class RpcCallImpl implements RpcCall {
 
   private static final int PRIORITY_MID = 50;
   private InvokeContext context;
-  private final String requestId;
-  private final String serviceName;
-  private final String methodName;
-  private final Object[] args;
-  private final boolean isAsync;
+  private final RpcRequest request;
   private final long timeout;
   private final int priority;
   private boolean isVoidReturn;
@@ -24,21 +21,17 @@ public class RpcCallImpl implements RpcCall {
   private Long callStartAt;
   private Long callEndAt;
   private Status status;
-
-  public RpcCallImpl(String requestId, boolean isAsync, String serviceName, String methodName, Object[] args) {
-    this(requestId, isAsync, serviceName, methodName, args, null);
+  
+  public RpcCallImpl(RpcRequest request) {
+    this(request, null);
   }
   
-  public RpcCallImpl(String requestId, boolean isAsync, String serviceName, String methodName, Object[] args, InvokeContext context) {
-    this(requestId, isAsync, serviceName, methodName, args, context, PRIORITY_MID, 0L);
+  public RpcCallImpl(RpcRequest request, InvokeContext context) {
+    this(request, context, PRIORITY_MID, 0L);
   }
   
-  public RpcCallImpl(String requestId, boolean isAsync, String serviceName, String methodName, Object[] args, InvokeContext context, int priority, long timeout) {
-    this.requestId = requestId;
-    this.isAsync = isAsync;
-    this.serviceName = serviceName;
-    this.methodName = methodName;
-    this.args = args;
+  public RpcCallImpl(RpcRequest request, InvokeContext context, int priority, long timeout) {
+    this.request = request;
     this.context = context;
     this.status = Status.CREATED;
     this.priority = priority;
@@ -54,19 +47,19 @@ public class RpcCallImpl implements RpcCall {
   }
 
   public String getRequestId() {
-    return requestId;
+    return request.getRequestId();
   }
 
   public String getServiceName() {
-    return serviceName;
+    return request.getServiceName();
   }
 
   public String getMethodName() {
-    return methodName;
+    return request.getMethodName();
   }
 
   public Object[] getArgs() {
-    return args;
+    return request.getMethodArgs();
   }
 
   public InvokeContext getContext() {
@@ -106,7 +99,7 @@ public class RpcCallImpl implements RpcCall {
   }
 
   public String toString() {
-    StringBuilder sb = new StringBuilder(String.format("RPC Call [%s] [%s@%s] with args %s on context [%s]", requestId, methodName, serviceName, generMethodArgs(args), context));
+    StringBuilder sb = new StringBuilder(String.format("RPC Call [%s] on context [%s]", request, context));
     if (null != result) {
       sb.append(String.format(" --> result [%s %s]", result.getReturnType().getName(), String.valueOf(result.getReturnValue())));
       try {
@@ -123,24 +116,6 @@ public class RpcCallImpl implements RpcCall {
       }
     }
     return sb.append(".").toString();
-  }
-
-  private static String generMethodArgs(Object[] args) {
-    StringBuilder sb = new StringBuilder();
-    sb.append("[");
-    boolean first = true;
-    if (null != args) {
-      for (Object arg : args) {
-        if (first) {
-          first = false;
-        } else {
-          sb.append(", ");
-        }
-        sb.append(arg);
-      }
-    }
-    sb.append("]");
-    return sb.toString();
   }
 
   @Override
@@ -161,7 +136,7 @@ public class RpcCallImpl implements RpcCall {
 
   @Override
   public boolean isAsyncCall() {
-    return isAsync;
+    return request.isAsyncCall();
   }
   
   public void setContext(InvokeContext context) {
@@ -180,7 +155,7 @@ public class RpcCallImpl implements RpcCall {
   public int hashCode() {
     final int prime = 31;
     int result = 1;
-    result = prime * result + ((requestId == null) ? 0 : requestId.hashCode());
+    result = prime * result + ((getRequestId() == null) ? 0 : getRequestId().hashCode());
     return result;
   }
 
@@ -193,10 +168,10 @@ public class RpcCallImpl implements RpcCall {
     if (getClass() != obj.getClass())
       return false;
     RpcCallImpl other = (RpcCallImpl) obj;
-    if (requestId == null) {
-      if (other.requestId != null)
+    if (getRequestId() == null) {
+      if (other.getRequestId() != null)
         return false;
-    } else if (!requestId.equals(other.requestId))
+    } else if (!getRequestId().equals(other.getRequestId()))
       return false;
     return true;
   }
@@ -217,5 +192,10 @@ public class RpcCallImpl implements RpcCall {
   @Override
   public int getPriority() {
     return priority;
+  }
+
+  @Override
+  public RpcRequest getRequest() {
+    return request;
   }
 }

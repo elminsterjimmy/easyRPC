@@ -7,6 +7,7 @@ import java.util.UUID;
 import com.elminster.easy.rpc.call.impl.RpcCallImpl;
 import com.elminster.easy.rpc.client.RpcClient;
 import com.elminster.easy.rpc.idl.Async;
+import com.elminster.easy.rpc.request.impl.RpcRequestImpl;
 import com.elminster.easy.rpc.service.Rpc;
 
 /**
@@ -50,8 +51,16 @@ public class ProxyInvocationHandler implements InvocationHandler {
       isVoidReturn = true;
     }
     
-    RpcCallImpl rpcCall = new RpcCallImpl(getRequestId(), isAsyncMethod(method), serviceName, method.getName(), args);
-    rpcCall.setVoidReturn(isVoidReturn);
+    RpcRequestImpl request = new RpcRequestImpl();
+    request.setAsyncCall(isAsyncMethod(method));
+    request.setMethodArgs(args);
+    request.setMethodName(method.getName());
+    request.setRequestId(getRequestId());
+    request.setServiceName(serviceName);
+    request.setServiceVersion("1.0.0");
+    request.setVoidCall(isVoidReturn);
+    
+    RpcCallImpl rpcCall = new RpcCallImpl(request);
     return rpcClient.invokeService(rpcCall);
   }
   

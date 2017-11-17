@@ -7,11 +7,9 @@ import com.elminster.easy.rpc.protocol.ResponseProtocol;
 public class NioRpcCallImpl extends RpcCallImpl implements NioRpcCall {
 
   private final NioRpcConnection connection;
-  private final ResponseProtocol responseProtocol;
 
   public NioRpcCallImpl(RpcCall rpcCall, NioRpcConnection connection, ResponseProtocol responseProtocol) {
-    super(rpcCall.getRequestId(), rpcCall.isAsyncCall(), rpcCall.getServiceName(), rpcCall.getMethodName(), rpcCall.getArgs(), rpcCall.getContext(), rpcCall.getPriority(),
-        rpcCall.getTimeout());
+    super(rpcCall.getRequest(), rpcCall.getContext(), rpcCall.getPriority(), rpcCall.getTimeout());
     if (null != rpcCall.getInvokeEndAt()) {
       rpcCall.setInvokeEndAt(rpcCall.getInvokeEndAt());
     }
@@ -27,17 +25,10 @@ public class NioRpcCallImpl extends RpcCallImpl implements NioRpcCall {
     }
     rpcCall.setStatus(rpcCall.getStatus());
     this.connection = connection;
-    this.responseProtocol = responseProtocol;
   }
 
   @Override
   public NioRpcConnection getConnection() {
     return connection;
   }
-
-  @Override
-  public ResponseProtocol getResponseProtocol() {
-    return responseProtocol;
-  }
-
 }

@@ -1,22 +1,11 @@
 package com.elminster.easy.rpc.protocol;
 
-public interface AsyncResponseProtocol extends Protocol {
+import com.elminster.easy.rpc.request.AsyncQueryResponse;
 
-  public long getTimeout();
-  public void setTimeout(long timeout);
+public interface AsyncResponseProtocol extends Protocol<AsyncQueryResponse> {
   
-  public String getRequestId();
-  public void setRequestId(String requestId);
-  
-  public void queryIsDone();
-  public boolean isQueryDone();
-  
-  public boolean isDone();
-  public void setDone(boolean isDone);
-  
-  public void cancel();
-  public boolean isCancel();
-  
-  public void setGet();
-  public boolean isGet();
+  public static final byte DONE = 15;
+  public static final byte NOT_DONE = 16;
+  public static final byte CANCELLED = 21;
+  public static final byte CALCEL_FAILED = 22;
 }

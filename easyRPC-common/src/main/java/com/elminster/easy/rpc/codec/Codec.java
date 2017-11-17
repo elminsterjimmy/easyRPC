@@ -9,7 +9,7 @@ import java.io.IOException;
  * @author jinggu
  * @version 1.0
  */
-public interface CoreCodec extends Closeable {
+public interface Codec extends Closeable {
 
   /**
    * Write a byte value.

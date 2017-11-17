@@ -16,10 +16,10 @@ import java.util.TreeSet;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.elminster.easy.rpc.codec.CoreCodec;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
-import com.elminster.easy.rpc.codec.impl.RpcEncodingFactoryBase;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
+import com.elminster.easy.rpc.encoding.impl.RpcEncodingFactoryBase;
 
 public class EncodingFactoryTest {
 
@@ -27,8 +27,8 @@ public class EncodingFactoryTest {
     public void test() throws Exception {
       RpcEncodingFactory encodingFactory = new RpcEncodingFactoryBase("default");
       try (PipedOutputStream out = new PipedOutputStream(); PipedInputStream in = new PipedInputStream(out)) {
-        CoreCodec coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
-        encodingFactory.setCoreCodec(coreCodec);
+        Codec coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+        encodingFactory.setCodec(coreCodec);
         withTemplate(encodingFactory);
       }
 

@@ -1,11 +1,13 @@
-package com.elminster.easy.rpc.codec.impl;
+package com.elminster.easy.rpc.encoding.impl;
 
 import java.util.Collection;
 
 import com.elminster.easy.rpc.codec.CodecRepository;
 import com.elminster.easy.rpc.codec.CodecRepositoryElement;
 import com.elminster.easy.rpc.codec.RpcCodec;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.codec.impl.ArrayCodec;
+import com.elminster.easy.rpc.codec.impl.RpcServerExceptionCodec;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.idl.impl.IDLBasicTypes;
 
@@ -16,7 +18,7 @@ import com.elminster.easy.rpc.idl.impl.IDLBasicTypes;
  * @version 1.0
  */
 public class RpcEncodingFactoryBase extends RpcEncodingFactoryImpl {
-
+  
   /** the default array codec. */
   private ArrayCodec theArrayCodec = new ArrayCodec();
 
@@ -71,7 +73,7 @@ public class RpcEncodingFactoryBase extends RpcEncodingFactoryImpl {
    */
   @Override
   protected RpcEncodingFactory clone() {
-    RpcEncodingFactoryBase cloned = new RpcEncodingFactoryBase(this.getEncodingName());
+    RpcEncodingFactoryBase cloned = new RpcEncodingFactoryBase(this.getName());
     cloned.classNameToRemoteTypeNameMap = this.classNameToRemoteTypeNameMap;
     cloned.encodingClassMap = this.encodingClassMap;
     cloned.encodingInstanceMap = this.encodingInstanceMap;

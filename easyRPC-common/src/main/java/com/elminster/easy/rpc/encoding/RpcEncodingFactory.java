@@ -1,8 +1,11 @@
-package com.elminster.easy.rpc.codec;
+package com.elminster.easy.rpc.encoding;
 
 import java.io.IOException;
 import java.util.Set;
 
+import com.elminster.easy.rpc.codec.CodecRepository;
+import com.elminster.easy.rpc.codec.Codec;
+import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.impl.TypeCategory;
 import com.elminster.easy.rpc.compressor.DataCompressor;
 import com.elminster.easy.rpc.exception.RpcException;
@@ -20,7 +23,7 @@ public interface RpcEncodingFactory extends Cloneable {
    * 
    * @return the encoding name
    */
-  public String getEncodingName();
+  public String getName();
 
   /**
    * Get the Codec for specified class.
@@ -452,13 +455,13 @@ public interface RpcEncodingFactory extends Cloneable {
    * @param coreCodec
    *          the core codec
    */
-  public void setCoreCodec(CoreCodec coreCodec);
+  public void setCodec(Codec coreCodec);
   
   /**
    * Get the core codec.
    * @return the core codec
    */
-  public CoreCodec getCoreCodec();
+  public Codec getCodec();
 
   /**
    * Clone the encoding factory.

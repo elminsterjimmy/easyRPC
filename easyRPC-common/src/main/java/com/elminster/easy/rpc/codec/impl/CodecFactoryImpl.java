@@ -8,7 +8,8 @@ import com.elminster.easy.rpc.codec.CodecFactory;
 import com.elminster.easy.rpc.codec.CodecRepository;
 import com.elminster.easy.rpc.codec.CodecRepositoryElement;
 import com.elminster.easy.rpc.codec.RpcCodec;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
+import com.elminster.easy.rpc.encoding.impl.RpcEncodingFactoryBase;
 import com.elminster.easy.rpc.idl.IDL;
 
 /**

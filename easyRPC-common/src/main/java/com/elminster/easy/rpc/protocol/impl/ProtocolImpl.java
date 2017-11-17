@@ -1,54 +1,49 @@
 package com.elminster.easy.rpc.protocol.impl;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import com.elminster.easy.rpc.codec.CoreCodec;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
-import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.protocol.Protocol;
 
-abstract public class ProtocolImpl implements Protocol {
+/**
+ * The base Protocol.
+ * 
+ * @author jinggu
+ * @version 1.0
+ * @param <T> generic type
+ */
+abstract public class ProtocolImpl<T> implements Protocol<T> {
 
-  protected final RpcEncodingFactory encodingFactory;
-  protected final RpcEncodingFactory sizeCalc;
-  protected int size;
-
-  public ProtocolImpl(RpcEncodingFactory encodingFactory) {
-    this.encodingFactory = encodingFactory;
-    this.sizeCalc = encodingFactory.cloneEncodingFactory();
+  public ProtocolImpl() {
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
-  public void encode() throws IOException, RpcException {
-    byte[] bytes = prepareWriteData();
-    encodingFactory.writeInt32(bytes.length);
-    encodingFactory.writen(bytes, 0, bytes.length);
-    encodingFactory.flush();
+  public void encode(T message, RpcEncodingFactory encodingFactory) throws IOException, RpcException {
+    writeData(message, encodingFactory);
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
-  public void decode() throws IOException, RpcException {
-    this.size = encodingFactory.readInt32();
-    readData(encodingFactory);
+  public T decode(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
+    return readData(encodingFactory);
   }
 
-  abstract void readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException;
+  abstract T readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException;
 
-  private byte[] prepareWriteData() throws IOException, RpcException {
-    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-      CoreCodec coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(null, out);
-      sizeCalc.setCoreCodec(coreCodec);
-      writeData(sizeCalc);
-      return out.toByteArray();
-    }
-  }
+//  private byte[] prepareWriteData(T message, RpcEncodingFactory encodingFactory) throws IOException, RpcException {
+//    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+//      Codec coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(null, out);
+//      encodingFactory.setCodec(coreCodec);
+//      writeData(message, encodingFactory);
+//      return out.toByteArray();
+//    }
+//  }
 
-  abstract void writeData(RpcEncodingFactory encodingFactory) throws IOException, RpcException;
-
-  @Override
-  public int getDataSize() throws IOException {
-    return this.size;
-  }
+  abstract void writeData(T message, RpcEncodingFactory encodingFactory) throws IOException, RpcException;
 }

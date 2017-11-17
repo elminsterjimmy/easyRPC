@@ -1,7 +1,6 @@
 package com.elminster.easy.rpc.protocol;
 
 import com.elminster.common.exception.ObjectInstantiationExcption;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 
 /**
  * Protocol Factory.
@@ -16,11 +15,9 @@ public interface ProtocolFactory {
    * 
    * @param protocolClass
    *          the protocol class
-   * @param encodingFactory
-   *          the encoding factory
    * @return the protocol
    * @throws ObjectInstantiationExcption
    *          on create error
    */
-  public Protocol createProtocol(Class<? extends Protocol> protocolClass, RpcEncodingFactory encodingFactory) throws ObjectInstantiationExcption;
+  public Protocol<?> createProtocol(Class<? extends Protocol<?>> protocolClass) throws ObjectInstantiationExcption;
 }

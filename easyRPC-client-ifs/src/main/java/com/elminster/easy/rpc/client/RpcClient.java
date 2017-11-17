@@ -1,9 +1,9 @@
 package com.elminster.easy.rpc.client;
 
 import com.elminster.easy.rpc.call.RpcCall;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.ConnectionException;
 import com.elminster.easy.rpc.exception.RpcException;
 

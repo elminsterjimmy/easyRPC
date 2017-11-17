@@ -1,24 +1,6 @@
 package com.elminster.easy.rpc.protocol;
 
-public interface RequestProtocol extends Protocol {
-  
-  public String getRequestId();
-  
-  public void setRequestId(String requestId);
+import com.elminster.easy.rpc.request.RpcRequest;
 
-  public String getMethodName();
-
-  public void setMethodName(String methodName);
-
-  public String getServiceName();
-
-  public void setServiceName(String serviceName);
-
-  public void setMethodArgs(Object... args);
-
-  public Object[] getMethodArgs();
-  
-  public boolean isAsyncCall();
-  
-  public void setAsyncCall(boolean isAsyncCall);
+public interface RequestProtocol extends Protocol<RpcRequest> {
 }

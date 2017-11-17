@@ -6,6 +6,6 @@ package com.elminster.easy.rpc.protocol;
  * @author jinggu
  * @version 1.0
  */
-public interface ShakehandProtocol extends Protocol {
+public interface ShakehandProtocol extends Protocol<Void> {
   
 }

@@ -20,9 +20,9 @@ public class SyncRpcServiceProcessor extends RpcServiceProcessorBase implements 
     super(rpcServer);
   }
   
-  private RpcCall invokeServiceMethod(RpcCall rpcCall) throws RpcException {
+  private void invokeServiceMethod(RpcCall rpcCall) throws RpcException {
     RpcService service = getRpcService(rpcCall);
-    return invokeInternal(service, rpcCall);
+    invokeInternal(service, rpcCall);
   }
 
   /**
@@ -30,7 +30,7 @@ public class SyncRpcServiceProcessor extends RpcServiceProcessorBase implements 
    */
   @Override
   public void invoke(RpcCall call) throws RpcException {
-    call = invokeServiceMethod(call);
+    invokeServiceMethod(call);
     putProcessedCall(call);
   }
 

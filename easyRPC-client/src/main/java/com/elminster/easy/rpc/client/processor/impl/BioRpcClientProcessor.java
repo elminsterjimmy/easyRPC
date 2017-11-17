@@ -2,26 +2,34 @@ package com.elminster.easy.rpc.client.processor.impl;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.elminster.common.exception.ObjectInstantiationExcption;
+import com.elminster.common.util.BinaryUtil;
 import com.elminster.easy.rpc.call.ReturnResult;
 import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.call.impl.ReturnResultImpl;
 import com.elminster.easy.rpc.client.async.AsyncFuture;
 import com.elminster.easy.rpc.client.connection.Connection;
 import com.elminster.easy.rpc.client.context.impl.InvokerContextImpl;
+import com.elminster.easy.rpc.client.impl.RpcClientImpl;
 import com.elminster.easy.rpc.client.processor.RpcClientProcessor;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.codec.Codec;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactoryNotFoundException;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactoryRepository;
 import com.elminster.easy.rpc.exception.RpcException;
-import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol;
-import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol.Frame;
-import com.elminster.easy.rpc.protocol.RequestHeaderProtocol;
-import com.elminster.easy.rpc.protocol.RequestProtocol;
-import com.elminster.easy.rpc.protocol.ResponseProtocol;
-import com.elminster.easy.rpc.protocol.impl.ProtocolFactoryImpl;
+import com.elminster.easy.rpc.request.Header;
+import com.elminster.easy.rpc.request.Response;
+import com.elminster.easy.rpc.request.RpcRequest;
+import com.elminster.easy.rpc.request.impl.HeaderImpl;
+import com.elminster.easy.rpc.request.impl.RpcRequestImpl;
+import com.elminster.easy.rpc.serializer.Serializer;
+import com.elminster.easy.rpc.serializer.impl.HeaderSerializer;
+import com.elminster.easy.rpc.serializer.impl.ResponseSerializer;
+import com.elminster.easy.rpc.serializer.impl.RpcRequestSerializer;
 
 /**
  * The Bio Rpc Client Processor.
@@ -36,11 +44,27 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
   private final RpcEncodingFactory encodingFactory;
   private final InvokerContextImpl invokerContext;
   private final Connection conn;
+  private final RpcEncodingFactoryRepository repository;
 
-  public BioRpcClientProcessor(RpcEncodingFactory encodingFactory, InvokerContextImpl invokerContext, Connection conn) {
-    this.encodingFactory = encodingFactory;
+  public BioRpcClientProcessor(RpcEncodingFactory encodingFactory_, InvokerContextImpl invokerContext, Connection conn) {
+    this.encodingFactory = encodingFactory_;
     this.invokerContext = invokerContext;
     this.conn = conn;
+    repository = new RpcEncodingFactoryRepository() {
+
+      @Override
+      public RpcEncodingFactory getRpcEncodingFactory(String encodingFactoryName, Codec codec) throws RpcEncodingFactoryNotFoundException {
+        return encodingFactory;
+      }
+
+      @Override
+      public void addRpcEncodingFactory(RpcEncodingFactory encodingFactory) {
+      }
+
+      @Override
+      public void removeRpcEncodingFactory(String encodingFactoryName) {
+      }
+    };
   }
 
   /**
@@ -53,54 +77,21 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
       logger.debug(String.format("Before calling RPC [%s]", rpcCall));
     }
     try {
-      ConfirmFrameProtocol confirmFrameProtocol;
-      RequestHeaderProtocol requestHeaderProtocol;
-      try {
-        confirmFrameProtocol = (ConfirmFrameProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ConfirmFrameProtocol.class, encodingFactory);
-        requestHeaderProtocol = (RequestHeaderProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(RequestHeaderProtocol.class, encodingFactory);
-      } catch (ObjectInstantiationExcption e) {
-        encodingFactory.writeIsNotNull(false);
-        throw e;
-      }
-      confirmFrameProtocol.nextFrame(Frame.FRAME_HEADER.getFrame());
-
-      requestHeaderProtocol.setRequestId(rpcCall.getRequestId());
-      requestHeaderProtocol.setEncoding(encodingFactory.getEncodingName());
-      requestHeaderProtocol.encode();
-
-      RequestProtocol requestProtocol;
-      ResponseProtocol responseProtocol;
-      try {
-        requestProtocol = (RequestProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(RequestProtocol.class, encodingFactory);
-        responseProtocol = (ResponseProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ResponseProtocol.class, encodingFactory);
-      } catch (ObjectInstantiationExcption e) {
-        String msg = "Cannot instantiate RequestProtocol!";
-        logger.error(msg);
-        throw new RpcException(msg, e);
-      }
+      ((RpcRequestImpl)rpcCall.getRequest()).setEncoding(encodingFactory.getName());
 
       rpcCall.setRpcCallStartAt(System.currentTimeMillis());
-      confirmFrameProtocol.nextFrame(Frame.FRAME_REQUEST.getFrame());
+      Serializer<Header> headerSerializer = new HeaderSerializer(repository, encodingFactory.getCodec());
+      HeaderImpl header = new HeaderImpl();
+      header.setRequestType(Header.SYNC_REQUEST);
+      header.setVersion(RpcClientImpl.getClientVersion());
+      byte[] mHeader = headerSerializer.serialize(header);
       
-      requestProtocol.setRequestId(rpcCall.getRequestId());
-      requestProtocol.setAsyncCall(rpcCall.isAsyncCall());
-      requestProtocol.setServiceName(rpcCall.getServiceName());
-      requestProtocol.setMethodName(rpcCall.getMethodName());
-      requestProtocol.setMethodArgs(rpcCall.getArgs());
-      try {
-        requestProtocol.encode();
-      } catch (RpcException rpce) {
-        // failed encode
-        throw rpce;
-      }
-
+      Serializer<RpcRequest> reqSerializer = new RpcRequestSerializer(repository, encodingFactory.getCodec());
+      byte[] reqMsg = reqSerializer.serialize(rpcCall.getRequest());
+      encodingFactory.writeObjectNullable(BinaryUtil.concatBytes(mHeader, reqMsg));
+      encodingFactory.flush();
+      
       if (rpcCall.isAsyncCall()) {
-        // expect the async response
-        if (!confirmFrameProtocol.expact(Frame.FRAME_ASYNC_RESPONSE.getFrame())) {
-          RpcException rpce = (RpcException) encodingFactory.readObjectNullable();
-          throw rpce;
-        }
-        // check if it is a void return
         boolean isVoidReturn = rpcCall.isVoidReturn();
         AsyncFuture future = new AsyncFuture(encodingFactory, rpcCall, conn);
         if (isVoidReturn) {
@@ -108,37 +99,22 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
         }
         return future;
       } else {
-        // expect the response
-        if (!confirmFrameProtocol.expact(Frame.FRAME_RESPONSE.getFrame())) {
-          RpcException rpce = (RpcException) encodingFactory.readObjectNullable();
-          throw rpce;
-        }
+        byte[] resMsg = (byte[]) encodingFactory.readObjectNullable();
+        ByteBuffer byteBuffer = ByteBuffer.wrap(resMsg);
+        Serializer<Response> resSerializer = new ResponseSerializer(repository, encodingFactory.getCodec());
+        Response response = resSerializer.deserialize(byteBuffer);
 
         Object returnValue = null;
         ReturnResult result;
-        Long invokeStart = null;
-        Long invokeEnd = null;
-        try {
-          responseProtocol.decode();
-//          String requestId = responseProtocol.getRequestId();
-          boolean isVoid = responseProtocol.isVoid();
-          invokeStart = responseProtocol.getInvokeStart();
-          invokeEnd = responseProtocol.getInvokeEnd();
-          if (!isVoid) {
-            returnValue = responseProtocol.getReturnValue();
-            result = new ReturnResultImpl(null == returnValue ? Object.class : returnValue.getClass(), returnValue);
-          } else {
-            result = new ReturnResultImpl(Void.class, returnValue);
-          }
-        } catch (RpcException e) {
-          // decoding error
-          returnValue = e;
-          result = new ReturnResultImpl(null == returnValue ? Exception.class : returnValue.getClass(), returnValue);
+        boolean isVoid = response.isVoidCall();
+        if (!isVoid) {
+          returnValue = response.getReturnValue();
+          result = new ReturnResultImpl(null == returnValue ? Object.class : returnValue.getClass(), returnValue);
+        } else {
+          result = new ReturnResultImpl(Void.class, returnValue);
         }
         rpcCall.setResult(result);
         rpcCall.setRpcCallEndAt(System.currentTimeMillis());
-        rpcCall.setInvokeStartAt(invokeStart);
-        rpcCall.setInvokeEndAt(invokeEnd);
         if (logger.isDebugEnabled()) {
           logger.debug(String.format("After calling RPC [%s]", rpcCall));
         }

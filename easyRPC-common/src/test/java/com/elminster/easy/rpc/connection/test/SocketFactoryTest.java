@@ -22,7 +22,7 @@ import org.junit.Test;
 
 import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.common.threadpool.ThreadPoolConfiguration;
-import com.elminster.easy.rpc.codec.CoreCodec;
+import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
 import com.elminster.easy.rpc.connection.SocketFactory;
 import com.elminster.easy.rpc.connection.impl.NIOSocketFactoryImpl;
@@ -71,7 +71,7 @@ public class SocketFactoryTest {
         try {
           Socket socket = serverSocket.accept();
           try (InputStream in = socket.getInputStream(); OutputStream out = socket.getOutputStream()) {
-            CoreCodec rpcUtil = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+            Codec rpcUtil = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
             String str = rpcUtil.readStringAsciiNullable();
             if ("hello".equals(str)) {
               rpcUtil.writeStringAsciiNullable("bye");
@@ -94,7 +94,7 @@ public class SocketFactoryTest {
       @Override
       public void run() {
         try (InputStream in = clientSocket.getInputStream(); OutputStream out = clientSocket.getOutputStream()) {
-          CoreCodec rpcUtil = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+          Codec rpcUtil = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
           rpcUtil.writeStringAsciiNullable("hello");
           if ("bye".equals(rpcUtil.readStringAsciiNullable())) {
             rpcUtil.writeStringAsciiNullable("bye");
@@ -154,7 +154,7 @@ public class SocketFactoryTest {
         try {
           Socket socket = serverSocket.accept();
           try (InputStream in = socket.getInputStream(); OutputStream out = socket.getOutputStream()) {
-            CoreCodec rpcUtil = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+            Codec rpcUtil = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
             if ("hello".equals(rpcUtil.readStringAsciiNullable())) {
               rpcUtil.writeStringAsciiNullable("bye");
             } else if ("bye".equals(rpcUtil.readStringAsciiNullable())) {
@@ -176,7 +176,7 @@ public class SocketFactoryTest {
       @Override
       public void run() {
         try (InputStream in = clientSocket.getInputStream(); OutputStream out = clientSocket.getOutputStream()) {
-          CoreCodec rpcUtil = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+          Codec rpcUtil = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
           rpcUtil.writeStringAsciiNullable("hello");
           String str = rpcUtil.readStringAsciiNullable();
           if ("bye".equals(str)) {
@@ -284,7 +284,7 @@ public class SocketFactoryTest {
 
       public void handleRead(SelectionKey key, ServerSocketChannel serverChannel) throws IOException {
         SocketChannel socketChannel = (SocketChannel) key.channel();
-        CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(socketChannel);
+        Codec util = CoreCodecFactory.INSTANCE.getCoreCodec(socketChannel);
         String str = util.readStringAsciiNullable();
         System.out.println(str);
         if ("hello".equals(str)) {
@@ -335,7 +335,7 @@ public class SocketFactoryTest {
         try {
           while (!socketChannel.finishConnect())
             ;
-          CoreCodec util = CoreCodecFactory.INSTANCE.getCoreCodec(socketChannel);
+          Codec util = CoreCodecFactory.INSTANCE.getCoreCodec(socketChannel);
           util.writeStringAsciiNullable("hello");
           String str = util.readStringAsciiNullable();
           System.out.println(str);

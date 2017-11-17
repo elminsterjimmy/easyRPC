@@ -1,36 +1,45 @@
 package com.elminster.easy.rpc.server.connection.impl;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.elminster.common.exception.ObjectInstantiationExcption;
 import com.elminster.common.thread.IJobMonitor;
 import com.elminster.common.thread.Job;
+import com.elminster.common.threadpool.ThreadPool;
+import com.elminster.common.threadpool.ThreadPoolConfiguration;
 import com.elminster.easy.rpc.call.ReturnResult;
 import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.call.Status;
 import com.elminster.easy.rpc.call.impl.RpcCallImpl;
-import com.elminster.easy.rpc.codec.CoreCodec;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.connection.RpcConnection;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactoryNotFoundException;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactoryRepository;
+import com.elminster.easy.rpc.encoding.impl.DefaultRpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.exception.VersionCompatibleException;
-import com.elminster.easy.rpc.protocol.AsyncResponseProtocol;
-import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol;
-import com.elminster.easy.rpc.protocol.ConfirmFrameProtocol.Frame;
-import com.elminster.easy.rpc.protocol.RequestHeaderProtocol;
-import com.elminster.easy.rpc.protocol.RequestProtocol;
-import com.elminster.easy.rpc.protocol.ResponseProtocol;
-import com.elminster.easy.rpc.protocol.ShakehandProtocol;
-import com.elminster.easy.rpc.protocol.VersionProtocol;
-import com.elminster.easy.rpc.protocol.exception.UnexpectedFrameException;
-import com.elminster.easy.rpc.protocol.impl.ProtocolFactoryImpl;
+import com.elminster.easy.rpc.request.AsyncQueryRequest;
+import com.elminster.easy.rpc.request.Header;
+import com.elminster.easy.rpc.request.Request;
+import com.elminster.easy.rpc.request.Response;
+import com.elminster.easy.rpc.request.RpcRequest;
+import com.elminster.easy.rpc.request.impl.AsyncQueryResponseImpl;
+import com.elminster.easy.rpc.request.impl.ResponseImpl;
+import com.elminster.easy.rpc.serializer.Serializer;
+import com.elminster.easy.rpc.serializer.impl.AsyncQueryRequestSerializer;
+import com.elminster.easy.rpc.serializer.impl.AsyncQueryResponseSerializer;
+import com.elminster.easy.rpc.serializer.impl.HeaderSerializer;
+import com.elminster.easy.rpc.serializer.impl.ResponseSerializer;
+import com.elminster.easy.rpc.serializer.impl.RpcRequestSerializer;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
+import com.elminster.easy.rpc.server.container.worker.impl.WorkerJobId;
 import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl;
 import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
 import com.elminster.easy.rpc.version.VersionChecker;
@@ -48,14 +57,53 @@ abstract public class RpcConnectionImpl extends Job implements RpcConnection {
   protected final RpcServer rpcServer;
   protected final Container container;
 
-  protected ConfirmFrameProtocol confirmFrameProtocol;
-  protected RequestHeaderProtocol requestHeaderProtocol;
-  protected ShakehandProtocol shakehandProtocol;
-  protected VersionProtocol versionProtocol;
-  protected AsyncResponseProtocol asyncProtocol;
-
   // cache the encoding factory since they're heavy objects.
-  private Map<String, RpcEncodingFactory> encodingFactoryCache = new ConcurrentHashMap<>();
+  private Map<EncodingFacotryKey, RpcEncodingFactory> encodingFactoryCache = new ConcurrentHashMap<>();
+
+  class EncodingFacotryKey {
+
+    public EncodingFacotryKey(String name, Codec codec) {
+      this.name = name;
+      this.codec = codec;
+    }
+
+    String name;
+    Codec codec;
+
+    @Override
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + ((codec == null) ? 0 : codec.hashCode());
+      result = prime * result + ((name == null) ? 0 : name.hashCode());
+      return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj)
+        return true;
+      if (obj == null)
+        return false;
+      if (getClass() != obj.getClass())
+        return false;
+      EncodingFacotryKey other = (EncodingFacotryKey) obj;
+      if (codec == null) {
+        if (other.codec != null)
+          return false;
+      } else if (!codec.equals(other.codec))
+        return false;
+      if (name == null) {
+        if (other.name != null)
+          return false;
+      } else if (!name.equals(other.name))
+        return false;
+      return true;
+    }
+  }
+
+  // the thread pool that deal with the async timeout get
+  private final ThreadPool threadPool = new ThreadPool(ThreadPoolConfiguration.INSTANCE);
 
   public RpcConnectionImpl(RpcServer rpcServer, Container container, long id, String name) {
     super(id, name);
@@ -154,40 +202,64 @@ abstract public class RpcConnectionImpl extends Job implements RpcConnection {
   }
 
   /**
-   * Initialize base protocols.
+   * Read the header.
    * 
-   * @param encodingFactory
-   *          the encoding factory
-   * @throws IOException
-   *           on error
-   */
-  protected void initializeBaseProtocols(RpcEncodingFactory encodingFactory) throws IOException {
-    try {
-      confirmFrameProtocol = (ConfirmFrameProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ConfirmFrameProtocol.class, encodingFactory);
-      shakehandProtocol = (ShakehandProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(ShakehandProtocol.class, encodingFactory);
-      versionProtocol = (VersionProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(VersionProtocol.class, encodingFactory);
-      requestHeaderProtocol = (RequestHeaderProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(RequestHeaderProtocol.class, encodingFactory);
-      asyncProtocol = (AsyncResponseProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(AsyncResponseProtocol.class, encodingFactory);
-    } catch (ObjectInstantiationExcption e1) {
-      logger.error("Cannot instantiate base protocols, and this should NOT happened!");
-      encodingFactory.writeIsNotNull(false);
-      throw new IOException("Cannot instantiate base protocols, and this should NOT happened!", e1);
-    }
-  }
-
-  /**
-   * Shake hand with client.
-   * 
-   * @param encodingFactory
-   *          the encoding factory
+   * @param repository
+   *          the encoding factory repository
+   * @param codec
+   *          the codec
+   * @param context
+   *          the context
+   * @return the header
    * @throws IOException
    *           on error
    * @throws RpcException
-   *           on shakehand failed
+   *           on error
    */
-  protected void shakehand(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
-    shakehandProtocol.decode();
-    confirmFrameProtocol.nextFrame(Frame.FRAME_VERSION.getFrame());
+  protected Header readHeader(ByteBuffer byteBuffer, RpcEncodingFactoryRepository repository, Codec codec, InvokeeContextImpl context) throws IOException, RpcException {
+    Serializer<Header> headerSerializer = new HeaderSerializer(repository, codec);
+    return headerSerializer.deserialize(byteBuffer);
+  }
+
+  /**
+   * Read the sync request.
+   * 
+   * @param repository
+   *          the encoding factory repository
+   * @param codec
+   *          the codec
+   * @param context
+   *          the context
+   * @return the request
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  protected RpcRequest readRequest(ByteBuffer byteBuffer, RpcEncodingFactoryRepository repository, Codec codec, InvokeeContextImpl context) throws IOException, RpcException {
+    Serializer<RpcRequest> requestSerializer = new RpcRequestSerializer(repository, codec);
+    return requestSerializer.deserialize(byteBuffer);
+  }
+
+  /**
+   * Read the async request.
+   * 
+   * @param repository
+   *          the encoding factory repository
+   * @param codec
+   *          the codec
+   * @param context
+   *          the context
+   * @return the request
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  protected AsyncQueryRequest readAsyncRequest(ByteBuffer byteBuffer, RpcEncodingFactoryRepository repository, Codec codec, InvokeeContextImpl context)
+      throws IOException, RpcException {
+    Serializer<AsyncQueryRequest> requestSerializer = new AsyncQueryRequestSerializer(repository, codec);
+    return requestSerializer.deserialize(byteBuffer);
   }
 
   /**
@@ -202,95 +274,33 @@ abstract public class RpcConnectionImpl extends Job implements RpcConnection {
    * @throws RpcException
    *           on error
    */
-  protected void checkVersion(RpcEncodingFactory encodingFactory, InvokeeContextImpl invokeContext) throws IOException, RpcException {
-    try {
-      versionProtocol.decode();
-      String clientVersion = versionProtocol.getVersion();
-      String serverVersion = rpcServer.getVersion();
-      invokeContext.setInvokerVersion(clientVersion);
-      invokeContext.setInvokeeVersion(serverVersion);
+  protected void checkVersion(Header header, InvokeeContextImpl invokeContext) throws IOException, RpcException {
+    String clientVersion = header.getVersion();
+    String serverVersion = rpcServer.getVersion();
+    invokeContext.setInvokerVersion(clientVersion);
+    invokeContext.setInvokeeVersion(serverVersion);
 
-      // send server version
-      versionProtocol.setVersion(serverVersion);
-      versionProtocol.encode();
-      if (!VersionChecker.compatible(clientVersion, serverVersion)) {
-        if (rpcServer.isVersionCheck()) {
-          // return exception and disconnection
-          confirmFrameProtocol.nextFrame(Frame.FRAME_VERSION_INCOMPATIBLE.getFrame());
-          String msg = String.format("Incompatible versions! Server version is [%s] but Client version is [%s].", serverVersion, clientVersion);
-          throw new VersionCompatibleException(msg);
-        }
+    if (!VersionChecker.compatible(clientVersion, serverVersion)) {
+      if (rpcServer.isVersionCheck()) {
+        // return exception and disconnection
+        String msg = String.format("Incompatible versions! Server version is [%s] but Client version is [%s].", serverVersion, clientVersion);
+        logger.error(msg);
+        throw new VersionCompatibleException(msg);
       }
-    } catch (RpcException rpce) {
-      confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
-      writeRpcException(encodingFactory, rpce);
-      return;
     }
-  }
-  
-  protected RpcEncodingFactory handleRequestHeader(RpcEncodingFactory defaultEncodingFactory, InvokeeContextImpl invokeContext, CoreCodec coreCodec) throws IOException, RpcException {
-    try {
-      requestHeaderProtocol.decode();
-    } catch (RpcException rpce) {
-      confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
-      String message = String.format(Messages.CANNOT_DECODE_REQUEST.getMessage(), invokeContext);
-      throw new RpcException(message, rpce);
-    }
-
-//    String requestId = requestHeaderProtocol.getRequestId();
-    String encodingName = requestHeaderProtocol.getEncoding();
-
-    RpcEncodingFactory rpcEncodingFactory = getEncodingFactory(encodingName, coreCodec);
-    if (null == rpcEncodingFactory) {
-      confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
-      String message = String.format(Messages.CANNOT_FOUND_ENCODINGFACTORY.getMessage(), encodingName, invokeContext);
-      throw new RpcException(message);
-    }
-
-    return rpcEncodingFactory;
-  }
-
-  protected RpcCall handleRequest(RpcEncodingFactory rpcEncodingFactory, InvokeeContextImpl invokeContext) throws IOException, RpcException {
-    RequestProtocol requestProtocol = null;
-    try {
-      requestProtocol = (RequestProtocol) ProtocolFactoryImpl.INSTANCE.createProtocol(RequestProtocol.class, rpcEncodingFactory);
-    } catch (ObjectInstantiationExcption e) {
-      // unexpected error
-      confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
-      String message = "Cannot instantiate request protocols, and this should NOT happened!";
-      throw new RpcException(message, e);
-    }
-
-    if (!confirmFrameProtocol.expact(Frame.FRAME_REQUEST.getFrame())) {
-      throw new UnexpectedFrameException(Frame.FRAME_REQUEST.getFrame(), confirmFrameProtocol.getFrame());
-    }
-    try {
-      requestProtocol.decode();
-    } catch (RpcException e) {
-      confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
-      String message = String.format(Messages.CANNOT_DECODE_REQUEST.getMessage(), invokeContext);
-      throw new RpcException(message, e);
-    }
-    String requestId = requestProtocol.getRequestId();
-    boolean isAsyncCall = requestProtocol.isAsyncCall();
-    String serviceName = requestProtocol.getServiceName();
-    String methodName = requestProtocol.getMethodName();
-    Object[] args = requestProtocol.getMethodArgs();
-
-    return new RpcCallImpl(requestId, isAsyncCall, serviceName, methodName, args, invokeContext);
   }
 
   /**
    * Check the RPC call is done or not.
    * 
-   * @param proccessor
+   * @param processor
    *          the processor
    * @param requestId
    *          the RPC call request id
    * @return the RPC call is done or not
    */
-  protected boolean checkRpcCallIsDone(RpcServiceProcessor proccessor, String requestId) {
-    RpcCall call = proccessor.getRpcCall(requestId);
+  protected boolean checkRpcCallIsDone(RpcServiceProcessor processor, String requestId) {
+    RpcCall call = processor.getRpcCall(requestId);
     return Status.isDone(call.getStatus());
   }
 
@@ -311,41 +321,61 @@ abstract public class RpcConnectionImpl extends Job implements RpcConnection {
   /**
    * Write the RPC call result.
    * 
-   * @param rpcCall
+   * @param call
    *          the RPC call
+   * @param codec
+   *          the codec
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  protected void writeResult(RpcCall call, RpcEncodingFactoryRepository repository, Codec codec) throws IOException, RpcException {
+    ReturnResult result = call.getResult();
+    Class<?> returnType = result.getReturnType();
+    Object returnValue = result.getReturnValue();
+    ResponseImpl response = new ResponseImpl();
+    response.setRequestId(call.getRequestId());
+    response.setReturnValue(returnValue);
+    response.setVoidCall(Void.class == returnType || void.class == returnType);
+    RpcRequest request = call.getRequest();
+    response.setEncoding(request.getEncoding());
+    writeResponse(response, repository, codec);
+  }
+
+  /**
+   * Write the response.
+   * 
+   * @param response
+   *          the response
+   * @param repository
+   *          the repository
+   * @param codec
+   *          the codec
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  protected void writeResponse(Response response, RpcEncodingFactoryRepository repository, Codec codec) throws IOException, RpcException {
+    Serializer<Response> serializer = new ResponseSerializer(repository, codec);
+    byte[] message = serializer.serialize(response);
+    RpcEncodingFactory defaultEncodingFactory = repository.getRpcEncodingFactory(DefaultRpcEncodingFactory.ENCODING_FACTORY_NAME, codec);
+    defaultEncodingFactory.writeObjectNullable(message);
+  }
+
+  /**
+   * Write an exception.
+   * 
    * @param encodingFactory
    *          the encoding factory
-   * @param responseProtocol
-   *          the response protocol
+   * @param e
+   *          the exception
    * @throws IOException
    *           on error
    */
-  protected void writeResult(RpcCall rpcCall, RpcEncodingFactory encodingFactory, ResponseProtocol responseProtocol) throws IOException {
-    ReturnResult result = rpcCall.getResult();
-    Class<?> returnType = result.getReturnType();
-    Object returnValue = result.getReturnValue();
-    if (RpcException.class == returnType) {
-      confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
-      // exception
-      RpcException rpce = (RpcException) returnValue;
-      writeRpcException(encodingFactory, rpce);
-      return;
-    } else {
-      confirmFrameProtocol.nextFrame(Frame.FRAME_RESPONSE.getFrame());
-      responseProtocol.setRequestId(rpcCall.getRequestId());
-      responseProtocol.setVoid(returnType == Void.class || returnType == void.class);
-      responseProtocol.setReturnValue(returnValue);
-      responseProtocol.setInvokeStart(rpcCall.getInvokeStartAt());
-      responseProtocol.setInvokeEnd(rpcCall.getInvokeEndAt());
-      try {
-        responseProtocol.encode();
-      } catch (RpcException e) {
-        confirmFrameProtocol.nextFrame(Frame.FRAME_EXCEPTION.getFrame());
-        String message = String.format(Messages.CANNOT_ENCODE_RESPONSE.getMessage(), rpcCall.getContext());
-        writeException(encodingFactory, e, message);
-        return; // start over
-      }
-    }
+  protected void writeException(RpcEncodingFactoryRepository repository, Codec codec, Throwable e, Request request) throws IOException {
+    writeException(repository, codec, e, e.getMessage(), request);
   }
 
   /**
@@ -360,9 +390,14 @@ abstract public class RpcConnectionImpl extends Job implements RpcConnection {
    * @throws IOException
    *           on error
    */
-  protected void writeException(RpcEncodingFactory encodingFactory, Throwable e, String message) throws IOException {
-    RpcException rpce = new RpcException(message, e);
-    writeRpcException(encodingFactory, rpce);
+  protected void writeException(RpcEncodingFactoryRepository repository, Codec codec, Throwable e, String message, Request request) throws IOException {
+    RpcException rpce;
+    if (e instanceof RpcException) {
+      rpce = (RpcException) e;
+    } else {
+      rpce = new RpcException(message, e);
+    }
+    writeRpcException(repository, codec, rpce, request);
   }
 
   /**
@@ -375,13 +410,18 @@ abstract public class RpcConnectionImpl extends Job implements RpcConnection {
    * @throws IOException
    *           on error
    */
-  protected void writeRpcException(RpcEncodingFactory encodingFactory, RpcException e) throws IOException {
-    logger.error(e.getMessage(), e);
+  protected void writeRpcException(RpcEncodingFactoryRepository repository, Codec codec, RpcException e, Request request) throws IOException {
     try {
-      encodingFactory.writeObjectNullable(e);
+      ResponseImpl response = new ResponseImpl();
+      response.setEncoding(DefaultRpcEncodingFactory.ENCODING_FACTORY_NAME);
+      response.setReturnValue(e);
+      if (null != request) {
+        response.setRequestId(request.getRequestId());
+        response.setEncoding(request.getEncoding());
+      }
+      writeResponse(response, repository, codec);
     } catch (RpcException e1) {
-      logger.error(Messages.CANNOT_GENERATE_RPCEXCPETION.getMessage());
-      encodingFactory.writeIsNotNull(false);
+      writeRpcException(repository, codec, e1, request);
     }
   }
 
@@ -394,12 +434,202 @@ abstract public class RpcConnectionImpl extends Job implements RpcConnection {
    *          the core codec
    * @return the encoding factory
    */
-  protected RpcEncodingFactory getEncodingFactory(String name, CoreCodec coreCodec) {
-    RpcEncodingFactory encodingFactory = encodingFactoryCache.get(name);
+  protected RpcEncodingFactory getEncodingFactory(String name, Codec coreCodec) throws RpcEncodingFactoryNotFoundException {
+    RpcEncodingFactory encodingFactory = encodingFactoryCache.get(new EncodingFacotryKey(name, coreCodec));
     if (null == encodingFactory) {
       encodingFactory = rpcServer.getEncodingFactory(name, coreCodec);
-      encodingFactoryCache.put(name, encodingFactory);
+      if (null != encodingFactory) {
+        encodingFactoryCache.put(new EncodingFacotryKey(name, coreCodec), encodingFactory);
+      } else {
+        throw new RpcEncodingFactoryNotFoundException(name);
+      }
     }
     return encodingFactory;
+  }
+
+  protected void heanleAsyncRequest(AsyncQueryRequest request, RpcEncodingFactoryRepository repository, Codec codec, InvokeeContextImpl context) throws IOException, RpcException {
+    String id2Request = request.getId2Request();
+    String reqId = request.getRequestId();
+    RpcServiceProcessor processor = container.getServiceProcessor();
+    AsyncQueryResponseImpl response = new AsyncQueryResponseImpl();
+    response.setId2Request(id2Request);
+    response.setRequestId(reqId);
+    if (request.isCancel()) {
+      boolean cancelled = cancelAsyncRpcCall(processor, id2Request);
+      response.setCancelled(cancelled);
+      writeAsyncResponse(response, repository, codec);
+    } else if (request.isQueryDone()) {
+      boolean isDone = checkRpcCallIsDone(processor, id2Request);
+      response.setDone(isDone);
+      writeAsyncResponse(response, repository, codec);
+    } else if (request.isRequestGet()) {
+      long timeout = request.getTimeout();
+      RpcCall call = processor.getRpcCall(id2Request);
+      // let the notifier to do the work in another thread
+      Notifier notifier = new Notifier(call, timeout, processor, repository, codec);
+      threadPool.execute(notifier);
+    } else {
+      throw new RpcException(String.format("Unknow Async Request Action [%d]!", request.getAction()));
+    }
+  }
+
+  private void writeAsyncResponse(AsyncQueryResponseImpl response, RpcEncodingFactoryRepository repository, Codec codec) throws IOException, RpcException {
+    AsyncQueryResponseSerializer serializer = new AsyncQueryResponseSerializer(repository, codec);
+    byte[] mRes = serializer.serialize(response);
+    RpcEncodingFactory defaultEncodingFactory = repository.getRpcEncodingFactory(DefaultRpcEncodingFactory.ENCODING_FACTORY_NAME, codec);
+    defaultEncodingFactory.writeObjectNullable(mRes);
+  }
+
+  class Notifier extends Job {
+    private final RpcCall rpcCall;
+    private final long timeout;
+    private final RpcServiceProcessor processor;
+    private final Codec codec;
+    private final RpcEncodingFactoryRepository repository;
+
+    public Notifier(RpcCall rpcCall, long timeout, RpcServiceProcessor processor, RpcEncodingFactoryRepository repository, Codec codec) {
+      super(WorkerJobId.NIO_NOTIFIER.getJobId(), String.format("RPC Call Notifier for RPC Call [%s] and timeout [%d]", rpcCall, timeout));
+      this.rpcCall = rpcCall;
+      this.timeout = timeout;
+      this.processor = processor;
+      this.repository = repository;
+      this.codec = codec;
+    }
+
+    @Override
+    protected JobStatus doWork(IJobMonitor monitor) throws Throwable {
+      RpcCall result = processor.getResult(rpcCall, timeout);
+      ResponseImpl response = new ResponseImpl();
+      switch (result.getStatus()) {
+      case CANCELLED:
+        response.setCancelled(true);
+        break;
+      case PROCESSED:
+      case EXCEPTION:
+        response.setEncoding(result.getRequest().getEncoding());
+        response.setRequestId(result.getRequestId());
+        response.setReturnValue(result.getResult().getReturnValue());
+        Class<?> returnType = result.getResult().getReturnType();
+        response.setVoidCall(Void.class == returnType || void.class == returnType);
+        break;
+      default:
+        response.setTimeout(true);
+        processor.cancelRpcCall(rpcCall);
+      }
+      writeResponse(response, repository, codec);
+      return monitor.done();
+    }
+
+  }
+
+  /**
+   * Generate the RPC call.
+   * 
+   * @param request
+   *          the request
+   * @param context
+   *          the context
+   * @return the RPC call
+   * @throws IOException
+   *           on IO error
+   * @throws RpcException
+   *           on RPC error
+   */
+  protected RpcCallImpl generateRpcCall(Request request, InvokeeContextImpl context) throws IOException, RpcException {
+    return new RpcCallImpl((RpcRequest) request, context);
+  }
+
+  /**
+   * Invoke a RPC call.
+   * 
+   * @param request
+   *          the request
+   * @param repository
+   *          the RPC encoding factory repository
+   * @param codec
+   *          the codec
+   * @param context
+   *          the context
+   * @throws IOException
+   *           on error
+   */
+  protected void invokeRpcCall(Request request, RpcEncodingFactoryRepository repository, Codec codec, InvokeeContextImpl context) throws IOException, RpcException {
+    // start serve RPC calls
+    RpcCall call = generateRpcCall(request, context);
+    RpcServiceProcessor proccessor = container.getServiceProcessor();
+    call.setStatus(Status.UNPROCCESSED);
+    if (call.isAsyncCall()) {
+      handleAsyncRpcCall(proccessor, call);
+    } else {
+      handleSyncRpcCall(proccessor, call, repository, codec);
+    }
+  }
+
+  /**
+   * Handle the sync RPC call.
+   * 
+   * @param proccessor
+   *          the processor
+   * @param call
+   *          the RPC call
+   * @param repository
+   *          the RPC encoding factory repository
+   * @param codec
+   *          the codec
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  protected void handleSyncRpcCall(RpcServiceProcessor proccessor, RpcCall call, RpcEncodingFactoryRepository repository, Codec codec) throws IOException, RpcException {
+    proccessor.invoke(call);
+    RpcCall result = proccessor.getResult(call, 10);
+    writeResult(result, repository, codec);
+  }
+
+  /**
+   * Handle the async RPC call.
+   * 
+   * @param proccessor
+   *          the processor
+   * @param call
+   *          the RPC call
+   * @throws IOException
+   *           on error
+   * @throws RpcException
+   *           on error
+   */
+  protected void handleAsyncRpcCall(RpcServiceProcessor proccessor, RpcCall call) throws IOException, RpcException {
+    proccessor.invoke(call);
+  }
+
+  protected void handleRequests(RpcEncodingFactoryRepository repository, Codec codec, InvokeeContextImpl context) throws IOException {
+    Request request = null;
+    try {
+      RpcEncodingFactory defaultEncodingFactory = repository.getRpcEncodingFactory(DefaultRpcEncodingFactory.ENCODING_FACTORY_NAME, codec);
+      byte[] message = (byte[]) defaultEncodingFactory.readObjectNullable();
+      ByteBuffer byteBuffer = ByteBuffer.wrap(message);
+      Header header = readHeader(byteBuffer, repository, codec, context);
+      checkVersion(header, context);
+
+      switch (header.getRequestType()) {
+      case Header.SYNC_REQUEST:
+        request = readRequest(byteBuffer, repository, codec, context);
+        invokeRpcCall(request, repository, codec, context);
+        break;
+      case Header.ASYNC_REQUEST:
+        request = readAsyncRequest(byteBuffer, repository, codec, context);
+        heanleAsyncRequest((AsyncQueryRequest) request, repository, codec, context);
+        break;
+      default:
+        throw new RpcException(String.format("Unknown Request Type [%d].", header.getRequestType()));
+      }
+    } catch (IOException ioe) {
+      // throw all IO exceptions that make the connection disconnect
+      throw ioe;
+    } catch (Exception e) {
+      // write all other exceptions to the client
+      writeException(repository, codec, e, request);
+    }
   }
 }

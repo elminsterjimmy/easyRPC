@@ -5,14 +5,21 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
+/**
+ * The byte buffer IO.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public class ByteBufferIoImpl implements IoUtil {
 
+  /** the byte buffer. */
   private final ByteBuffer byteBuffer;
-  
+
   public ByteBufferIoImpl(final ByteBuffer byteBuffer) {
     this.byteBuffer = byteBuffer;
   }
-  
+
   /**
    * {@inheritDoc}
    */
@@ -21,7 +28,6 @@ public class ByteBufferIoImpl implements IoUtil {
     final int n = Math.min(byteBuffer.remaining(), len);
     if (n > 0) {
       try {
-        byteBuffer.rewind();
         byteBuffer.get(buf, off, n);
       } catch (BufferUnderflowException e) {
         throw new IOException("Buffer Underflow!", e);
@@ -55,6 +61,5 @@ public class ByteBufferIoImpl implements IoUtil {
    */
   @Override
   public void close() {
-    
   }
 }

@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elminster.easy.rpc.codec.RpcCodec;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 
 /**
@@ -43,6 +43,7 @@ public class RpcServerExceptionCodec implements RpcCodec {
       String errorMessage = encodingFactory.readStringNullable();
 
       RpcException serverException = new RpcException(errorMessage);
+      serverException.setRequestId(encodingFactory.readAsciiNullable());
       serverException.setCausedByClassName(encodingFactory.readStringNullable());
       serverException.setCausedByStackTrace(encodingFactory.readStringNullable());
 
@@ -86,8 +87,10 @@ public class RpcServerExceptionCodec implements RpcCodec {
       encodingFactory.writeInt8(NOT_NULL);
 
       RpcException serverException = (RpcException) value;
-
+      
       encodingFactory.writeStringNullable(serverException.getMessage());
+
+      encodingFactory.writeAsciiNullable(serverException.getRequestId());
 
       encodingFactory.writeStringNullable(serverException.getCausedByClassName());
 

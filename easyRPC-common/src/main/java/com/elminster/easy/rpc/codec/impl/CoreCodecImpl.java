@@ -10,7 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 
-import com.elminster.easy.rpc.codec.CoreCodec;
+import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.exception.IoTimeoutException;
 import com.elminster.easy.rpc.exception.ZeroReadException;
 import com.elminster.easy.rpc.util.IoUtil;
@@ -21,7 +21,7 @@ import com.elminster.easy.rpc.util.IoUtil;
  * @author jinggu
  * @version 1.0
  */
-public class CoreCodecImpl implements CoreCodec, Closeable {
+public class CoreCodecImpl implements Codec, Closeable {
   
   private static long IO_RETRY_INTERVAL = 100; // 100 ms
   private static int IO_RETRY_COUNT_THRESHOLD = 10; // total 30 sec

@@ -50,10 +50,11 @@ public class NioContainerResultWriter extends Job implements ContainerWorker {
             }
 
             if (key.isWritable()) {
+              // will be blocked if there's no result available
               RpcCall rpcCall = container.getServiceProcessor().getResult();
               if (rpcCall instanceof NioRpcCall) {
                 NioRpcCall nioRpcCall = (NioRpcCall) rpcCall;
-                nioRpcCall.getConnection().writeResponse(nioRpcCall);
+                nioRpcCall.getConnection().writeRpcCallResult(nioRpcCall);
               }
             }
           }

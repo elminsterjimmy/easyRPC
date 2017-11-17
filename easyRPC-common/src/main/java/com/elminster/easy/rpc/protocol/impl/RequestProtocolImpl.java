@@ -2,101 +2,54 @@ package com.elminster.easy.rpc.protocol.impl;
 
 import java.io.IOException;
 
-import com.elminster.common.util.Assert;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.protocol.RequestProtocol;
+import com.elminster.easy.rpc.request.RpcRequest;
+import com.elminster.easy.rpc.request.impl.RpcRequestImpl;
 
-public class RequestProtocolImpl extends ProtocolImpl implements RequestProtocol {
+public class RequestProtocolImpl extends ProtocolImpl<RpcRequest> implements RequestProtocol {
   
-  private String requestId;
-  private String methodName;
-  private String serviceName;
-  private Object[] args;
-  private boolean isAsyncCall;
-
-  public RequestProtocolImpl(RpcEncodingFactory encodingFactory) {
-    super(encodingFactory);
+  public RequestProtocolImpl() {
   }
 
   @Override
-  public void writeData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
-    encodingFactory.writeAsciiNullable(requestId);
-    encodingFactory.writeBoolean(isAsyncCall);
-    encodingFactory.writeAsciiNullable(serviceName);
-    encodingFactory.writeAsciiNullable(methodName);
-    encodingFactory.writeInt32(args.length);
-    for (Object arg : args) {
-      encodingFactory.writeObjectNullable(arg); // could happen encoding problem
+  public void writeData(RpcRequest request, RpcEncodingFactory encodingFactory) throws IOException, RpcException {
+    encodingFactory.writeAsciiNullable(request.getRequestId());
+    encodingFactory.writeAsciiNullable(request.getServiceVersion());
+    encodingFactory.writeAsciiNullable(request.getServiceName());
+    encodingFactory.writeAsciiNullable(request.getMethodName());
+    encodingFactory.writeBoolean(request.isAsyncCall());
+    encodingFactory.writeBoolean(request.isVoidCall());
+    Object[] args = request.getMethodArgs();
+    int argLen = 0;
+    if (null != args) {
+      argLen = args.length;
+    }
+    encodingFactory.writeInt32(argLen);
+    if (null != args) {
+      for (Object arg : args) {
+        encodingFactory.writeObjectNullable(arg); // could happen encoding problem
+      }
     }
   }
 
   @Override
-  public void readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
-    this.requestId = encodingFactory.readAsciiNullable();
-    this.isAsyncCall = encodingFactory.readBoolean();
-    this.serviceName = encodingFactory.readAsciiNullable();
-    this.methodName = encodingFactory.readAsciiNullable();
+  public RpcRequest readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
+    RpcRequestImpl request = new RpcRequestImpl();
+    request.setRequestId(encodingFactory.readAsciiNullable());
+    request.setServiceVersion(encodingFactory.readAsciiNullable());
+    request.setServiceName(encodingFactory.readAsciiNullable());
+    request.setMethodName(encodingFactory.readAsciiNullable());
+    request.setAsyncCall(encodingFactory.readBoolean());
+    request.setVoidCall(encodingFactory.readBoolean());
     int len = encodingFactory.readInt32();
-    this.args = new Object[len];
+    Object[] args = new Object[len];
     for (int i = 0; i < len; i++) {
-      this.args[i] = encodingFactory.readObjectNullable();
+      args[i] = encodingFactory.readObjectNullable();
     }
+    request.setMethodArgs(args);
+    request.setEncoding(encodingFactory.getName());
+    return request;
   }
-
-  @Override
-  public String getRequestId() {
-    return requestId;
-  }
-
-  @Override
-  public void setRequestId(String requestId) {
-    this.requestId = requestId;
-  }
-
-  @Override
-  public String getMethodName() {
-    return methodName;
-  }
-
-  @Override
-  public void setMethodName(String methodName) {
-    Assert.notNull(methodName);
-    this.methodName = methodName;
-  }
-
-  @Override
-  public String getServiceName() {
-    return serviceName;
-  }
-
-  @Override
-  public void setServiceName(String serviceName) {
-    Assert.notNull(serviceName);
-    this.serviceName = serviceName;
-  }
-
-  @Override
-  public void setMethodArgs(Object... args) {
-    if (null == args) {
-      args = new Object[0];
-    }
-    this.args = args;
-  }
-
-  @Override
-  public Object[] getMethodArgs() {
-    return this.args;
-  }
-
-  @Override
-  public boolean isAsyncCall() {
-    return isAsyncCall;
-  }
-
-  @Override
-  public void setAsyncCall(boolean isAsyncCall) {
-    this.isAsyncCall = isAsyncCall;
-  }
-
 }

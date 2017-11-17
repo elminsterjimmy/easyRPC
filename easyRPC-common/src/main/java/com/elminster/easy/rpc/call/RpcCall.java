@@ -1,7 +1,14 @@
 package com.elminster.easy.rpc.call;
 
 import com.elminster.easy.rpc.context.InvokeContext;
+import com.elminster.easy.rpc.request.RpcRequest;
 
+/**
+ * The RPC Call Interface.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
 public interface RpcCall {
   
   public InvokeContext getContext();
@@ -9,6 +16,9 @@ public interface RpcCall {
   
   public ReturnResult getResult();
   public void setResult(ReturnResult result);
+  public RpcRequest getRequest();
+  
+  
   public String getRequestId();
   public String getServiceName();
   public String getMethodName();

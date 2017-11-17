@@ -12,9 +12,9 @@ import com.elminster.easy.rpc.client.async.AsyncFuture;
 import com.elminster.easy.rpc.client.connection.Connection;
 import com.elminster.easy.rpc.client.container.Container;
 import com.elminster.easy.rpc.client.container.impl.ContainerFactoryImpl;
-import com.elminster.easy.rpc.codec.RpcEncodingFactory;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
+import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.ConnectionException;
 
 /**
@@ -170,6 +170,10 @@ public class RpcClientImpl implements RpcClient {
    */
   @Override
   public String getVersion() {
-    return Version.getVersion(this.getClass());
+    return getClientVersion();
+  }
+  
+  public static String getClientVersion() {
+    return Version.getVersion(RpcClientImpl.class);
   }
 }
