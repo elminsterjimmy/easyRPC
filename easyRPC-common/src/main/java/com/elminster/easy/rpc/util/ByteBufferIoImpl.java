@@ -5,13 +5,12 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
-/**
- * The byte buffer IO.
- * 
- * @author jinggu
- * @version 1.0
- */
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ByteBufferIoImpl implements IoUtil {
+  
+  private static final Logger logger = LoggerFactory.getLogger(ByteBufferIoImpl.class);
 
   /** the byte buffer. */
   private final ByteBuffer byteBuffer;
@@ -32,6 +31,8 @@ public class ByteBufferIoImpl implements IoUtil {
       } catch (BufferUnderflowException e) {
         throw new IOException("Buffer Underflow!", e);
       }
+    } else {
+      logger.warn(String.format("unexpected len [%d].", n));
     }
     return n;
   }

@@ -12,6 +12,12 @@ import java.io.IOException;
 public interface Codec extends Closeable {
 
   /**
+   * Get the core codec name.
+   * @return the core codec name
+   */
+  public String getName();
+
+  /**
    * Write a byte value.
    * 
    * @param byteValue

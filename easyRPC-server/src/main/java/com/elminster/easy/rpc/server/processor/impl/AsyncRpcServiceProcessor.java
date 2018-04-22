@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
-import com.elminster.easy.rpc.server.connection.impl.NioRpcCall;
 import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
 
 /**
@@ -42,8 +41,7 @@ public class AsyncRpcServiceProcessor extends RpcServiceProcessorBase implements
    * {@inheritDoc}
    */
   @Override
-  public RpcCall getResult(RpcCall rpcCall, long timeout) {
-    String requestId = rpcCall.getRequestId();
+  public RpcCall getResult(String requestId, long timeout) {
     RpcCall result = processedRpcCalls.remove(requestId);
     if (null == result) {
       if (logger.isDebugEnabled()) {
@@ -65,16 +63,7 @@ public class AsyncRpcServiceProcessor extends RpcServiceProcessorBase implements
         }
         result = processedRpcCalls.remove(requestId);
         if (null == result) {
-          cancelRpcCall(rpcCall); // cancel the call if it timed out
-        }
-      }
-    }
-    if (null != result) {
-      if (result instanceof NioRpcCall) {
-        while (!Thread.interrupted()) {
-          if (processedQueue.offerFirst(result)) {
-            break;
-          }
+          cancelRpcCall(requestId); // cancel the call if it timed out
         }
       }
     }
@@ -85,13 +74,9 @@ public class AsyncRpcServiceProcessor extends RpcServiceProcessorBase implements
    * {@inheritDoc}
    */
   @Override
-  public boolean cancelRpcCall(RpcCall rpcCall) {
-    super.cancelRpcCall(rpcCall);
+  public boolean cancelRpcCall(String requestId) {
+    super.cancelRpcCall(requestId);
     this.cancel = true;
     return true;
-  }
-  
-  public void offerResult(RpcCall rpcCallResult) {
-    this.processedQueue.offerFirst(rpcCallResult);
   }
 }

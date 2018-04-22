@@ -35,5 +35,7 @@ public interface RpcClientFactory {
    * @return a RPC client
    */
   public RpcClient createRpcClient(ConnectionEndpoint endpoint, RpcEncodingFactory encodingFactory, RpcContext context, boolean stayConnction);
+  
+  public RpcClient createRpcClient(RpcClient client);
 
 }

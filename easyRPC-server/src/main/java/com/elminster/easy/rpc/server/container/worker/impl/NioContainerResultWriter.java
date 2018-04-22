@@ -12,9 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.common.thread.IJobMonitor;
 import com.elminster.common.thread.Job;
-import com.elminster.easy.rpc.call.RpcCall;
-import com.elminster.easy.rpc.server.connection.impl.NioRpcCall;
-import com.elminster.easy.rpc.server.container.Container;
+import com.elminster.easy.rpc.server.connection.impl.NioRpcConnection;
+import com.elminster.easy.rpc.server.container.impl.NioContainer;
 import com.elminster.easy.rpc.server.container.worker.ContainerWorker;
 
 public class NioContainerResultWriter extends Job implements ContainerWorker {
@@ -22,9 +21,9 @@ public class NioContainerResultWriter extends Job implements ContainerWorker {
   private static final Logger logger = LoggerFactory.getLogger(NioContainerResultWriter.class);
 
   private final Selector selector;
-  private final Container container;
+  private final NioContainer container;
 
-  public NioContainerResultWriter(Selector selector, Container container) {
+  public NioContainerResultWriter(Selector selector, NioContainer container) {
     super(WorkerJobId.NIO_WRITE_WORKER.getJobId(), "Nio Container Writer");
     this.selector = selector;
     this.container = container;
@@ -50,12 +49,10 @@ public class NioContainerResultWriter extends Job implements ContainerWorker {
             }
 
             if (key.isWritable()) {
-              // will be blocked if there's no result available
-              RpcCall rpcCall = container.getServiceProcessor().getResult();
-              if (rpcCall instanceof NioRpcCall) {
-                NioRpcCall nioRpcCall = (NioRpcCall) rpcCall;
-                nioRpcCall.getConnection().writeRpcCallResult(nioRpcCall);
-              }
+              SocketChannel socketChannel = (SocketChannel) key.channel();
+              NioRpcConnection conn = container.getConnection(socketChannel);
+              conn.write();
+              Thread.sleep(1);
             }
           }
         } catch (IOException ioe) {

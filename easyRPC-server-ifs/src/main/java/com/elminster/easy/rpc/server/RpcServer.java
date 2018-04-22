@@ -24,7 +24,7 @@ public interface RpcServer {
    * @param encodingFactory
    *          the encoding factory
    */
-  public void addEncodingFactory(final RpcEncodingFactory encodingFactory);
+  public void setEncodingFactory(final RpcEncodingFactory encodingFactory);
 
   /**z
    * Add a RPC service.
@@ -83,25 +83,14 @@ public interface RpcServer {
   public void setVersionCheck(boolean versionCheck);
 
   /**
-   * Get specified encoding factory.
+   * Get the encoding factory.
    * 
-   * @param encodingName
-   *          the encodeing name
    * @param coreCodec
    *          the core codec
    * @return the encoding factory
    */
-  public RpcEncodingFactory getEncodingFactory(String encodingName, Codec coreCodec);
+  public RpcEncodingFactory getEncodingFactory(Codec coreCodec);
   
-  /**
-   * Get default encoding factory.
-   * 
-   * @param coreCodec
-   *          the core codec
-   * @return the encoding factory
-   */
-  public RpcEncodingFactory getDefaultEncodingFactory(Codec coreCodec);
-
   /**
    * Check the server uses secure connection?
    * 

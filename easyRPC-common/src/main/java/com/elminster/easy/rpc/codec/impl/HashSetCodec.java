@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
-import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.exception.CodecException;
 
 /**
  * HashSet Codec.
@@ -24,7 +24,7 @@ public class HashSetCodec implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       if (null != value) {
         HashSet<?> set = (HashSet<?>) value;
@@ -33,11 +33,11 @@ public class HashSetCodec implements RpcCodec {
           encodingFactory.writeObjectNullable(o);
         }
       }
-    } catch (RpcException k) {
+    } catch (CodecException k) {
       throw k;
     } catch (Exception e) {
       logger.error("HashSet encode:", e);
-      throw new RpcException("Could not encode HashSet - " + e.getMessage());
+      throw new CodecException("Could not encode HashSet - " + e.getMessage());
     }
   }
 
@@ -45,7 +45,7 @@ public class HashSetCodec implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public Object decode(RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       int size = ((Integer) encodingFactory.readObjectNullable()).intValue();
 
@@ -55,11 +55,11 @@ public class HashSetCodec implements RpcCodec {
         hashSet.add(encodingFactory.readObjectNullable());
       }
       return hashSet;
-    } catch (RpcException k) {
+    } catch (CodecException k) {
       throw k;
     } catch (Exception e) {
       logger.error("HashSet decode:", e);
-      throw new RpcException("Could not decode HashSet - " + e.getMessage());
+      throw new CodecException("Could not decode HashSet - " + e.getMessage());
     }
   }
 }

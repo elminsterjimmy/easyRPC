@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
-import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.exception.CodecException;
 
 /**
  * The Object Codec.
@@ -21,30 +21,30 @@ public class ObjectCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       return encodingFactory.readObjectNullable();
-    } catch (RpcException k) {
+    } catch (CodecException k) {
       throw k;
     } catch (Exception e) {
       String message = "Could not decode Object - " + e;
       logger.error(message, e);
-      throw new RpcException(message);
+      throw new CodecException(message);
     }
   }
 
   /**
    * {@inheritDoc}
    */
-  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       encodingFactory.writeObjectNullable(value);
-    } catch (RpcException k) {
+    } catch (CodecException k) {
       throw k;
     } catch (Exception e) {
       String message = "Could not decode Object - " + e;
       logger.error(message, e);
-      throw new RpcException(message);
+      throw new CodecException(message);
     }
   }
 }

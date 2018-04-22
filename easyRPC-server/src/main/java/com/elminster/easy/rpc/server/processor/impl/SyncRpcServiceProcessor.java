@@ -38,7 +38,7 @@ public class SyncRpcServiceProcessor extends RpcServiceProcessorBase implements 
    * {@inheritDoc}
    */
   @Override
-  public RpcCall getResult(RpcCall rpcCall, long timeout) {
-    return processedRpcCalls.remove(rpcCall.getRequestId());
+  public RpcCall getResult(String requestId, long timeout) {
+    return processedRpcCalls.remove(requestId);
   }
 }

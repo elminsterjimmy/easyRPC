@@ -32,9 +32,19 @@ public class CoreCodecFactory {
     IoUtil ioUtil = new ByteBufferIoImpl(byteBuffer);
     return new CoreCodecImpl(ioUtil);
   }
+
+  public Codec getCoreCodec(ByteBuffer byteBuffer, long timeout) {
+    IoUtil ioUtil = new ByteBufferIoImpl(byteBuffer);
+    return new CoreCodecImpl(ioUtil, timeout);
+  }
   
   public Codec getCoreCodec(SocketChannel socketChannel) {
     IoUtil ioUtil = new NioChannelUtil(socketChannel);
     return new CoreCodecImpl(ioUtil);
+  }
+
+  public Codec getCoreCodec(SocketChannel socketChannel, long timeout) {
+    IoUtil ioUtil = new NioChannelUtil(socketChannel);
+    return new CoreCodecImpl(ioUtil, timeout);
   }
 }

@@ -31,4 +31,12 @@ public class RpcClientFactoryImpl implements RpcClientFactory {
     // TODO RpcClient is heavy object, cache them?
     return new RpcClientImpl(endpoint, encodingFactory, context, stayConnection);
   }
+
+  @Override
+  public RpcClient createRpcClient(RpcClient client) {
+    ConnectionEndpoint endpoint = client.getConnectionEndpoint();
+    RpcEncodingFactory encodingFactory = client.getEncodingFactory();
+    RpcContext context = client.getRpcContext();
+    return new RpcClientImpl(endpoint, encodingFactory, context, false);
+  }
 }

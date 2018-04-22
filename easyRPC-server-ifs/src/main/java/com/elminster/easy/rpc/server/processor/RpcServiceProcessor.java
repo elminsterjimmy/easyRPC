@@ -1,6 +1,9 @@
 package com.elminster.easy.rpc.server.processor;
 
+import java.util.List;
+
 import com.elminster.easy.rpc.call.RpcCall;
+import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.exception.RpcException;
 
 /**
@@ -30,14 +33,14 @@ public interface RpcServiceProcessor {
    *          the timeout in ms
    * @return the result
    */
-  public RpcCall getResult(RpcCall call, long timeout);
+  public RpcCall getResult(String requestId, long timeout);
 
   /**
-   * Get a RPC call result from the processed queue. This would be blocked if the queue is empty.
+   * Get a RPC call results that submitted by specified RpcConnection.
    * 
    * @return the result
    */
-  public RpcCall getResult();
+  public List<RpcCall> getProccedResults(RpcConnection conn);
 
   /**
    * Cancel a RPC call.
@@ -46,7 +49,7 @@ public interface RpcServiceProcessor {
    *          the RPC call
    * @return cancelled or not
    */
-  public boolean cancelRpcCall(RpcCall call);
+  public boolean cancelRpcCall(String requestId);
 
   /**
    * Get a RPC call by RPC call request id.

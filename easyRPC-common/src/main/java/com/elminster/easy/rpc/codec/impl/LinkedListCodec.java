@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
-import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.exception.CodecException;
 
 /**
  * List Codec.
@@ -25,7 +25,7 @@ public class LinkedListCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       int size = ((Integer) encodingFactory.readObjectNullable()).intValue();
       List<Object> list = new LinkedList<>();
@@ -33,19 +33,19 @@ public class LinkedListCodec implements RpcCodec {
         list.add(encodingFactory.readObjectNullable());
       }
       return list;
-    } catch (RpcException k) {
+    } catch (CodecException k) {
       throw k;
     } catch (Exception e) {
       String message = "Could not decode LinkedList - " + e;
       logger.error(message, e);
-      throw new RpcException(message);
+      throw new CodecException(message);
     }
   }
 
   /**
    * {@inheritDoc}
    */
-  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       if (null != value) {
         List<?> list = (List<?>) value;
@@ -55,12 +55,12 @@ public class LinkedListCodec implements RpcCodec {
           encodingFactory.writeObjectNullable(o);
         }
       }
-    } catch (RpcException k) {
+    } catch (CodecException k) {
       throw k;
     } catch (Exception e) {
       String message = "Could not encode LinkedList - " + e;
       logger.error(message, e);
-      throw new RpcException(message);
+      throw new CodecException(message);
     }
   }
 }

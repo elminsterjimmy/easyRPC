@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
-import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.exception.CodecException;
 
 /**
  * Boolean Codec.
@@ -20,7 +20,7 @@ public class BooleanCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       byte value = encodingFactory.readInt8();
       if (1 == value) {
@@ -29,14 +29,14 @@ public class BooleanCodec implements RpcCodec {
       return Boolean.FALSE;
     } catch (Exception e) {
       logger.error("Boolean decode:", e);
-      throw new RpcException("Could not decode Boolean - " + e.getMessage());
+      throw new CodecException("Could not decode Boolean - " + e.getMessage());
     }
   }
 
   /**
    * {@inheritDoc}
    */
-  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       if (null != value) {
         if (((Boolean) value).booleanValue()) {
@@ -47,7 +47,7 @@ public class BooleanCodec implements RpcCodec {
       }
     } catch (Exception e) {
       logger.error("Boolean encode:", e);
-      throw new RpcException("Could not encode Boolean - " + e.getMessage());
+      throw new CodecException("Could not encode Boolean - " + e.getMessage());
     }
   }
 }

@@ -7,9 +7,9 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
-import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.exception.CodecException;
 
-public class TreeSetCodec  implements RpcCodec {
+public class TreeSetCodec implements RpcCodec {
 
   /** the logger. */
   private static Logger logger = LoggerFactory.getLogger(HashSetCodec.class);
@@ -18,7 +18,7 @@ public class TreeSetCodec  implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       if (null != value) {
         TreeSet<?> set = (TreeSet<?>) value;
@@ -27,11 +27,11 @@ public class TreeSetCodec  implements RpcCodec {
           encodingFactory.writeObjectNullable(o);
         }
       }
-    } catch (RpcException k) {
+    } catch (CodecException k) {
       throw k;
     } catch (Exception e) {
       logger.error("HashSet encode:", e);
-      throw new RpcException("Could not encode HashSet - " + e.getMessage());
+      throw new CodecException("Could not encode HashSet - " + e.getMessage());
     }
   }
 
@@ -39,7 +39,7 @@ public class TreeSetCodec  implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public Object decode(RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       int size = ((Integer) encodingFactory.readObjectNullable()).intValue();
 
@@ -49,11 +49,11 @@ public class TreeSetCodec  implements RpcCodec {
         treeSet.add(encodingFactory.readObjectNullable());
       }
       return treeSet;
-    } catch (RpcException k) {
+    } catch (CodecException k) {
       throw k;
     } catch (Exception e) {
       logger.error("HashSet decode:", e);
-      throw new RpcException("Could not decode HashSet - " + e.getMessage());
+      throw new CodecException("Could not decode HashSet - " + e.getMessage());
     }
   }
 

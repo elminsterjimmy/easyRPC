@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
+import com.elminster.easy.rpc.exception.CodecException;
 import com.elminster.easy.rpc.exception.RpcException;
 
 /**
@@ -35,7 +36,7 @@ public class RpcServerExceptionCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public Object decode(RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       if (encodingFactory.readInt8() == IS_NULL) {
         return null;
@@ -71,14 +72,14 @@ public class RpcServerExceptionCodec implements RpcCodec {
     } catch (IOException e) {
       String message = "Could not decode KisRpcServerException - " + e;
       logger.error(message, e);
-      throw new RpcException(message);
+      throw new CodecException(message);
     }
   }
 
   /**
    * {@inheritDoc}
    */
-  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       if (value == null) {
         encodingFactory.writeInt8(IS_NULL);
@@ -131,7 +132,7 @@ public class RpcServerExceptionCodec implements RpcCodec {
     } catch (IOException e) {
       String message = "Could not encode KisRpcServerException - " + e;
       logger.error(message, e);
-      throw new RpcException(message);
+      throw new CodecException(message);
     }
   }
 }

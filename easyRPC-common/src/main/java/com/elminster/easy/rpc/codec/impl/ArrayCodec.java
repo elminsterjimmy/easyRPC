@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import com.elminster.common.util.ReflectUtil;
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
-import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.exception.CodecException;
 import com.elminster.easy.rpc.idl.IDL;
 import com.elminster.easy.rpc.idl.impl.IDLBasicTypes;
 
@@ -26,7 +26,7 @@ public class ArrayCodec implements RpcCodec {
   /**
    * {@inheritDoc}
    */
-  public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final RpcEncodingFactory encodingFactory) throws CodecException {
     String remoteTypeName = null;
     String arrayTypeName = null;
     try {
@@ -56,20 +56,20 @@ public class ArrayCodec implements RpcCodec {
       }
       System.arraycopy(decoded, 0, array, 0, arraySize);
       return array;
-    } catch (RpcException k) {
+    } catch (CodecException k) {
       throw k;
     } catch (Exception e) {
       String typeName = arrayTypeName != null ? arrayTypeName : remoteTypeName;
       String message = "Could not decode array of " + typeName + "[] - " + e;
       logger.error(message, e);
-      throw new RpcException(message, e);
+      throw new CodecException(message, e);
     }
   }
 
   /**
    * {@inheritDoc}
    */
-  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws CodecException {
     String arrayTypeName = null;
     try {
       Class<?> arrayClass = value.getClass();
@@ -99,12 +99,12 @@ public class ArrayCodec implements RpcCodec {
         }
       }
         
-    } catch (RpcException e) {
+    } catch (CodecException e) {
       throw e;
     } catch (Exception e) {
       String message = "Could not encode array of " + arrayTypeName + "[] - " + e;
       logger.error(message, e);
-      throw new RpcException(message, e);
+      throw new CodecException(message, e);
     }
   }
 }

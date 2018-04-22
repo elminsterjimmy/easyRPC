@@ -2,10 +2,13 @@ package com.elminster.easy.rpc.server.processor.impl;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.PriorityBlockingQueue;
 
 import org.slf4j.Logger;
@@ -22,6 +25,7 @@ import com.elminster.easy.rpc.call.ReturnResult;
 import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.call.Status;
 import com.elminster.easy.rpc.call.impl.ReturnResultImpl;
+import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.context.InvokeContext;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
@@ -40,18 +44,17 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
   protected final Map<String, RpcCall> processingRpcCalls = new ConcurrentHashMap<>();
   protected final BlockingQueue<RpcCall> processingQueue;
   protected final ConcurrentHashMap<String, RpcCall> processedRpcCalls = new ConcurrentHashMap<>();
-  protected final LinkedBlockingDeque<RpcCall> processedQueue;
+  protected final ConcurrentHashMap<RpcConnection, List<RpcCall>> processedRpcCalls2Conn = new ConcurrentHashMap<>();
   protected final ThreadPool threadPool;
-  protected final ProcessJob processJob;
+  protected final ProcessWorker worker;
 
   public RpcServiceProcessorBase(RpcServer rpcServer) {
     this.rpcServer = rpcServer;
     int queueSize = rpcServer.getContext().getProcessorQueueSize();
     processingQueue = new PriorityBlockingQueue<>(queueSize, new RpcCallComparator());
-    processedQueue = new LinkedBlockingDeque<>(queueSize);
     threadPool = new ThreadPool(rpcServer.getContext().getProcessingThreadPoolConfiguration());
-    processJob = new ProcessJob();
-    threadPool.execute(processJob);
+    worker = new ProcessWorker();
+    threadPool.execute(worker);
   }
 
   protected RpcService getRpcService(RpcCall rpcCall) throws RpcException {
@@ -59,10 +62,12 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
     InvokeContext context = rpcCall.getContext();
     String methodName = rpcCall.getMethodName();
 
-    RpcService service = rpcServer.getService(serviceName);
+    RpcService service = null;
+    service = rpcServer.getService(serviceName);
     if (null == service) {
       throw new RpcException(String.format("Service [%s] is NOT found! Context: [%s].", serviceName, context));
     }
+
     if (!ArrayUtil.contains(service.getServiceMethods(), methodName)) {
       throw new RpcException(String.format("Method [%s] is NOT pubulished in Service [%s]! Context: [%s]", methodName, serviceName, context));
     }
@@ -126,14 +131,19 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
   protected void putProcessedCall(final RpcCall call) {
     processingRpcCalls.remove(call.getRequestId());
     processedRpcCalls.put(call.getRequestId(), call);
-    try {
-      if (call instanceof NioRpcCall) {
-        if (!call.isAsyncCall()) {
-          processedQueue.put(call);
+    if (call instanceof NioRpcCall) {
+      NioRpcCall nioCall = (NioRpcCall) call;
+      if (!call.isAsyncCall()) {
+        RpcConnection conn = nioCall.getConnection();
+        synchronized (conn) {
+          List<RpcCall> rpcCalls = processedRpcCalls2Conn.get(nioCall);
+          if (null == rpcCalls) {
+            rpcCalls = new ArrayList<>();
+            processedRpcCalls2Conn.put(conn, rpcCalls);
+          }
+          rpcCalls.add(nioCall);
         }
       }
-    } catch (InterruptedException e) {
-      logger.error("Put RPC call [{}] to Processed Queue is interrupted!", call);
     }
   }
 
@@ -150,9 +160,9 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
     }
   }
 
-  class ProcessJob extends Job {
+  class ProcessWorker extends Job {
 
-    public ProcessJob() {
+    public ProcessWorker() {
       super(WorkerJobId.PROCESS_JOB.getJobId(), "Process Job");
     }
 
@@ -204,7 +214,7 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
   }
 
   public void close() {
-    processJob.cancel();
+    worker.cancel();
     threadPool.shutdown();
   }
 
@@ -227,8 +237,9 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
    * {@inheritDoc}
    */
   @Override
-  public boolean cancelRpcCall(RpcCall rpcCall) {
-    logger.debug(String.format("Cancel RPC Call [%s].", rpcCall.getRequestId()));
+  public boolean cancelRpcCall(String requestId) {
+    logger.debug(String.format("Cancel RPC Call [%s].", requestId));
+    RpcCall rpcCall = getRpcCall(requestId);
     boolean removed = processingQueue.remove(rpcCall);
     if (removed) {
       rpcCall.setStatus(Status.CANCELLED);
@@ -240,12 +251,21 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
    * {@inheritDoc}
    */
   @Override
-  public RpcCall getResult() {
-    try {
-      return this.processedQueue.take();
-    } catch (InterruptedException e) {
-      logger.error("Interrupted get result!");
-      return null;
+  public List<RpcCall> getProccedResults(RpcConnection conn) {
+    List<RpcCall> results = processedRpcCalls2Conn.get(conn);
+    List<RpcCall> rtn;
+    if (null != results) {
+      rtn = new ArrayList<>();
+      rtn.addAll(results);
+      Iterator<RpcCall> it = rtn.iterator();
+      while (it.hasNext()) {
+        RpcCall call = it.next();
+        results.remove(call);
+        processedRpcCalls.remove(call.getRequestId());
+      }
+    } else {
+      rtn = Collections.emptyList();
     }
+    return rtn;
   }
 }

@@ -1,10 +1,14 @@
 package com.elminster.easy.rpc.server.processor.impl;
 
+import java.util.List;
+
 import com.elminster.easy.rpc.call.RpcCall;
+import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.connection.impl.NioRpcCall;
 import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
+import com.elminster.easy.rpc.server.service.AsyncService;
 
 /**
  * The RPC service processor delegate.
@@ -16,10 +20,12 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
   
   private final SyncRpcServiceProcessor syncProcessor;
   private final AsyncRpcServiceProcessor asyncProcessor;
+  private final AsyncQueryServiceProcessor asyncQueryProcessor;
 
   public RpcServiceProcessorDelegate(RpcServer rpcServer) {
     syncProcessor = new SyncRpcServiceProcessor(rpcServer);
     asyncProcessor = new AsyncRpcServiceProcessor(rpcServer);
+    asyncQueryProcessor = new AsyncQueryServiceProcessor(rpcServer, asyncProcessor);
   }
 
   /**
@@ -27,7 +33,9 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
    */
   @Override
   public void invoke(RpcCall call) throws RpcException {
-    if (isAsyncCall(call)) {
+    if (isAsyncQueryCall(call)) {
+      asyncQueryProcessor.invoke(call);
+    } else if (isAsyncCall(call)) {
       asyncProcessor.invoke(call);
     } else {
       syncProcessor.invoke(call);
@@ -38,15 +46,19 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
    * {@inheritDoc}
    */
   @Override
-  public RpcCall getResult(RpcCall call, long timeout) {
+  public RpcCall getResult(String requestId, long timeout) {
+    RpcCall call = getRpcCall(requestId);
     if (isAsyncCall(call)) {
-      return asyncProcessor.getResult(call, timeout);
+      return asyncProcessor.getResult(requestId, timeout);
+    } else if (isAsyncQueryCall(call)) {
+      return asyncQueryProcessor.getResult(requestId, timeout);
     } else {
-      return syncProcessor.getResult(call, timeout);
+      return syncProcessor.getResult(requestId, timeout);
     }
   }
 
   public void close() {
+    asyncQueryProcessor.close();
     syncProcessor.close();
     asyncProcessor.close();
   }
@@ -55,11 +67,14 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
    * {@inheritDoc}
    */
   @Override
-  public boolean cancelRpcCall(RpcCall call) {
-    if (isAsyncCall(call)) {
-      return asyncProcessor.cancelRpcCall(call);
+  public boolean cancelRpcCall(String requestId) {
+    RpcCall call = getRpcCall(requestId);
+    if (isAsyncQueryCall(call)) {
+      return asyncQueryProcessor.cancelRpcCall(requestId);
+    } else if (isAsyncCall(call)) {
+      return asyncProcessor.cancelRpcCall(requestId);
     } else {
-      return syncProcessor.cancelRpcCall(call);
+      return syncProcessor.cancelRpcCall(requestId);
     }
   }
 
@@ -78,9 +93,13 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
   private boolean isAsyncCall(RpcCall call) {
     return call.isAsyncCall() || call instanceof NioRpcCall;
   }
+  
+  private boolean isAsyncQueryCall(RpcCall call) {
+    return AsyncService.SERVICE_NAME.equals(call.getServiceName());
+  }
 
   @Override
-  public RpcCall getResult() {
-    return asyncProcessor.getResult();
+  public List<RpcCall> getProccedResults(RpcConnection conn) {
+    return asyncProcessor.getProccedResults(conn);
   }
 }

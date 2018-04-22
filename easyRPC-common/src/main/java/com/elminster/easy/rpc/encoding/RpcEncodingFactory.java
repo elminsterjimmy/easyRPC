@@ -8,6 +8,7 @@ import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.impl.TypeCategory;
 import com.elminster.easy.rpc.compressor.DataCompressor;
+import com.elminster.easy.rpc.exception.CodecException;
 import com.elminster.easy.rpc.exception.RpcException;
 
 /**
@@ -31,10 +32,10 @@ public interface RpcEncodingFactory extends Cloneable {
    * @param clazz
    *          the class
    * @return the codec corresponded to the class
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public RpcCodec getEncodingObject(final Class<?> clazz) throws RpcException;
+  public RpcCodec getEncodingObject(final Class<?> clazz) throws CodecException;
 
   /**
    * Get the Codec for specified class.
@@ -44,10 +45,10 @@ public interface RpcEncodingFactory extends Cloneable {
    * @param typeCategory
    *          the type category
    * @return the codec corresponded to the class
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public RpcCodec getEncodingObject(final String typeName, final TypeCategory typeCategory) throws RpcException;
+  public RpcCodec getEncodingObject(final String typeName, final TypeCategory typeCategory) throws CodecException;
 
   /**
    * Get the class name for remote type name.
@@ -125,10 +126,10 @@ public interface RpcEncodingFactory extends Cloneable {
    * @return a nullable object
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public Object readObjectNullable() throws IOException, RpcException;
+  public Object readObjectNullable() throws IOException, CodecException;
 
   /**
    * Write a nullable object.
@@ -137,10 +138,10 @@ public interface RpcEncodingFactory extends Cloneable {
    *          the value
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public void writeObjectNullable(final Object value) throws IOException, RpcException;
+  public void writeObjectNullable(final Object value) throws IOException, CodecException;
 
   /**
    * Read a nullable int64.
@@ -148,10 +149,10 @@ public interface RpcEncodingFactory extends Cloneable {
    * @return a nullable int64
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public Long readInt64Nullable() throws IOException, RpcException;
+  public Long readInt64Nullable() throws IOException, CodecException;
 
   /**
    * Read an int64.
@@ -159,10 +160,10 @@ public interface RpcEncodingFactory extends Cloneable {
    * @return an int64
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public long readInt64() throws IOException, RpcException;
+  public long readInt64() throws IOException, CodecException;
 
   /**
    * Write a nullable int64.
@@ -171,10 +172,10 @@ public interface RpcEncodingFactory extends Cloneable {
    *          the value
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public void writeInt64Nullable(final Long vaue) throws IOException, RpcException;
+  public void writeInt64Nullable(final Long vaue) throws IOException, CodecException;
 
   /**
    * Write an int64.
@@ -192,10 +193,10 @@ public interface RpcEncodingFactory extends Cloneable {
    * @return a nullable int32
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public Integer readInt32Nullable() throws IOException, RpcException;
+  public Integer readInt32Nullable() throws IOException, CodecException;
 
   /**
    * Read an int32.
@@ -213,10 +214,10 @@ public interface RpcEncodingFactory extends Cloneable {
    *          the value
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public void writeInt32Nullable(final Integer value) throws IOException, RpcException;
+  public void writeInt32Nullable(final Integer value) throws IOException, CodecException;
 
   /**
    * Write an int32.
@@ -234,10 +235,10 @@ public interface RpcEncodingFactory extends Cloneable {
    * @return a nullable int8
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public Byte readInt8Nullable() throws IOException, RpcException;
+  public Byte readInt8Nullable() throws IOException, CodecException;
 
   /**
    * Read an int8.
@@ -255,10 +256,10 @@ public interface RpcEncodingFactory extends Cloneable {
    *          the value
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public void writeInt8Nullable(final Byte value) throws IOException, RpcException;
+  public void writeInt8Nullable(final Byte value) throws IOException, CodecException;
 
   /**
    * Write an int8.
@@ -276,10 +277,10 @@ public interface RpcEncodingFactory extends Cloneable {
    * @return a nullable String
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public String readStringNullable() throws IOException, RpcException;
+  public String readStringNullable() throws IOException, CodecException;
 
   /**
    * Write a nullable String.
@@ -288,10 +289,10 @@ public interface RpcEncodingFactory extends Cloneable {
    *          the value
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public void writeStringNullable(final String value) throws IOException, RpcException;
+  public void writeStringNullable(final String value) throws IOException, CodecException;
 
   /**
    * Read a nullable ASCII.
@@ -299,10 +300,10 @@ public interface RpcEncodingFactory extends Cloneable {
    * @return a nullable int64
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public String readAsciiNullable() throws IOException, RpcException;
+  public String readAsciiNullable() throws IOException, CodecException;
 
   /**
    * Write a nullable ASCII.
@@ -311,10 +312,10 @@ public interface RpcEncodingFactory extends Cloneable {
    *          the value
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public void writeAsciiNullable(final String value) throws IOException, RpcException;
+  public void writeAsciiNullable(final String value) throws IOException, CodecException;
 
   /**
    * Read a nullable double.
@@ -322,10 +323,10 @@ public interface RpcEncodingFactory extends Cloneable {
    * @return a nullable double
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public Double readDoubleNullable() throws IOException, RpcException;
+  public Double readDoubleNullable() throws IOException, CodecException;
 
   /**
    * Read a double.
@@ -333,10 +334,10 @@ public interface RpcEncodingFactory extends Cloneable {
    * @return a double
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public double readDouble() throws IOException, RpcException;
+  public double readDouble() throws IOException, CodecException;
 
   /**
    * Write a nullable double.
@@ -345,10 +346,10 @@ public interface RpcEncodingFactory extends Cloneable {
    *          the value
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public void writeDoubleNullable(final Double value) throws IOException, RpcException;
+  public void writeDoubleNullable(final Double value) throws IOException, CodecException;
 
   /**
    * Write a double.
@@ -357,13 +358,15 @@ public interface RpcEncodingFactory extends Cloneable {
    *          the value
    * @throws IOException
    *           on error
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
-  public void writeDouble(final double value) throws IOException, RpcException;
+  public void writeDouble(final double value) throws IOException, CodecException;
   
   public void writen(final byte[] bytes, int off, int len) throws IOException;
-
+  
+  public byte[] readn(int off, int len) throws IOException;
+  
   /**
    * Flush to underlayer stream.
    * 
@@ -388,7 +391,7 @@ public interface RpcEncodingFactory extends Cloneable {
    * @param type
    *          the type
    * @return the data compressor
-   * @throws RpcException
+   * @throws CodecException
    *           on error
    */
   public DataCompressor getCompressor(int type) throws RpcException;

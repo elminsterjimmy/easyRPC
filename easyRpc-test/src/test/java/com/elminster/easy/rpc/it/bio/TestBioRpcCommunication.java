@@ -111,14 +111,12 @@ public class TestBioRpcCommunication {
         Assert.assertEquals(101, testIf.testLongPlus(100L));
 
         Assert.assertEquals(Integer.MIN_VALUE, testIf.testIntPlus(Integer.MAX_VALUE));
+        Assert.assertTrue(testIf.now().getTime() - System.currentTimeMillis() < 1000);
+        testIf.testVoid();
 
         Future<String> future = testIf.testLongTimeJob();
         Assert.assertEquals(false, future.isDone());
         Assert.assertEquals(false, future.isCancelled());
-        Assert.assertTrue(testIf.now().getTime() - System.currentTimeMillis() < 1000);
-
-        testIf.testVoid();
-        
         try {
           String rtn = future.get();
           StringBuilder sb = new StringBuilder();
@@ -134,11 +132,11 @@ public class TestBioRpcCommunication {
           e.printStackTrace();
         }
 
-        // try {
-        // testIf.unpublished();
-        // Assert.fail();
-        // } catch (Exception e) {
-        // }
+        try {
+          testIf.unpublished();
+          Assert.fail();
+        } catch (Exception e) {
+        }
 
       } catch (Throwable e) {
         this.e = e;

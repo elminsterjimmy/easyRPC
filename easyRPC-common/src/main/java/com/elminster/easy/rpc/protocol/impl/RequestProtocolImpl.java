@@ -2,54 +2,71 @@ package com.elminster.easy.rpc.protocol.impl;
 
 import java.io.IOException;
 
+import com.elminster.easy.rpc.data.Async;
+import com.elminster.easy.rpc.data.Request;
 import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
-import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.exception.CodecException;
 import com.elminster.easy.rpc.protocol.RequestProtocol;
-import com.elminster.easy.rpc.request.RpcRequest;
-import com.elminster.easy.rpc.request.impl.RpcRequestImpl;
+import com.elminster.easy.rpc.protocol.exception.UnknownClientException;
 
-public class RequestProtocolImpl extends ProtocolImpl<RpcRequest> implements RequestProtocol {
-  
-  public RequestProtocolImpl() {
+/**
+ * The request protocol implementation.
+ * 
+ * @author jinggu
+ * @version 1.0
+ */
+public class RequestProtocolImpl extends ProtocolImpl<Request> implements RequestProtocol {
+
+  private static final long[] MAGIC_NUMBER = { 0x656c6d, 0x696e7374, 0x65722e6a, 0x696d6d79 };
+
+  public RequestProtocolImpl(RpcEncodingFactory encodingFactory) {
+    super(encodingFactory);
   }
 
   @Override
-  public void writeData(RpcRequest request, RpcEncodingFactory encodingFactory) throws IOException, RpcException {
-    encodingFactory.writeAsciiNullable(request.getRequestId());
-    encodingFactory.writeAsciiNullable(request.getServiceVersion());
-    encodingFactory.writeAsciiNullable(request.getServiceName());
-    encodingFactory.writeAsciiNullable(request.getMethodName());
-    encodingFactory.writeBoolean(request.isAsyncCall());
-    encodingFactory.writeBoolean(request.isVoidCall());
-    Object[] args = request.getMethodArgs();
-    int argLen = 0;
-    if (null != args) {
-      argLen = args.length;
-    }
-    encodingFactory.writeInt32(argLen);
-    if (null != args) {
-      for (Object arg : args) {
-        encodingFactory.writeObjectNullable(arg); // could happen encoding problem
+  Request readData(RpcEncodingFactory encodingFactory) throws IOException, CodecException {
+    for (long l : MAGIC_NUMBER) {
+      long lNum = encodingFactory.readInt64();
+      if (lNum != l) {
+        throw new UnknownClientException("Unknow Client!");
       }
     }
+    Request request = new Request();
+    request.setVersion(encodingFactory.readStringNullable());
+    request.setRequestId(encodingFactory.readStringNullable());
+    byte b = encodingFactory.readInt8();
+    request.setAsync(Async.toAsync(b));
+    request.setServiceName(encodingFactory.readStringNullable());
+    request.setMethodName(encodingFactory.readStringNullable());
+    int len = encodingFactory.readInt32();
+    Object[] methodArgs = new Object[len];
+    for (int i = 0; i < len; i++) {
+      methodArgs[i] = encodingFactory.readObjectNullable();
+    }
+    request.setMethodArgs(methodArgs);
+    return request;
   }
 
+  /**
+   * {@inheritDoc}
+   */
   @Override
-  public RpcRequest readData(RpcEncodingFactory encodingFactory) throws IOException, RpcException {
-    RpcRequestImpl request = new RpcRequestImpl();
-    request.setRequestId(encodingFactory.readAsciiNullable());
-    request.setServiceVersion(encodingFactory.readAsciiNullable());
-    request.setServiceName(encodingFactory.readAsciiNullable());
-    request.setMethodName(encodingFactory.readAsciiNullable());
-    request.setAsyncCall(encodingFactory.readBoolean());
-    request.setVoidCall(encodingFactory.readBoolean());
-    int len = encodingFactory.readInt32();
-    Object[] args = new Object[len];
-    for (int i = 0; i < len; i++) {
-      args[i] = encodingFactory.readObjectNullable();
+  void writeData(RpcEncodingFactory encodingFactory, Request request) throws IOException, CodecException {
+    for (long l : MAGIC_NUMBER) {
+      encodingFactory.writeInt64(l);
     }
-    request.setMethodArgs(args);
-    request.setEncoding(encodingFactory.getName());
-    return request;
+    encodingFactory.writeStringNullable(request.getVersion());
+    encodingFactory.writeStringNullable(request.getRequestId());
+    encodingFactory.writeInt8(request.getAsync().value());
+    encodingFactory.writeStringNullable(request.getServiceName());
+    encodingFactory.writeStringNullable(request.getMethodName());
+    Object[] methodArgs = request.getMethodArgs();
+    if (null == methodArgs) {
+      methodArgs = new Object[0];
+    }
+    encodingFactory.writeInt32(methodArgs.length);
+    for (Object arg : methodArgs) {
+      encodingFactory.writeObjectNullable(arg); // could happen encoding problem
+    }
   }
 }

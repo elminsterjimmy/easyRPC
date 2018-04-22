@@ -22,9 +22,9 @@ import com.elminster.easy.rpc.util.IoUtil;
  * @version 1.0
  */
 public class CoreCodecImpl implements Codec, Closeable {
-  
+
   private static long IO_RETRY_INTERVAL = 100; // 100 ms
-  private static int IO_RETRY_COUNT_THRESHOLD = 10; // total 30 sec
+  private static int IO_RETRY_COUNT_THRESHOLD = 300; // total 30 sec
 
   /** shared byte buffer. */
   private static ThreadLocal<ByteBuffer> byteBuffer = new ThreadLocal<ByteBuffer>() {
@@ -49,7 +49,7 @@ public class CoreCodecImpl implements Codec, Closeable {
       return ByteBuffer.allocate(8);
     }
   };
-  
+
   /** the IoUtil. */
   private final IoUtil ioUtil;
 
@@ -57,11 +57,19 @@ public class CoreCodecImpl implements Codec, Closeable {
   private static final byte IS_NULL = 0;
   /** mark for not null {@literal1}. */
   private static final byte NOT_NULL = 1;
-  
+
+  private final long timeout;
+
   public CoreCodecImpl(final IoUtil ioUtil) {
     this.ioUtil = ioUtil;
+    this.timeout = IO_RETRY_INTERVAL * IO_RETRY_COUNT_THRESHOLD;
   }
-  
+
+  public CoreCodecImpl(final IoUtil ioUtil, long timeout) {
+    this.ioUtil = ioUtil;
+    this.timeout = timeout;
+  }
+
   /**
    * {@inheritDoc}
    */
@@ -91,7 +99,7 @@ public class CoreCodecImpl implements Codec, Closeable {
     intBuffer.get().putInt(value);
     writen(intBuffer.get().array(), 0, 4);
   }
-  
+
   /**
    * {@inheritDoc}
    */
@@ -127,34 +135,37 @@ public class CoreCodecImpl implements Codec, Closeable {
    */
   @Override
   public void readn(byte[] b, int off, int len) throws IOException {
-    if (len <= 0) {
-      return;
-    }
-    int byteToRead = len;
-    int curOff = off;
-    int retry = 0;
-    while (byteToRead > 0) {
-      int curByteRead = 0;
-      curByteRead = ioUtil.read(b, curOff, byteToRead);
-      if (curByteRead < 0) {
-        throw new EOFException("Could not read data from closed stream.");
-      } else if (0 == curByteRead) {
-        try {
-          if (retry++ > IO_RETRY_COUNT_THRESHOLD) {
-            throw new ZeroReadException(String.format("Zero Read exceed retry threshold [%d] in [%s] ms, seems commnunication's broken!", IO_RETRY_COUNT_THRESHOLD, IO_RETRY_INTERVAL * IO_RETRY_COUNT_THRESHOLD));
-          }
-          Thread.sleep(IO_RETRY_INTERVAL);
-        } catch (InterruptedException e) {
-          continue;
-        }
-      } else {
-        retry = 0;
+    synchronized (Thread.currentThread()) {
+      if (len <= 0) {
+        return;
       }
-      byteToRead -= curByteRead;
-      curOff += curByteRead;
+      int byteToRead = len;
+      int curOff = off;
+      int retry = 0;
+      while (byteToRead > 0) {
+        int curByteRead = 0;
+        curByteRead = ioUtil.read(b, curOff, byteToRead);
+        if (curByteRead < 0) {
+          throw new EOFException("Could not read data from closed stream.");
+        } else if (0 == curByteRead) {
+          try {
+            if (retry++ > IO_RETRY_COUNT_THRESHOLD) {
+              throw new ZeroReadException(String.format("Zero Read exceed retry threshold [%d] in [%s] ms, seems commnunication's broken!", IO_RETRY_COUNT_THRESHOLD,
+                  IO_RETRY_INTERVAL * IO_RETRY_COUNT_THRESHOLD));
+            }
+            Thread.currentThread().wait(timeout / IO_RETRY_COUNT_THRESHOLD);
+          } catch (InterruptedException e) {
+            continue;
+          }
+        } else {
+          retry = 0;
+        }
+        byteToRead -= curByteRead;
+        curOff += curByteRead;
+      }
     }
   }
-  
+
   /**
    * {@inheritDoc}
    */
@@ -266,32 +277,35 @@ public class CoreCodecImpl implements Codec, Closeable {
     CharBuffer cb = cs.decode(ByteBuffer.wrap(encodingBytes));
     return cb.toString();
   }
-  
+
   /**
    * {@inheritDoc}
    */
   @Override
   public void writen(byte[] bytes, int off, int len) throws IOException {
-    int byteToWrite = len;
-    int curOff = off;
-    int retry = 0;
-    while (byteToWrite > 0) {
-      int curByteWritten = 0;
-      curByteWritten = ioUtil.write(bytes, curOff, byteToWrite);
-      if (curByteWritten < 0) {
-        throw new EOFException("Could not write data to closed stream.");
-      } else if (0 == curByteWritten) {
-        try {
-          if (retry++ > IO_RETRY_COUNT_THRESHOLD) {
-            throw new IoTimeoutException(String.format("Write exceed retry threshold [%d] in [%s] ms, seems commnunication's broken!", IO_RETRY_COUNT_THRESHOLD, IO_RETRY_INTERVAL * IO_RETRY_COUNT_THRESHOLD));
+    synchronized (Thread.currentThread()) {
+      int byteToWrite = len;
+      int curOff = off;
+      int retry = 0;
+      while (byteToWrite > 0) {
+        int curByteWritten = 0;
+        curByteWritten = ioUtil.write(bytes, curOff, byteToWrite);
+        if (curByteWritten < 0) {
+          throw new EOFException("Could not write data to closed stream.");
+        } else if (0 == curByteWritten) {
+          try {
+            if (retry++ > IO_RETRY_COUNT_THRESHOLD) {
+              throw new IoTimeoutException(String.format("Write exceed retry threshold [%d] in [%s] ms, seems commnunication's broken!", IO_RETRY_COUNT_THRESHOLD,
+                  IO_RETRY_INTERVAL * IO_RETRY_COUNT_THRESHOLD));
+            }
+            Thread.sleep(IO_RETRY_INTERVAL);
+          } catch (InterruptedException e) {
+            continue;
           }
-          Thread.sleep(IO_RETRY_INTERVAL);
-        } catch (InterruptedException e) {
-          continue;
         }
+        byteToWrite -= curByteWritten;
+        curOff += curByteWritten;
       }
-      byteToWrite -= curByteWritten;
-      curOff += curByteWritten;
     }
   }
 
@@ -309,5 +323,35 @@ public class CoreCodecImpl implements Codec, Closeable {
   @Override
   public void close() {
     this.ioUtil.close();
+  }
+
+  @Override
+  public String getName() {
+    return this.ioUtil.getClass().getName();
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((ioUtil == null) ? 0 : ioUtil.getClass().getName().hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    CoreCodecImpl other = (CoreCodecImpl) obj;
+    if (ioUtil == null) {
+      if (other.ioUtil != null)
+        return false;
+    } else if (!ioUtil.getClass().getName().equals(other.ioUtil.getClass().getName()))
+      return false;
+    return true;
   }
 }

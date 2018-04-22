@@ -3,6 +3,7 @@ package com.elminster.easy.rpc.client.connection;
 import java.io.IOException;
 
 import com.elminster.easy.rpc.call.RpcCall;
+import com.elminster.easy.rpc.client.RpcClient;
 import com.elminster.easy.rpc.exception.ConnectionException;
 
 public interface Connection {
@@ -14,4 +15,6 @@ public interface Connection {
   public Object invokeService(RpcCall rpcCall) throws Throwable;
 
   public boolean isConnected();
+  
+  public RpcClient getRpcClient();
 }

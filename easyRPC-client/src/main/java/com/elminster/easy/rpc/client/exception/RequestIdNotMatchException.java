@@ -1,4 +1,4 @@
-package com.elminster.easy.rpc.client.async;
+package com.elminster.easy.rpc.client.exception;
 
 public class RequestIdNotMatchException extends Exception {
 

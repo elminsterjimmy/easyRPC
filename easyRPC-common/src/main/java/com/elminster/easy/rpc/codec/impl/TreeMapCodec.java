@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
-import com.elminster.easy.rpc.exception.RpcException;
+import com.elminster.easy.rpc.exception.CodecException;
 
 public class TreeMapCodec implements RpcCodec {
 
@@ -19,7 +19,7 @@ public class TreeMapCodec implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws RpcException {
+  public void encode(final Object value, final RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       if (null != value) {
         Map<?, ?> map = (Map<?, ?>) value;
@@ -30,11 +30,11 @@ public class TreeMapCodec implements RpcCodec {
           encodingFactory.writeObjectNullable(e.getValue());
         }
       }
-    } catch (RpcException k) {
+    } catch (CodecException k) {
       throw k;
     } catch (Exception e) {
       logger.error("HashMap encode:", e);
-      throw new RpcException("Could not encode HashMap - " + e.getMessage());
+      throw new CodecException("Could not encode HashMap - " + e.getMessage());
     }
   }
 
@@ -42,7 +42,7 @@ public class TreeMapCodec implements RpcCodec {
    * {@inheritDoc}
    */
   @Override
-  public Object decode(final RpcEncodingFactory encodingFactory) throws RpcException {
+  public Object decode(final RpcEncodingFactory encodingFactory) throws CodecException {
     try {
       int size = ((Integer) encodingFactory.readObjectNullable()).intValue();
       Map<Object, Object> map = new TreeMap<>();
@@ -53,11 +53,11 @@ public class TreeMapCodec implements RpcCodec {
         map.put(curKey, curValue);
       }
       return map;
-    } catch (RpcException k) {
+    } catch (CodecException k) {
       throw k;
     } catch (Exception e) {
       logger.error("HashMap decode:", e);
-      throw new RpcException("Could not decode HashMap - " + e.getMessage());
+      throw new CodecException("Could not decode HashMap - " + e.getMessage());
     }
   }
 

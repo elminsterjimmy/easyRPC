@@ -12,7 +12,7 @@ import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.impl.SimpleConnectionEndpoint;
 import com.elminster.easy.rpc.server.RpcServer;
-import com.elminster.easy.rpc.server.connection.impl.SocketRpcConnection;
+import com.elminster.easy.rpc.server.connection.impl.BioRpcConnection;
 import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.listener.RpcServerAcceptEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListener;
@@ -86,7 +86,7 @@ public class BioServerListenerImpl extends ServerListenerBase {
       listener.onAccept(new RpcServerAcceptEvent(endpoint, SimpleConnectionEndpoint.createEndpoint(socket.getInetAddress().getHostAddress(), socket.getPort())));
     }
     setupClientSocket(socket);
-    RpcConnection connection = new SocketRpcConnection(rpcServer, container, socket);
+    RpcConnection connection = new BioRpcConnection(rpcServer, container, socket);
     return connection;
   }
   

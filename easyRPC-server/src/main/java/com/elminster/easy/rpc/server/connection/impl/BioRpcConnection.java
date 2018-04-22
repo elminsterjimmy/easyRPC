@@ -11,16 +11,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
+import com.elminster.easy.rpc.data.Async;
+import com.elminster.easy.rpc.data.Request;
+import com.elminster.easy.rpc.data.Response;
 import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
-import com.elminster.easy.rpc.encoding.RpcEncodingFactoryNotFoundException;
-import com.elminster.easy.rpc.encoding.RpcEncodingFactoryRepository;
+import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
 import com.elminster.easy.rpc.server.container.worker.impl.WorkerJobId;
 import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl;
 import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl.InvokeeContextImplBuilder;
+import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
 
 /**
  * The Socket RPC Connection.
@@ -28,9 +32,9 @@ import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl.InvokeeCont
  * @author jinggu
  * @version 1.0
  */
-public class SocketRpcConnection extends RpcConnectionImpl {
+public class BioRpcConnection extends RpcConnectionImpl {
 
-  private static final Logger logger = LoggerFactory.getLogger(SocketRpcConnection.class);
+  private static final Logger logger = LoggerFactory.getLogger(BioRpcConnection.class);
 
   private static final AtomicInteger SERIAL = new AtomicInteger(WorkerJobId.BIO_CONNECTION.getJobId());
   private final Socket socket;
@@ -44,7 +48,7 @@ public class SocketRpcConnection extends RpcConnectionImpl {
     SERIAL.getAndIncrement();
   }
 
-  public SocketRpcConnection(RpcServer server, Container container, Socket socket) {
+  public BioRpcConnection(RpcServer server, Container container, Socket socket) {
     super(server, container, SERIAL.get(), "Socket Rpc Connection - " + Integer.toHexString(SERIAL.get()));
     this.socket = socket;
     localAddr = socket.getLocalAddress();
@@ -58,43 +62,50 @@ public class SocketRpcConnection extends RpcConnectionImpl {
    */
   @Override
   protected void doRun() throws Exception {
-    InvokeeContextImpl context = null;
-    Codec codec = null;
+    // init the core codec
+    InvokeeContextImpl invokeContext = null;
+    Codec coreCodec = null;
     try (InputStream in = socket.getInputStream(); OutputStream out = socket.getOutputStream()) {
-      codec = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
-      
+      coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(in, out);
+
       InvokeeContextImplBuilder builder = new InvokeeContextImplBuilder();
-      context = builder.withServerHost(localAddr).withClientHost(remoteAddr).withClientPort(remotePort).withServerPort(localPort).build();
+      invokeContext = builder.withServerHost(localAddr).withClientHost(remoteAddr).withClientPort(remotePort).withServerPort(localPort).build();
 
-      RpcEncodingFactoryRepository repository = new RpcEncodingFactoryRepository() {
+      RpcEncodingFactory encodingFactory = getEncodingFactory(coreCodec);
 
-        @Override
-        public RpcEncodingFactory getRpcEncodingFactory(String encodingFactoryName, Codec codec) throws RpcEncodingFactoryNotFoundException {
-          return getEncodingFactory(encodingFactoryName, codec);
-        }
-
-        @Override
-        public void addRpcEncodingFactory(RpcEncodingFactory encodingFactory) {
-        }
-
-        @Override
-        public void removeRpcEncodingFactory(String encodingFactoryName) {
-        }
-      };
-
+      initializeBaseProtocols(encodingFactory);
       while (!Thread.currentThread().isInterrupted()) {
-        handleRequests(repository, codec, context);
+        try {
+          Request request = requestProtocol.decode();
+          checkVersion(request.getVersion(), invokeContext);
+          methodCall(request, invokeContext);
+          RpcServiceProcessor proccessor = container.getServiceProcessor();
+          Response response = new Response();
+          if (Async.ASYNC == request.getAsync()) {
+            response.setReqeustId(request.getRequestId());
+            response.setVoid(false);
+            response.setReturnValue("OK");
+          } else {
+            RpcCall result = proccessor.getResult(request.getRequestId(), 10);
+            response.setReqeustId(result.getRequestId());
+            response.setVoid(result.isVoidReturn());
+            response.setReturnValue(result.getResult().getReturnValue());
+          }
+          writeResponse(response);
+        } catch (RpcException rpce) {
+          writeRpcException(rpce);
+        }
       }
     } catch (IOException e) {
       if (e instanceof EOFException) {
-        logger.warn(String.format(Messages.CLIENT_DISCONNECTED.getMessage(), context));
+        logger.warn(String.format(Messages.CLIENT_DISCONNECTED.getMessage(), invokeContext));
       } else {
         logger.error(e.getMessage(), e);
         throw e;
       }
     } finally {
-      if (null != codec) {
-        codec.close();
+      if (null != coreCodec) {
+        coreCodec.close();
       }
     }
   }

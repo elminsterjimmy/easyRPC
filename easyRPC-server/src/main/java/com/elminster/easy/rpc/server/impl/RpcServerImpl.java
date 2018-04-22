@@ -21,7 +21,7 @@ import com.elminster.easy.rpc.context.ConnectionEndpoint;
 import com.elminster.easy.rpc.context.RpcContext;
 import com.elminster.easy.rpc.context.impl.SimpleConnectionEndpoint;
 import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
-import com.elminster.easy.rpc.encoding.impl.DefaultRpcEncodingFactory;
+import com.elminster.easy.rpc.encoding.impl.RpcEncodingFactoryBase;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
@@ -31,7 +31,6 @@ import com.elminster.easy.rpc.server.container.impl.ContainerFactoryImpl;
 import com.elminster.easy.rpc.server.exception.ServerException;
 import com.elminster.easy.rpc.server.listener.RpcServerListenEvent;
 import com.elminster.easy.rpc.server.listener.RpcServerListener;
-import com.elminster.easy.rpc.server.service.impl.PingServiceImpl;
 import com.elminster.easy.rpc.service.RpcService;
 
 /**
@@ -46,8 +45,9 @@ public class RpcServerImpl implements RpcServer, Observer {
   private static final Logger logger = LoggerFactory.getLogger(RpcServerImpl.class);
 
   private static final String DEFAULT_ENCODING_FACTORY_NAME = "default";
-  /** the encoding factories. */
-  protected Map<String, RpcEncodingFactory> encodingFactories = new ConcurrentHashMap<>();
+
+  /** the encoding factory. */
+  protected RpcEncodingFactory encodingFactory;
   /** the RPC services. */
   protected Map<String, RpcService> rpcServices = new ConcurrentHashMap<>();
   /** version check? */
@@ -63,35 +63,24 @@ public class RpcServerImpl implements RpcServer, Observer {
 
   public RpcServerImpl(RpcContext context) {
     this.context = context;
-    addDefaultEncodingFactory();
-    addDefaultServices();
+    setDefaultEncodingFactory();
 
   }
 
-  private void addDefaultServices() {
-    RpcService pingService = new PingServiceImpl();
-    try {
-      this.addService(pingService);
-    } catch (RpcException e) {
-      // should not happend
-      e = null;
-    }
-  }
-
-  private void addDefaultEncodingFactory() {
-    RpcEncodingFactory defaultEncodingFactory = new DefaultRpcEncodingFactory();
-    this.addEncodingFactory(defaultEncodingFactory);
+  private void setDefaultEncodingFactory() {
+    RpcEncodingFactory defaultEncodingFactory = new RpcEncodingFactoryBase(DEFAULT_ENCODING_FACTORY_NAME);
+    this.setEncodingFactory(defaultEncodingFactory);
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public void addEncodingFactory(final RpcEncodingFactory encodingFactory) {
+  public void setEncodingFactory(final RpcEncodingFactory encodingFactory) {
     Assert.notNull(encodingFactory);
     String encodingName = encodingFactory.getName();
     logger.info(String.format("Register encoding: [%s]", encodingName));
-    this.encodingFactories.put(encodingName, encodingFactory);
+    this.encodingFactory = encodingFactory;
   }
 
   /**
@@ -172,22 +161,13 @@ public class RpcServerImpl implements RpcServer, Observer {
    * {@inheritDoc}
    */
   @Override
-  public RpcEncodingFactory getEncodingFactory(String encodingName, Codec coreCodec) {
+  public RpcEncodingFactory getEncodingFactory(Codec coreCodec) {
     RpcEncodingFactory rtn = null;
-    RpcEncodingFactory factory = encodingFactories.get(encodingName);
-    if (null != factory) {
-      rtn = factory.cloneEncodingFactory();
+    if (null != this.encodingFactory) {
+      rtn = encodingFactory.cloneEncodingFactory();
       rtn.setCodec(coreCodec);
     }
     return rtn;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public RpcEncodingFactory getDefaultEncodingFactory(Codec coreCodec) {
-    return getEncodingFactory(DEFAULT_ENCODING_FACTORY_NAME, coreCodec);
   }
 
   /**
