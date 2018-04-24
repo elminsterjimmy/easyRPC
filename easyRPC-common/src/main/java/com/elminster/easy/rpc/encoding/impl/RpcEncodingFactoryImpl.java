@@ -6,6 +6,7 @@ import static com.elminster.easy.rpc.codec.CodecConst.NOT_NULL;
 import static com.elminster.easy.rpc.codec.CodecConst.TRUE;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -659,6 +660,22 @@ public abstract class RpcEncodingFactoryImpl implements RpcEncodingFactory {
     byte[] bytes = new byte[len - off];
     this.coreCodec.readn(bytes, off, len);
     return bytes;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void writen(ByteBuffer buffer) throws IOException {
+    this.coreCodec.writen(buffer);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public void readn(ByteBuffer buffer) throws IOException {
+    this.coreCodec.readn(buffer);
   }
 
   /**

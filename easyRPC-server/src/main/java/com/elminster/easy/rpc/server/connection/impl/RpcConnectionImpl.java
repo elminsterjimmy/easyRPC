@@ -257,6 +257,9 @@ abstract public class RpcConnectionImpl extends Job implements RpcConnection {
    *           on error
    */
   protected void writeResponse(Response response) throws IOException, RpcException {
+    if (logger.isDebugEnabled()) {
+      logger.debug("write response [{}].", response);
+    }
     responseProtocol.encode(response);
   }
 
@@ -314,5 +317,4 @@ abstract public class RpcConnectionImpl extends Job implements RpcConnection {
     }
     return encodingFactory;
   }
-
 }

@@ -33,7 +33,7 @@ public class RpcClientFactoryImpl implements RpcClientFactory {
   }
 
   @Override
-  public RpcClient createRpcClient(RpcClient client) {
+  public RpcClient duplicateRpcClient(RpcClient client) {
     ConnectionEndpoint endpoint = client.getConnectionEndpoint();
     RpcEncodingFactory encodingFactory = client.getEncodingFactory();
     RpcContext context = client.getRpcContext();

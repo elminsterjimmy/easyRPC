@@ -6,8 +6,8 @@ import java.util.UUID;
 
 import com.elminster.easy.rpc.call.impl.RpcCallImpl;
 import com.elminster.easy.rpc.client.RpcClient;
+import com.elminster.easy.rpc.data.Request;
 import com.elminster.easy.rpc.idl.Async;
-import com.elminster.easy.rpc.request.impl.RpcRequestImpl;
 import com.elminster.easy.rpc.service.Rpc;
 
 /**
@@ -46,19 +46,13 @@ public class ProxyInvocationHandler implements InvocationHandler {
       rpcClient.connect();
     }
     
-    boolean isVoidReturn = false;
-    if (Void.class == method.getReturnType() || void.class == method.getReturnType()) {
-      isVoidReturn = true;
-    }
-    
-    RpcRequestImpl request = new RpcRequestImpl();
-    request.setAsyncCall(isAsyncMethod(method));
+    Request request = new Request();
+    request.setAsync(isAsyncMethod(method));
     request.setMethodArgs(args);
     request.setMethodName(method.getName());
     request.setRequestId(getRequestId());
     request.setServiceName(serviceName);
-    request.setServiceVersion("1.0.0");
-    request.setVoidCall(isVoidReturn);
+    request.setVersion("1.0.0");
     
     RpcCallImpl rpcCall = new RpcCallImpl(request);
     return rpcClient.invokeService(rpcCall);
@@ -69,14 +63,14 @@ public class ProxyInvocationHandler implements InvocationHandler {
    * @param method the method
    * @return if is an async method
    */
-  private boolean isAsyncMethod(Method method) {
-    boolean isAsync = false;
+  private com.elminster.easy.rpc.data.Async isAsyncMethod(Method method) {
+    com.elminster.easy.rpc.data.Async isAsync = com.elminster.easy.rpc.data.Async.SYNC;
     if (null != method.getAnnotation(Async.class)) {
-      isAsync = true;
+      isAsync = com.elminster.easy.rpc.data.Async.ASYNC;
     } else {
       String methodName = method.getName();
       if (methodName.startsWith("async") || methodName.endsWith("Async")) {
-        isAsync = true;
+        isAsync = com.elminster.easy.rpc.data.Async.ASYNC;
       }
     }
     return isAsync;

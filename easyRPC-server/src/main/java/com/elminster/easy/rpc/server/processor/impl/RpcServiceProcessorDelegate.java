@@ -1,5 +1,6 @@
 package com.elminster.easy.rpc.server.processor.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.elminster.easy.rpc.call.RpcCall;
@@ -100,6 +101,11 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
 
   @Override
   public List<RpcCall> getProccedResults(RpcConnection conn) {
-    return asyncProcessor.getProccedResults(conn);
+    List<RpcCall> rtn = new ArrayList<>();
+    List<RpcCall> asyncList = asyncProcessor.getProccedResults(conn);
+    rtn.addAll(asyncList);
+    List<RpcCall> asyncQueryList = asyncQueryProcessor.getProccedResults(conn);
+    rtn.addAll(asyncQueryList);
+    return rtn;
   }
 }

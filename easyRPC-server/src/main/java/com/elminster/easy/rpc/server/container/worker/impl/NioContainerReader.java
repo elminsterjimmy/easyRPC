@@ -50,9 +50,7 @@ public class NioContainerReader extends Job implements ContainerWorker {
     monitor.beginJob(this.getName(), 1);
     try {
       while (!monitor.isCancelled()) {
-        if (selector.select(100) == 0) {
-          continue;
-        }
+        selector.select(10);
         Iterator<SelectionKey> selecionKeys = selector.selectedKeys().iterator();
 
         while (selecionKeys.hasNext()) {
@@ -67,7 +65,11 @@ public class NioContainerReader extends Job implements ContainerWorker {
           if (key.isReadable()) {
             SocketChannel socketChannel = (SocketChannel) key.channel();
             NioRpcConnection conn = container.getConnection(socketChannel);
-            conn.run();
+            try {
+              conn.run();
+            } catch (Exception e) {
+              conn.close();
+            }
           }
         }
       }
@@ -86,7 +88,12 @@ public class NioContainerReader extends Job implements ContainerWorker {
     }
   }
 
-  public void registerChannel(SocketChannel socketChannel) throws ClosedChannelException {
-    socketChannel.register(selector, SelectionKey.OP_READ);
+  public SelectionKey registerChannel(SocketChannel socketChannel) throws ClosedChannelException {
+    logger.debug("registerReaderChannel="+socketChannel);
+    return socketChannel.register(selector, SelectionKey.OP_READ);
+  }
+
+  public Selector getSelector() {
+    return selector;
   }
 }

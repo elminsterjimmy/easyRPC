@@ -2,6 +2,7 @@ package com.elminster.easy.rpc.codec;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * The interface for fundamental encoding and decoding.
@@ -101,6 +102,26 @@ public interface Codec extends Closeable {
    *           on error
    */
   public void readn(byte[] b, int offset, int len) throws IOException;
+  
+  /**
+   * Read into a byte buffer.
+   * 
+   * @param buffer
+   *          the byte buffer
+   * @throws IOException
+   *           on error
+   */
+  public void writen(ByteBuffer buffer) throws IOException;
+  
+  /**
+   * Write a byte buffer.
+   * 
+   * @param buffer
+   *          the byte buffer
+   * @throws IOException
+   *           on error
+   */
+  public void readn(ByteBuffer buffer) throws IOException;
 
   /**
    * Write an ASCII String.

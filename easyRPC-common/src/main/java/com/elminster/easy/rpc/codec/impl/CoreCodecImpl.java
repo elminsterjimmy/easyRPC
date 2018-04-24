@@ -25,30 +25,8 @@ public class CoreCodecImpl implements Codec, Closeable {
 
   private static long IO_RETRY_INTERVAL = 100; // 100 ms
   private static int IO_RETRY_COUNT_THRESHOLD = 300; // total 30 sec
-
-  /** shared byte buffer. */
-  private static ThreadLocal<ByteBuffer> byteBuffer = new ThreadLocal<ByteBuffer>() {
-
-    protected ByteBuffer initialValue() {
-      return ByteBuffer.allocate(1);
-    }
-  };
-
-  /** shared int buffer. */
-  private static ThreadLocal<ByteBuffer> intBuffer = new ThreadLocal<ByteBuffer>() {
-
-    protected ByteBuffer initialValue() {
-      return ByteBuffer.allocate(4);
-    }
-  };
-
-  /** shared long buffer. */
-  private static ThreadLocal<ByteBuffer> longBuffer = new ThreadLocal<ByteBuffer>() {
-
-    protected ByteBuffer initialValue() {
-      return ByteBuffer.allocate(8);
-    }
-  };
+  
+//  private static final Logger logger = LoggerFactory.getLogger(CoreCodecImpl.class);
 
   /** the IoUtil. */
   private final IoUtil ioUtil;
@@ -75,9 +53,9 @@ public class CoreCodecImpl implements Codec, Closeable {
    */
   @Override
   public void writeByte(byte value) throws IOException {
-    byteBuffer.get().rewind();
-    byteBuffer.get().put(value);
-    writen(byteBuffer.get().array(), 0, 1);
+    byte[] bytes = new byte[1];
+    bytes[0] = value;
+    writen(bytes, 0, 1);
   }
 
   /**
@@ -85,9 +63,9 @@ public class CoreCodecImpl implements Codec, Closeable {
    */
   @Override
   public byte readByte() throws IOException {
-    byteBuffer.get().rewind();
-    readn(byteBuffer.get().array(), 0, byteBuffer.get().capacity());
-    return byteBuffer.get().get();
+    byte[] bytes = new byte[1];
+    readn(bytes, 0, 1);
+    return bytes[0];
   }
 
   /**
@@ -95,9 +73,10 @@ public class CoreCodecImpl implements Codec, Closeable {
    */
   @Override
   public void writeIntBigEndian(int value) throws IOException {
-    intBuffer.get().rewind();
-    intBuffer.get().putInt(value);
-    writen(intBuffer.get().array(), 0, 4);
+    ByteBuffer buffer = ByteBuffer.allocate(4);
+    buffer.rewind();
+    buffer.putInt(value);
+    writen(buffer.array(), 0, 4);
   }
 
   /**
@@ -105,9 +84,10 @@ public class CoreCodecImpl implements Codec, Closeable {
    */
   @Override
   public int readIntBigEndian() throws IOException {
-    intBuffer.get().rewind();
-    readn(intBuffer.get().array(), 0, intBuffer.get().capacity());
-    return intBuffer.get().getInt();
+    ByteBuffer buffer = ByteBuffer.allocate(4);
+    buffer.rewind();
+    readn(buffer.array(), 0, buffer.capacity());
+    return buffer.getInt();
   }
 
   /**
@@ -115,9 +95,10 @@ public class CoreCodecImpl implements Codec, Closeable {
    */
   @Override
   public void writeLongBigEndian(long longValue) throws IOException {
-    longBuffer.get().rewind();
-    longBuffer.get().putLong(longValue);
-    writen(longBuffer.get().array(), 0, 8);
+    ByteBuffer buffer = ByteBuffer.allocate(8);
+    buffer.rewind();
+    buffer.putLong(longValue);
+    writen(buffer.array(), 0, 8);
   }
 
   /**
@@ -125,44 +106,64 @@ public class CoreCodecImpl implements Codec, Closeable {
    */
   @Override
   public long readLongBigEndian() throws IOException {
-    longBuffer.get().rewind();
-    readn(longBuffer.get().array(), 0, longBuffer.get().capacity());
-    return longBuffer.get().getLong();
+    ByteBuffer buffer = ByteBuffer.allocate(8);
+    buffer.rewind();
+    readn(buffer.array(), 0, buffer.capacity());
+    return buffer.getLong();
   }
-
+  
+  public void readn(ByteBuffer buffer) throws IOException {
+    if (!buffer.hasRemaining()) {
+      return;
+    }
+    int read = ioUtil.read(buffer);
+    if (read < 0) {
+      throw new EOFException("Could not read data from closed stream.");
+    }
+  }
+  
+  public void writen(ByteBuffer buffer) throws IOException {
+    if (!buffer.hasRemaining()) {
+      return;
+    }
+    int written = ioUtil.write(buffer);
+    if (written < 0) {
+      throw new EOFException("Could not read data from closed stream.");
+    } 
+  }
+  
   /**
    * {@inheritDoc}
    */
   @Override
   public void readn(byte[] b, int off, int len) throws IOException {
-    synchronized (Thread.currentThread()) {
-      if (len <= 0) {
-        return;
-      }
-      int byteToRead = len;
-      int curOff = off;
-      int retry = 0;
-      while (byteToRead > 0) {
-        int curByteRead = 0;
-        curByteRead = ioUtil.read(b, curOff, byteToRead);
-        if (curByteRead < 0) {
-          throw new EOFException("Could not read data from closed stream.");
-        } else if (0 == curByteRead) {
-          try {
-            if (retry++ > IO_RETRY_COUNT_THRESHOLD) {
-              throw new ZeroReadException(String.format("Zero Read exceed retry threshold [%d] in [%s] ms, seems commnunication's broken!", IO_RETRY_COUNT_THRESHOLD,
-                  IO_RETRY_INTERVAL * IO_RETRY_COUNT_THRESHOLD));
-            }
-            Thread.currentThread().wait(timeout / IO_RETRY_COUNT_THRESHOLD);
-          } catch (InterruptedException e) {
-            continue;
+    if (len <= 0) {
+      return;
+    }
+    int byteToRead = len;
+    int curOff = off;
+    int retry = 0;
+    while (byteToRead > 0) {
+      int curByteRead = 0;
+      curByteRead = ioUtil.read(b, curOff, byteToRead);
+      if (curByteRead < 0) {
+        throw new EOFException("Could not read data from closed stream.");
+      } else if (0 == curByteRead) {
+        // TODO data not ready, save safepoint
+        try {
+          if (retry++ > IO_RETRY_COUNT_THRESHOLD) {
+            throw new ZeroReadException(String.format("Zero Read exceed retry threshold [%d] in [%s] ms, seems commnunication's broken!", IO_RETRY_COUNT_THRESHOLD,
+                IO_RETRY_INTERVAL * IO_RETRY_COUNT_THRESHOLD));
           }
-        } else {
-          retry = 0;
+          Thread.sleep(timeout / IO_RETRY_COUNT_THRESHOLD);
+        } catch (InterruptedException e) {
+          continue;
         }
-        byteToRead -= curByteRead;
-        curOff += curByteRead;
+      } else {
+        retry = 0;
       }
+      byteToRead -= curByteRead;
+      curOff += curByteRead;
     }
   }
 

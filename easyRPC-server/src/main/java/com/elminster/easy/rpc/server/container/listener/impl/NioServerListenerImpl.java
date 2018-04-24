@@ -65,7 +65,6 @@ public class NioServerListenerImpl extends ServerListenerBase {
       public void handleUncatchedException(Throwable t) {
         if (t instanceof ZeroReadException || t instanceof IoTimeoutException) {
           ; // ignore
-          System.err.println(t);
         } else if (t instanceof EOFException) {
           logger.warn(t.getMessage());
         } else {
@@ -101,10 +100,8 @@ public class NioServerListenerImpl extends ServerListenerBase {
             if (!key.isValid()) {
               continue;
             }
-            
             if (key.isAcceptable()) {
               RpcConnection connection = accept();
-              container.getAsyncWorkerThreadPool().execute(connection);
               container.addOpenConnection(connection);
               NioContainer nioContainer = (NioContainer) container;
               nioContainer.assign2Reader((NioRpcConnection) connection);

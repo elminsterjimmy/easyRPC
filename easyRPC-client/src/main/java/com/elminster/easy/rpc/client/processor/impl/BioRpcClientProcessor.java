@@ -59,7 +59,6 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
       logger.debug(String.format("Before calling RPC [%s]", rpcCall));
     }
     try {
-      
       Request request = new Request();
       request.setRequestId(rpcCall.getRequestId());
       request.setAsync(rpcCall.isAsyncCall() ? Async.ASYNC : Async.SYNC);
@@ -74,47 +73,51 @@ public class BioRpcClientProcessor implements RpcClientProcessor {
       }
       
       Response response = responseProtocol.decode();
-      if (!rpcCall.getRequestId().equals(response.getReqeustId())) {
-        logger.warn(String.format("unmatched request id: expect [%s] actual [%s].", rpcCall.getRequestId(), response.getReqeustId()));
-      }
-      Object rtn;
-      Object value = response.getReturnValue();
-      if (value instanceof RpcException) {
-        throw (RpcException) value;
-      }
-      if (rpcCall.isAsyncCall()) {
-        // expect the async response
-        if ("OK".equals(value)) {
-          // check if it is a void return
-          boolean isVoidReturn = rpcCall.isVoidReturn();
-          if (isVoidReturn) {
-            // fill rpc call
-            rpcCall.setResult(new ReturnResultImpl(Void.class, value));
-            return null;  // do nothing since the async call is void
+      if (null != response) {
+        if (!rpcCall.getRequestId().equals(response.getReqeustId())) {
+          logger.warn(String.format("unmatched request id: expect [%s] actual [%s].", rpcCall.getRequestId(), response.getReqeustId()));
+        }
+        Object rtn;
+        Object value = response.getReturnValue();
+        if (value instanceof RpcException) {
+          throw (RpcException) value;
+        }
+        if (rpcCall.isAsyncCall()) {
+          // expect the async response
+          if ("OK".equals(value)) {
+            // check if it is a void return
+            boolean isVoidReturn = rpcCall.isVoidReturn();
+            if (isVoidReturn) {
+              // fill rpc call
+              rpcCall.setResult(new ReturnResultImpl(Void.class, value));
+              return null;  // do nothing since the async call is void
+            } else {
+              RpcClient client = RpcClientFactoryImpl.INSTANCE.duplicateRpcClient(conn.getRpcClient());
+              AsyncFuture futrue = new AsyncFuture(client, rpcCall);
+              rtn = futrue;
+            }
           } else {
-            RpcClient client = RpcClientFactoryImpl.INSTANCE.createRpcClient(conn.getRpcClient());
-            AsyncFuture futrue = new AsyncFuture(client, rpcCall);
-            rtn = futrue;
+            throw new AsyncCallNoAckException(String.format("No ACK for Async call: [%s].", rpcCall));
           }
         } else {
-          throw new AsyncCallNoAckException(String.format("No ACK for Async call: [%s].", rpcCall));
+          boolean isVoid = response.isVoid();
+          rtn = value;
+          ReturnResult result;
+          if (isVoid) {
+            result = new ReturnResultImpl(Void.class, value);
+          } else {
+            result = new ReturnResultImpl(null == value ? Object.class : value.getClass(), value);
+          }
+          rpcCall.setResult(result);
+          rpcCall.setRpcCallEndAt(System.currentTimeMillis());
+          if (logger.isDebugEnabled()) {
+            logger.debug(String.format("After calling RPC [%s]", rpcCall));
+          }
         }
+        return rtn;
       } else {
-        boolean isVoid = response.isVoid();
-        rtn = value;
-        ReturnResult result;
-        if (isVoid) {
-          result = new ReturnResultImpl(Void.class, value);
-        } else {
-          result = new ReturnResultImpl(null == value ? Object.class : value.getClass(), value);
-        }
-        rpcCall.setResult(result);
-        rpcCall.setRpcCallEndAt(System.currentTimeMillis());
-        if (logger.isDebugEnabled()) {
-          logger.debug(String.format("After calling RPC [%s]", rpcCall));
-        }
+        throw new IllegalStateException("Unexpected null happened at invoke service.");
       }
-      return rtn;
     } catch (IOException ioe) {
       if (ioe instanceof EOFException) {
         String msg = String.format("Connection with Rpc Server is broken. rpcCall [%s]", rpcCall);

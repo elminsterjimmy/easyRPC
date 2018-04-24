@@ -38,4 +38,9 @@ public class Response {
   public void setCancelled(boolean isCancelled) {
     this.isCancelled = isCancelled;
   }
+
+  @Override
+  public String toString() {
+    return "Response [reqeustId=" + reqeustId + ", isVoid=" + isVoid + ", isCancelled=" + isCancelled + ", returnValue=" + returnValue + "]";
+  }
 }

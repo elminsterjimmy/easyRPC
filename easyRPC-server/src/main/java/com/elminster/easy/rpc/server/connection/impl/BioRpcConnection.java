@@ -77,21 +77,23 @@ public class BioRpcConnection extends RpcConnectionImpl {
       while (!Thread.currentThread().isInterrupted()) {
         try {
           Request request = requestProtocol.decode();
-          checkVersion(request.getVersion(), invokeContext);
-          methodCall(request, invokeContext);
-          RpcServiceProcessor proccessor = container.getServiceProcessor();
-          Response response = new Response();
-          if (Async.ASYNC == request.getAsync()) {
-            response.setReqeustId(request.getRequestId());
-            response.setVoid(false);
-            response.setReturnValue("OK");
-          } else {
-            RpcCall result = proccessor.getResult(request.getRequestId(), 10);
-            response.setReqeustId(result.getRequestId());
-            response.setVoid(result.isVoidReturn());
-            response.setReturnValue(result.getResult().getReturnValue());
+          if (null != request) {
+            checkVersion(request.getVersion(), invokeContext);
+            methodCall(request, invokeContext);
+            RpcServiceProcessor proccessor = container.getServiceProcessor();
+            Response response = new Response();
+            if (Async.ASYNC == request.getAsync()) {
+              response.setReqeustId(request.getRequestId());
+              response.setVoid(false);
+              response.setReturnValue("OK");
+            } else {
+              RpcCall result = proccessor.getResult(request.getRequestId(), 10);
+              response.setReqeustId(result.getRequestId());
+              response.setVoid(result.isVoidReturn());
+              response.setReturnValue(result.getResult().getReturnValue());
+            }
+            writeResponse(response);
           }
-          writeResponse(response);
         } catch (RpcException rpce) {
           writeRpcException(rpce);
         }

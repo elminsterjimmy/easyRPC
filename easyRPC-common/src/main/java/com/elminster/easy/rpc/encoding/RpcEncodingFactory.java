@@ -1,10 +1,11 @@
 package com.elminster.easy.rpc.encoding;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Set;
 
-import com.elminster.easy.rpc.codec.CodecRepository;
 import com.elminster.easy.rpc.codec.Codec;
+import com.elminster.easy.rpc.codec.CodecRepository;
 import com.elminster.easy.rpc.codec.RpcCodec;
 import com.elminster.easy.rpc.codec.impl.TypeCategory;
 import com.elminster.easy.rpc.compressor.DataCompressor;
@@ -365,7 +366,11 @@ public interface RpcEncodingFactory extends Cloneable {
   
   public void writen(final byte[] bytes, int off, int len) throws IOException;
   
+  public void writen(final ByteBuffer buffer) throws IOException;
+  
   public byte[] readn(int off, int len) throws IOException;
+  
+  public void readn(final ByteBuffer buffer) throws IOException;
   
   /**
    * Flush to underlayer stream.

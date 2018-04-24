@@ -22,7 +22,7 @@ public interface RpcClientFactory {
    * @return a RPC client
    */
   public RpcClient createRpcClient(ConnectionEndpoint endpoint, RpcContext context, boolean stayConnction);
-  
+
   /**
    * Create a RPC client.
    * 
@@ -35,7 +35,14 @@ public interface RpcClientFactory {
    * @return a RPC client
    */
   public RpcClient createRpcClient(ConnectionEndpoint endpoint, RpcEncodingFactory encodingFactory, RpcContext context, boolean stayConnction);
-  
-  public RpcClient createRpcClient(RpcClient client);
+
+  /**
+   * Duplicate the RPC client.
+   * 
+   * @param client
+   *          the RPC client to duplicate
+   * @return duplicated RPC client
+   */
+  public RpcClient duplicateRpcClient(RpcClient client);
 
 }

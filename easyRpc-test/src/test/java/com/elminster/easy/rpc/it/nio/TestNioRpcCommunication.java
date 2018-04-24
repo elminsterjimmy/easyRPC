@@ -78,13 +78,12 @@ public class TestNioRpcCommunication {
       Assert.fail("timeout!");
     }
     
-    System.out.println(accepted.get());
-//    for (ClientThread client : clients) {
-//      if (null != client.e) {
-//        client.e.printStackTrace();
-//        Assert.fail(client.e.getMessage());
-//      }
-//    }
+    for (ClientThread client : clients) {
+      if (null != client.e) {
+        client.e.printStackTrace();
+        Assert.fail(client.e.getMessage());
+      }
+    }
     rpcServer.shutdown(true);
   }
 
@@ -108,10 +107,10 @@ public class TestNioRpcCommunication {
 
         RpcProxy proxy = new DynamicProxy();
         RpcTestIfClient testIf = proxy.makeProxy(RpcTestIfClient.class, rpcClient);
-//        String uuid = UUID.randomUUID().toString();
-//        String helloWord = testIf.testString("world: " + uuid);
-//        Assert.assertEquals("hello world: " + uuid, helloWord);
-//        Assert.assertEquals(new Integer(0), (Integer) testIf.testIntegerPlus(null));
+        String uuid = UUID.randomUUID().toString();
+        String helloWord = testIf.testString("world: " + uuid);
+        Assert.assertEquals("hello world: " + uuid, helloWord);
+        Assert.assertEquals(new Integer(0), (Integer) testIf.testIntegerPlus(null));
         Assert.assertEquals(6, testIf.testIntPlus(5));
         Assert.assertEquals(101, testIf.testLongPlus(100L));
         Assert.assertEquals(Integer.MIN_VALUE, testIf.testIntPlus(Integer.MAX_VALUE));

@@ -6,7 +6,7 @@ import java.util.List;
 
 public class BufferPool {
   
-  private static int LARGE_SIZE = 1024 * 1024;
+  private static int LARGE_SIZE = 1024 * 1024; // 1024 / 8 = 128?
   private ByteBuffer largeBuffer = malloc(LARGE_SIZE);
   private final List<ByteBuffer>[] potBuffers;
 
@@ -42,7 +42,7 @@ public class BufferPool {
     int index = Integer.numberOfTrailingZeros(alloc);
     potBuffers[index].add(buffer);
   }
-
+  
   public void flush() {
     for (int i = 0; i < potBuffers.length; i++) {
       potBuffers[i].clear();

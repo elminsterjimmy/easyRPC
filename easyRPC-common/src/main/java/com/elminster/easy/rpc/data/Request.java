@@ -1,5 +1,7 @@
 package com.elminster.easy.rpc.data;
 
+import java.util.Arrays;
+
 public class Request {
 
   private String version;
@@ -55,5 +57,11 @@ public class Request {
 
   public void setMethodArgs(Object[] methodArgs) {
     this.methodArgs = methodArgs;
+  }
+
+  @Override
+  public String toString() {
+    return "Request [version=" + version + ", requestId=" + requestId + ", async=" + async + ", serviceName=" + serviceName + ", methodName=" + methodName + ", methodArgs="
+        + Arrays.toString(methodArgs) + "]";
   }
 }

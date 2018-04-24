@@ -47,7 +47,7 @@ public class AsyncFuture implements Future<Object> {
     if (!client.isConnected()) {
       this.client.connect();
       if (logger.isDebugEnabled()) {
-        logger.debug("client connected!");
+        logger.debug("async future client connected!");
       }
     }
   }

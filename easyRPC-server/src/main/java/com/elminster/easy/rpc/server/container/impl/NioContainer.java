@@ -22,7 +22,7 @@ import com.elminster.easy.rpc.server.container.listener.ServerListener;
 import com.elminster.easy.rpc.server.container.listener.impl.NioServerListenerImpl;
 import com.elminster.easy.rpc.server.container.worker.ContainerWorker;
 import com.elminster.easy.rpc.server.container.worker.impl.NioContainerReader;
-import com.elminster.easy.rpc.server.container.worker.impl.NioContainerResultWriter;
+import com.elminster.easy.rpc.server.container.worker.impl.NioContainerWriter;
 import com.elminster.easy.rpc.server.container.worker.impl.WorkerJobId;
 
 /**
@@ -37,7 +37,7 @@ public class NioContainer extends ContainerBase implements Container {
   private static final Logger logger = LoggerFactory.getLogger(NioContainer.class);
 
   protected NioContainerReader[] readers;
-  protected NioContainerResultWriter resultWriter;
+  protected NioContainerWriter resultWriter;
   protected ListenWorker listenWorker;
   private int currentReader = 0;
   private Map<SocketChannel, NioRpcConnection> channel2ConnMap = new ConcurrentHashMap<>();
@@ -65,7 +65,7 @@ public class NioContainer extends ContainerBase implements Container {
       }
 
       Selector writerSelector = Selector.open();
-      resultWriter = new NioContainerResultWriter(writerSelector, this);
+      resultWriter = new NioContainerWriter(writerSelector, this);
     } catch (IOException e) {
       throw e;
     }
@@ -108,13 +108,12 @@ public class NioContainer extends ContainerBase implements Container {
    */
   public void assign2Reader(NioRpcConnection connection) throws ClosedChannelException {
     NioContainerReader reader = selectReader();
-    logger.debug("Assign connection [{} : {}] to Reader [{}].", connection.getName(), connection.getSocketChannel(), reader.getName());
-    reader.registerChannel(connection.getSocketChannel());
+    logger.debug("Assign connection [{}] to Reader [{}].", connection.getName(), reader.getName());
+    connection.registerReader(reader);
   }
   
   public void assign2Writer(NioRpcConnection connection) throws ClosedChannelException {
-    resultWriter.registerChannel(connection.getSocketChannel());
-    resultWriter.awakeSelector();
+    connection.registerWriter(resultWriter);
   }
   
   /**

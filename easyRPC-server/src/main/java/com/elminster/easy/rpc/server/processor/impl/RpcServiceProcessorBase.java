@@ -82,7 +82,7 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
     Object[] args = rpcCall.getArgs();
     try {
       if (logger.isDebugEnabled()) {
-        logger.debug(String.format("Before Calling RPC [%s].", rpcCall.toString()));
+        logger.debug(String.format("Before Inovking RPC [%s].", rpcCall.toString()));
       }
       rpcCall.setInvokeStartAt(System.currentTimeMillis());
       Method method = ReflectUtil.getDeclaredMethod(service.getClass(), methodName, args);
@@ -95,7 +95,7 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
       rpcCall.setResult(result);
       rpcCall.setInvokeEndAt(System.currentTimeMillis());
       if (logger.isDebugEnabled()) {
-        logger.debug(String.format("After Calling RPC [%s].", rpcCall.toString()));
+        logger.debug(String.format("After Invoking RPC [%s].", rpcCall.toString()));
       }
       rpcCall.setStatus(Status.PROCESSED);
       return rpcCall;
@@ -112,7 +112,7 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
       rpcCall.setStatus(Status.EXCEPTION);
       setException2Result(rpcCall, e.getTargetException());
       if (logger.isDebugEnabled()) {
-        logger.debug(String.format("Exception on Calling RPC [%s].", rpcCall.toString()));
+        logger.debug(String.format("Exception on Invoking RPC [%s].", rpcCall.toString()));
       }
       return rpcCall;
     } finally {
@@ -144,6 +144,7 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
           rpcCalls.add(nioCall);
         }
       }
+      nioCall.getConnection().nofityDone();
     }
   }
 
@@ -179,6 +180,8 @@ abstract public class RpcServiceProcessorBase implements RpcServiceProcessor {
         ProcessWorkJob processWorkJob = new ProcessWorkJob(rpcCall);
         threadPool.execute(processWorkJob);
       }
+      // why here
+      System.err.println("why here!!");
       return monitor.done();
     }
   }

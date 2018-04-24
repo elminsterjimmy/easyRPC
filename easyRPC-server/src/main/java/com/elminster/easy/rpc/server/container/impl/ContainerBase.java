@@ -115,7 +115,6 @@ abstract public class ContainerBase implements Container {
           while (it.hasNext()) {
             RpcConnection c = it.next();
             c.close();
-            it.remove();
           }
         } finally {
           this.lock.unlock();

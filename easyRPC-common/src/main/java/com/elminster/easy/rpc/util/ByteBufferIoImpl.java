@@ -49,6 +49,14 @@ public class ByteBufferIoImpl implements IoUtil {
       throw new IOException("Buffer Overflow!", e);
     }
   }
+  
+  public int read(ByteBuffer buffer) throws IOException {
+    return read(buffer.array(), 0, buffer.capacity());
+  }
+  
+  public int write(ByteBuffer buffer) throws IOException {
+    return write(buffer.array(), 0, buffer.capacity());
+  }
 
   /**
    * {@inheritDoc}

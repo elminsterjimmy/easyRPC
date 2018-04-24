@@ -5,13 +5,14 @@ import com.elminster.easy.rpc.call.ReturnResult;
 import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.call.Status;
 import com.elminster.easy.rpc.context.InvokeContext;
-import com.elminster.easy.rpc.request.RpcRequest;
+import com.elminster.easy.rpc.data.Async;
+import com.elminster.easy.rpc.data.Request;
 
 public class RpcCallImpl implements RpcCall {
 
   private static final int PRIORITY_MID = 50;
   private InvokeContext context;
-  private final RpcRequest request;
+  private final Request request;
   private final long timeout;
   private final int priority;
   private boolean isVoidReturn;
@@ -22,15 +23,15 @@ public class RpcCallImpl implements RpcCall {
   private Long callEndAt;
   private Status status;
   
-  public RpcCallImpl(RpcRequest request) {
+  public RpcCallImpl(Request request) {
     this(request, null);
   }
   
-  public RpcCallImpl(RpcRequest request, InvokeContext context) {
+  public RpcCallImpl(Request request, InvokeContext context) {
     this(request, context, PRIORITY_MID, 0L);
   }
   
-  public RpcCallImpl(RpcRequest request, InvokeContext context, int priority, long timeout) {
+  public RpcCallImpl(Request request, InvokeContext context, int priority, long timeout) {
     this.request = request;
     this.context = context;
     this.status = Status.CREATED;
@@ -136,7 +137,7 @@ public class RpcCallImpl implements RpcCall {
 
   @Override
   public boolean isAsyncCall() {
-    return request.isAsyncCall();
+    return Async.ASYNC == request.getAsync();
   }
   
   public void setContext(InvokeContext context) {
@@ -195,7 +196,7 @@ public class RpcCallImpl implements RpcCall {
   }
 
   @Override
-  public RpcRequest getRequest() {
+  public Request getRequest() {
     return request;
   }
 }

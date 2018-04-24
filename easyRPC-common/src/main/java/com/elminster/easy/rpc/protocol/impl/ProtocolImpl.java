@@ -30,6 +30,9 @@ abstract public class ProtocolImpl<T> implements Protocol<T> {
   
   /** the encoding factory for transport. **/
   protected final RpcEncodingFactory encodingFactory;
+  private final ByteBuffer sizeBuffer = ByteBuffer.allocate(4);
+  private ByteBuffer dataBuffer;
+  private boolean sizeRead = false;;
 
   public ProtocolImpl(RpcEncodingFactory encodingFactory) {
     this.encodingFactory = encodingFactory;
@@ -47,6 +50,9 @@ abstract public class ProtocolImpl<T> implements Protocol<T> {
     encodingFactory.writeInt32(bytes.length);
     encodingFactory.writen(bytes, 0, bytes.length);
     encodingFactory.flush();
+    if (logger.isDebugEnabled()) {
+      logger.debug(String.format("message size [%d] written.", bytes.length));
+    }
   }
 
   /**
@@ -54,18 +60,42 @@ abstract public class ProtocolImpl<T> implements Protocol<T> {
    */
   @Override
   public T decode() throws IOException, CodecException {
-    int size = encodingFactory.readInt32();
-    // what happened if the size is 0
-    if (logger.isDebugEnabled()) {
-      logger.debug(String.format("message size [%d] to read.", size));
+    logger.debug("Protocol#decode()");
+    if (!sizeRead) {
+      encodingFactory.readn(sizeBuffer);
+      if (sizeBuffer.hasRemaining()) {
+        // not ready
+        return null;
+      } else {
+        sizeBuffer.flip();
+        int size = sizeBuffer.getInt();
+        if (logger.isDebugEnabled()) {
+          logger.debug(String.format("message size [%d] to read.", size));
+        }
+        sizeBuffer.flip();
+        dataBuffer = ByteBuffer.allocateDirect(size);
+        sizeRead = true;
+      }
     }
-    if (size <= 0) {
-      logger.warn(String.format("unexpected size of message [%d].", size));
+    if (sizeRead) {
+      encodingFactory.readn(dataBuffer);
+      if (dataBuffer.hasRemaining()) {
+        // not ready
+        return null;
+      } else {
+        dataBuffer.rewind();
+        RpcEncodingFactory bufferReader = cloneEncodingFactory(encodingFactory, CoreCodecFactory.INSTANCE.getCoreCodec(dataBuffer));
+        T data = readData(bufferReader);
+        if (logger.isDebugEnabled()) {
+          logger.debug(String.format("message size [%d] read.", dataBuffer.limit()));
+        }
+        // release the mem
+        ((sun.nio.ch.DirectBuffer)dataBuffer).cleaner().clean();
+        sizeRead = false;
+        return data;
+      }
     }
-    byte[] bytes = encodingFactory.readn(0, size);
-    ByteBuffer buf = ByteBuffer.wrap(bytes); // to byte buffer
-    RpcEncodingFactory bufferReader = cloneEncodingFactory(encodingFactory, CoreCodecFactory.INSTANCE.getCoreCodec(buf));
-    return readData(bufferReader);
+    return null;
   }
 
   /**

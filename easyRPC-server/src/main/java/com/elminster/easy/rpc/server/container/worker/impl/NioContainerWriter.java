@@ -16,14 +16,14 @@ import com.elminster.easy.rpc.server.connection.impl.NioRpcConnection;
 import com.elminster.easy.rpc.server.container.impl.NioContainer;
 import com.elminster.easy.rpc.server.container.worker.ContainerWorker;
 
-public class NioContainerResultWriter extends Job implements ContainerWorker {
+public class NioContainerWriter extends Job implements ContainerWorker {
   
-  private static final Logger logger = LoggerFactory.getLogger(NioContainerResultWriter.class);
+  private static final Logger logger = LoggerFactory.getLogger(NioContainerWriter.class);
 
   private final Selector selector;
   private final NioContainer container;
 
-  public NioContainerResultWriter(Selector selector, NioContainer container) {
+  public NioContainerWriter(Selector selector, NioContainer container) {
     super(WorkerJobId.NIO_WRITE_WORKER.getJobId(), "Nio Container Writer");
     this.selector = selector;
     this.container = container;
@@ -35,9 +35,7 @@ public class NioContainerResultWriter extends Job implements ContainerWorker {
     try {
       while (!monitor.isCancelled()) {
         try {
-          if (selector.select(100) == 0) {
-            continue;
-          }
+          selector.select(10);
           Iterator<SelectionKey> selecionKeys = selector.selectedKeys().iterator();
 
           while (selecionKeys.hasNext()) {
@@ -51,8 +49,11 @@ public class NioContainerResultWriter extends Job implements ContainerWorker {
             if (key.isWritable()) {
               SocketChannel socketChannel = (SocketChannel) key.channel();
               NioRpcConnection conn = container.getConnection(socketChannel);
-              conn.write();
-              Thread.sleep(1);
+              try {
+                conn.write();
+              } catch (Exception e) {
+                conn.close();
+              }
             }
           }
         } catch (IOException ioe) {
@@ -65,14 +66,13 @@ public class NioContainerResultWriter extends Job implements ContainerWorker {
     }
   }
   
-  public void registerChannel(SocketChannel socketChannel) throws ClosedChannelException {
-    socketChannel.register(selector, SelectionKey.OP_WRITE);
+  public SelectionKey registerChannel(SocketChannel socketChannel) throws ClosedChannelException {
+    logger.debug("registerWriterChannel="+socketChannel);
+    SelectionKey key = socketChannel.register(selector, SelectionKey.OP_WRITE);
+    selector.wakeup();
+    return key;
   }
   
-  public void awakeSelector() {
-    selector.wakeup();
-  }
-
   private void cleanup() {
     logger.debug("Cleanup container writer [{}].", this.getName());
     try {
@@ -80,5 +80,9 @@ public class NioContainerResultWriter extends Job implements ContainerWorker {
     } catch (IOException e) {
       logger.warn(String.format("Failed to cleanup the selector[%s]", selector.toString(), e));
     }
+  }
+  
+  public Selector getSelector() {
+    return selector;
   }
 }

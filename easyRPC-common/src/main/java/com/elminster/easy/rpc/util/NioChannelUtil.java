@@ -14,6 +14,8 @@ import com.elminster.easy.rpc.buffer.BufferPool;
  * @version 1.0
  */
 public class NioChannelUtil implements IoUtil {
+  
+//  private static final Logger logger = LoggerFactory.getLogger(NioChannelUtil.class);
 
   private final SocketChannel socketChannel;
 
@@ -33,8 +35,8 @@ public class NioChannelUtil implements IoUtil {
 
   public NioChannelUtil(SocketChannel socketChannel) {
     this.socketChannel = socketChannel;
-    writeByteBuffer = bufferPool.get().borrow(4096);
-    readByteBuffer = bufferPool.get().borrow(1024);
+    writeByteBuffer = bufferPool.get().borrow(8192);
+    readByteBuffer = bufferPool.get().borrow(8192);
   }
 
   /**
@@ -60,22 +62,21 @@ public class NioChannelUtil implements IoUtil {
     if (readBytes >= 0) {
       readBytes = Math.min(readByteBuffer.remaining(), len);
       try {
-        // // debug read byte buffer.
-        // readByteBuffer.rewind();
-        // byte[] debug = readByteBuffer.array();
-        // String bufferValue = "";
-        // for (int i = 0; i < debug.length; i++) {
-        // bufferValue += String.format("%3d", debug[i]) + "|";
-        // }
-        // System.err.println(bufferValue);
-        readByteBuffer.rewind();
         readByteBuffer.get(bytes, off, readBytes);
+        readByteBuffer.compact();
       } catch (BufferUnderflowException e) {
         throw new IOException("Buffer Underflow!", e);
       }
     }
-    readByteBuffer.compact();
     return readBytes;
+  }
+  
+  public int read(ByteBuffer buffer) throws IOException {
+    return socketChannel.read(buffer);
+  }
+  
+  public int write(ByteBuffer buffer) throws IOException {
+    return socketChannel.write(buffer);
   }
 
   /**

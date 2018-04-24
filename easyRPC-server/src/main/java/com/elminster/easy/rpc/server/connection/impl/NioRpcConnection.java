@@ -4,6 +4,8 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -11,15 +13,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.elminster.common.util.ExceptionUtil;
 import com.elminster.easy.rpc.call.RpcCall;
 import com.elminster.easy.rpc.codec.Codec;
 import com.elminster.easy.rpc.codec.impl.CoreCodecFactory;
+import com.elminster.easy.rpc.data.Async;
 import com.elminster.easy.rpc.data.Request;
 import com.elminster.easy.rpc.data.Response;
 import com.elminster.easy.rpc.encoding.RpcEncodingFactory;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.container.Container;
+import com.elminster.easy.rpc.server.container.worker.impl.NioContainerReader;
+import com.elminster.easy.rpc.server.container.worker.impl.NioContainerWriter;
 import com.elminster.easy.rpc.server.container.worker.impl.WorkerJobId;
 import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl;
 import com.elminster.easy.rpc.server.context.impl.InvokeeContextImpl.InvokeeContextImplBuilder;
@@ -42,9 +48,15 @@ public class NioRpcConnection extends RpcConnectionImpl {
   private final int localPort;
   private final int remotePort;
   private final Codec coreCodec;
-  private final RpcEncodingFactory defaultEncodingFactory;
+  private final RpcEncodingFactory encodingFactory;
   private final InvokeeContextImpl context;
 
+  private NioContainerWriter writer;
+  private NioContainerReader reader;
+
+  private SelectionKey readerKey;
+
+  private SelectionKey writerKey;
 
   {
     SERIAL.getAndIncrement();
@@ -60,10 +72,10 @@ public class NioRpcConnection extends RpcConnectionImpl {
     remotePort = socket.getPort();
 
     coreCodec = CoreCodecFactory.INSTANCE.getCoreCodec(socketChannel);
-    defaultEncodingFactory = server.getEncodingFactory(coreCodec);
+    encodingFactory = getEncodingFactory(coreCodec);
     InvokeeContextImplBuilder builder = new InvokeeContextImplBuilder();
     context = builder.withServerHost(localAddr).withClientHost(remoteAddr).withClientPort(remotePort).withServerPort(localPort).build();
-    initializeBaseProtocols(defaultEncodingFactory);
+    initializeBaseProtocols(encodingFactory);
   }
 
   /**
@@ -72,27 +84,46 @@ public class NioRpcConnection extends RpcConnectionImpl {
   @Override
   protected void doRun() throws Exception {
     try {
+      logger.error("NioRpc#doRun()");
       handleRequests(context);
     } catch (IOException ioe) {
       if (ioe instanceof EOFException) {
         logger.debug("EOF from client, close connection [{}].", this.getName());
-        this.close();
       } else {
-        logger.error(ioe.getMessage(), ioe);
-        throw ioe;
+        logger.debug(ExceptionUtil.getStackTrace(ioe));
       }
-    } finally {
       this.close();
     }
   }
 
   private void handleRequests(InvokeeContextImpl invokeContext) throws IOException {
     try {
+      logger.debug("NioRpcConnection#handleRequests()");
       Request request = requestProtocol.decode();
-      checkVersion(request.getVersion(), invokeContext);
-      methodCall(request, invokeContext);
+      if (null != request) {
+        checkVersion(request.getVersion(), invokeContext);
+        methodCall(request, invokeContext);
+        if (Async.ASYNC == request.getAsync()) {
+          Response response = new Response();
+          response.setReqeustId(request.getRequestId());
+          response.setVoid(false);
+          response.setReturnValue("OK");
+          nofityDone();
+          writeResponse(response); // write the ack
+        }
+      } else {
+        logger.warn("decode request failed!");
+      }
     } catch (RpcException rpce) {
       writeRpcException(rpce);
+    }
+  }
+
+  @Override
+  protected void writeResponse(Response response) throws IOException, RpcException {
+    super.writeResponse(response);
+    if (null != writerKey && writerKey.isValid()) {
+      writerKey.interestOps(writerKey.interestOps() & ~SelectionKey.OP_WRITE);
     }
   }
 
@@ -125,10 +156,9 @@ public class NioRpcConnection extends RpcConnectionImpl {
   public SocketChannel getSocketChannel() {
     return this.socketChannel;
   }
-  
+
   @Override
   public void close() {
-    super.close();
     if (null != socketChannel) {
       if (socketChannel.isOpen()) {
         try {
@@ -139,13 +169,21 @@ public class NioRpcConnection extends RpcConnectionImpl {
       }
     }
     coreCodec.close();
+    container.removeOpenConnection(this);
   }
 
   @Override
   public String toString() {
-    return String.format("NioRpcConnection [ Server=[ host:%s, port:%d ] | Client=[host:%s, port:%d] ]", localAddr, localPort, remoteAddr, remotePort);
+    return String.format("NioRpcConnection [%X - %s]\n" + "[ Server=[ host:%s, port:%d ] | Client=[host:%s, port:%d] ]\n" + "[ Reader=[%s] ]", this.getId(), this.getName(),
+        localAddr, localPort, remoteAddr, remotePort, reader);
   }
 
+  /**
+   * Try to write to the channel.
+   * 
+   * @throws IOException
+   *           on error
+   */
   public void write() throws IOException {
     List<RpcCall> results = container.getServiceProcessor().getProccedResults(this);
     for (RpcCall call : results) {
@@ -158,6 +196,43 @@ public class NioRpcConnection extends RpcConnectionImpl {
       } catch (RpcException e) {
         logger.warn(e.getMessage());
       }
+    }
+  }
+
+  /**
+   * Register the writer.
+   * 
+   * @param writer
+   *          the writer
+   * @throws ClosedChannelException
+   *           on error
+   */
+  public void registerWriter(NioContainerWriter writer) throws ClosedChannelException {
+    this.writer = writer;
+    this.writerKey = writer.registerChannel(this.socketChannel);
+  }
+
+  /**
+   * Register the reader.
+   * 
+   * @param reader
+   *          the reader
+   * @throws ClosedChannelException
+   *           on error
+   */
+  public void registerReader(NioContainerReader reader) throws ClosedChannelException {
+    this.reader = reader;
+    this.readerKey = reader.registerChannel(this.socketChannel);
+  }
+
+  /**
+   * Notify invoke's done, now can write.
+   */
+  public void nofityDone() {
+    logger.debug("Notify Done.");
+    if (null != writerKey && writerKey.isValid()) {
+      writerKey.interestOps(SelectionKey.OP_WRITE);
+      writer.getSelector().wakeup();
     }
   }
 }
