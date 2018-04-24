@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.elminster.easy.rpc.call.RpcCall;
+import com.elminster.easy.rpc.call.Status;
 import com.elminster.easy.rpc.exception.RpcException;
 import com.elminster.easy.rpc.server.RpcServer;
 import com.elminster.easy.rpc.server.processor.RpcServiceProcessor;
@@ -30,7 +31,7 @@ public class AsyncRpcServiceProcessor extends RpcServiceProcessorBase implements
   @Override
   public void invoke(RpcCall rpcCall) throws RpcException {
     try {
-      processingQueue.put(rpcCall);
+      queueForProcessing.put(rpcCall);
       unproccessedRpcCalls.put(rpcCall.getRequestId(), rpcCall);
     } catch (InterruptedException e) {
       logger.error("Put Rpc call [{}] to processing queue is interrupted!", rpcCall);
@@ -63,13 +64,24 @@ public class AsyncRpcServiceProcessor extends RpcServiceProcessorBase implements
         }
         result = processedRpcCalls.remove(requestId);
         if (null == result) {
-          cancelRpcCall(requestId); // cancel the call if it timed out
+          timeoutRpcCall(requestId);
         }
       }
     }
     return result;
   }
-
+  
+  private boolean timeoutRpcCall(String requestId) {
+    logger.debug(String.format("timeout RPC Call [%s].", requestId));
+    RpcCall call = this.getRpcCall(requestId);
+    boolean b = cancelRpcCall(requestId);
+    if (b) {
+      call.setStatus(Status.TIMED_OUT);
+    }
+    this.cancel = true;
+    return b;
+  }
+  
   /**
    * {@inheritDoc}
    */

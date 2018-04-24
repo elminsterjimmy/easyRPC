@@ -6,6 +6,7 @@ public enum Status {
   UNPROCCESSED,
   PROCESSING,
   CANCELLED,
+  TIMED_OUT,
   PROCESSED,
   EXCEPTION;
 

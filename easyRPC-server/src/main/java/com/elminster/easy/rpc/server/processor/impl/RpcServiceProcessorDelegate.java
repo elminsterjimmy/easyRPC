@@ -98,14 +98,4 @@ public class RpcServiceProcessorDelegate implements RpcServiceProcessor {
   private boolean isAsyncQueryCall(RpcCall call) {
     return AsyncService.SERVICE_NAME.equals(call.getServiceName());
   }
-
-  @Override
-  public List<RpcCall> getProccedResults(RpcConnection conn) {
-    List<RpcCall> rtn = new ArrayList<>();
-    List<RpcCall> asyncList = asyncProcessor.getProccedResults(conn);
-    rtn.addAll(asyncList);
-    List<RpcCall> asyncQueryList = asyncQueryProcessor.getProccedResults(conn);
-    rtn.addAll(asyncQueryList);
-    return rtn;
-  }
 }

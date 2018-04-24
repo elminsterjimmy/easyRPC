@@ -35,7 +35,7 @@ import com.elminster.easy.rpc.server.listener.RpcServerListener;
 
 public class TestNioRpcCommunication {
 
-  private static final int CLIENT_COUNT = 1;
+  private static final int CLIENT_COUNT = 100;
   private AtomicInteger accepted = new AtomicInteger(0);
 
   @BeforeClass

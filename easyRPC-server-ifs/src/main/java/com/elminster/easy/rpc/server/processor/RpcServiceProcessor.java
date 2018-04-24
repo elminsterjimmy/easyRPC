@@ -1,9 +1,6 @@
 package com.elminster.easy.rpc.server.processor;
 
-import java.util.List;
-
 import com.elminster.easy.rpc.call.RpcCall;
-import com.elminster.easy.rpc.connection.RpcConnection;
 import com.elminster.easy.rpc.exception.RpcException;
 
 /**
@@ -34,13 +31,6 @@ public interface RpcServiceProcessor {
    * @return the result
    */
   public RpcCall getResult(String requestId, long timeout);
-
-  /**
-   * Get a RPC call results that submitted by specified RpcConnection.
-   * 
-   * @return the result
-   */
-  public List<RpcCall> getProccedResults(RpcConnection conn);
 
   /**
    * Cancel a RPC call.

@@ -86,7 +86,6 @@ public class RpcClientImpl implements RpcClient {
     }
     if (!isConnected()) {
       try {
-        System.err.println("===connnect===");
         connection = container.connect();
       } catch (ConnectionException e) {
         String msg = String.format("Cannot connect to RPC server [%s].", endpoint);
@@ -111,7 +110,6 @@ public class RpcClientImpl implements RpcClient {
       logger.debug(String.format("Disconnect from endpoint [%s]", endpoint));
     }
     if (isConnected()) {
-      System.err.println("===disconnect===");
       container.disconnect();
     }
   }

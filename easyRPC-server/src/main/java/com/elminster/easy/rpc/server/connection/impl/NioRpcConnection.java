@@ -7,7 +7,8 @@ import java.net.Socket;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
-import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -50,6 +51,7 @@ public class NioRpcConnection extends RpcConnectionImpl {
   private final Codec coreCodec;
   private final RpcEncodingFactory encodingFactory;
   private final InvokeeContextImpl context;
+  private final BlockingQueue<Response> responses2write = new LinkedBlockingQueue<>();
 
   private NioContainerWriter writer;
   private NioContainerReader reader;
@@ -84,7 +86,6 @@ public class NioRpcConnection extends RpcConnectionImpl {
   @Override
   protected void doRun() throws Exception {
     try {
-      logger.error("NioRpc#doRun()");
       handleRequests(context);
     } catch (IOException ioe) {
       if (ioe instanceof EOFException) {
@@ -108,8 +109,7 @@ public class NioRpcConnection extends RpcConnectionImpl {
           response.setReqeustId(request.getRequestId());
           response.setVoid(false);
           response.setReturnValue("OK");
-          nofityDone();
-          writeResponse(response); // write the ack
+          addResponse2Write(response);
         }
       } else {
         logger.warn("decode request failed!");
@@ -156,6 +156,22 @@ public class NioRpcConnection extends RpcConnectionImpl {
   public SocketChannel getSocketChannel() {
     return this.socketChannel;
   }
+  
+  public boolean addFinishedCall(RpcCall call) {
+    Response response = new Response();
+    response.setReqeustId(call.getRequestId());
+    response.setVoid(call.isVoidReturn());
+    response.setReturnValue(call.getResult().getReturnValue());
+    return addResponse2Write(response);
+  }
+  
+  private boolean addResponse2Write(Response response) {
+    boolean offered = this.responses2write.offer(response);
+    if (offered) {
+      nofityWrite();
+    }
+    return offered;
+  }
 
   @Override
   public void close() {
@@ -185,12 +201,7 @@ public class NioRpcConnection extends RpcConnectionImpl {
    *           on error
    */
   public void write() throws IOException {
-    List<RpcCall> results = container.getServiceProcessor().getProccedResults(this);
-    for (RpcCall call : results) {
-      Response response = new Response();
-      response.setReqeustId(call.getRequestId());
-      response.setVoid(call.isVoidReturn());
-      response.setReturnValue(call.getResult().getReturnValue());
+    for (Response response : responses2write) {
       try {
         writeResponse(response);
       } catch (RpcException e) {
@@ -225,10 +236,7 @@ public class NioRpcConnection extends RpcConnectionImpl {
     this.readerKey = reader.registerChannel(this.socketChannel);
   }
 
-  /**
-   * Notify invoke's done, now can write.
-   */
-  public void nofityDone() {
+  private void nofityWrite() {
     logger.debug("Notify Done.");
     if (null != writerKey && writerKey.isValid()) {
       writerKey.interestOps(SelectionKey.OP_WRITE);
