@@ -91,7 +91,7 @@ public class NioRpcConnection extends RpcConnectionImpl {
       if (ioe instanceof EOFException) {
         logger.debug("EOF from client, close connection [{}].", this.getName());
       } else {
-        logger.debug(ExceptionUtil.getStackTrace(ioe));
+        logger.error(ExceptionUtil.getStackTrace(ioe));
       }
       this.close();
     }
@@ -192,6 +192,14 @@ public class NioRpcConnection extends RpcConnectionImpl {
   public String toString() {
     return String.format("NioRpcConnection [%X - %s]\n" + "[ Server=[ host:%s, port:%d ] | Client=[host:%s, port:%d] ]\n" + "[ Reader=[%s] ]", this.getId(), this.getName(),
         localAddr, localPort, remoteAddr, remotePort, reader);
+  }
+  
+  /**
+   * Try to read from the channel.
+   * @throws IOException on error
+   */
+  public void read() throws Exception {
+    this.doRun();
   }
 
   /**

@@ -66,7 +66,7 @@ public class NioContainerReader extends Job implements ContainerWorker {
             SocketChannel socketChannel = (SocketChannel) key.channel();
             NioRpcConnection conn = container.getConnection(socketChannel);
             try {
-              conn.run();
+              conn.read();
             } catch (Exception e) {
               conn.close();
             }
